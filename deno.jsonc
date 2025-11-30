@@ -3,7 +3,8 @@
     "./packages/probitas-client"
   ],
   "exclude": [
-    ".coverage/**"
+    ".coverage/**",
+    ".worktrees/**"
   ],
   "tasks": {
     "check": "deno check ./**/*.ts",
