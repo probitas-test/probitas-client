@@ -64,6 +64,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      denokv:
+        image: ghcr.io/denoland/denokv
+        ports:
+          - 4512:4512
+        env:
+          DENO_KV_SQLITE_PATH: ":memory:"
+          DENO_KV_ACCESS_TOKEN: testtoken1234
+    env:
+      DENO_KV_ACCESS_TOKEN: testtoken1234
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2

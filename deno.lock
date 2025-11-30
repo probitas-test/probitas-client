@@ -394,6 +394,11 @@
       "jsr:@std/testing@^1.0.16"
     ],
     "members": {
+      "packages/probitas-client-deno-kv": {
+        "dependencies": [
+          "jsr:@probitas/client@0"
+        ]
+      },
       "packages/probitas-client-graphql": {
         "dependencies": [
           "jsr:@cspotcode/outdent@0.8",
