@@ -9,3 +9,9 @@ services:
     image: romk/grpc-helloworld-reflection
     ports:
       - "50051:50051"
+
+  # GraphQL server for integration testing
+  graphql:
+    image: npalm/graphql-java-demo
+    ports:
+      - "14000:8080"
