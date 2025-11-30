@@ -181,7 +181,16 @@ deno task check       # Type check all files
 deno task test        # Run tests (parallel, shuffled)
 deno task test:coverage  # Run tests with coverage
 deno task coverage    # Generate coverage report
+deno task verify      # Run fmt, lint, type check, and tests
 ```
+
+## Development Environment
+
+- A Nix flake is provided to supply the Deno toolchain without global installs.
+- Enter the shell with `nix develop`, or add `use flake` to `.envrc` and run
+  `direnv allow` for auto-activation.
+- Run project tasks (e.g., `deno task check`, `deno task test`) from within the
+  Nix shell for consistent tooling.
 
 ---
 
@@ -216,10 +225,7 @@ Examples requiring backup:
 errors/warnings:**
 
 ```bash
-deno fmt
-deno lint
-deno task check
-deno task test
+deno task verify
 ```
 
 ### 4. English for Version-Controlled Content

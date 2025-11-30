@@ -2,8 +2,10 @@ import { assertEquals, assertRejects } from "@std/assert";
 
 /**
  * Check if DuckDB native library is available.
- * The @duckdb/node-api package requires the DuckDB C library to be installed.
- * We use dynamic import to prevent module load errors.
+ * @duckdb/node-api bundles platform binaries (including libduckdb) for common
+ * OS/CPU targets, so it usually works without a system install. We still guard
+ * with a dynamic import to avoid module load errors on unsupported platforms or
+ * when the native library is missing.
  */
 async function isDuckDbAvailable(): Promise<boolean> {
   try {
