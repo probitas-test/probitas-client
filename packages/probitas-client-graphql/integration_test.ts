@@ -1,8 +1,8 @@
 /**
- * Integration tests for @probitas/client-graphql.
+ * Integration tests for @probitas/client-graphql using echo-graphql.
  *
  * Run with:
- *   docker compose up -d
+ *   docker compose up -d echo-graphql
  *   deno test -A packages/probitas-client-graphql/integration_test.ts
  *   docker compose down
  */
@@ -11,7 +11,7 @@ import { assertEquals, assertInstanceOf } from "@std/assert";
 import {
   createGraphqlClient,
   expectGraphqlResponse,
-  GraphqlExecutionError,
+  GraphqlNetworkError,
   outdent,
 } from "./mod.ts";
 
@@ -34,7 +34,7 @@ async function isGraphqlServerAvailable(): Promise<boolean> {
 }
 
 Deno.test({
-  name: "Integration: GraphQL",
+  name: "Integration: echo-graphql",
   ignore: !(await isGraphqlServerAvailable()),
   async fn(t) {
     const client = createGraphqlClient({ endpoint: GRAPHQL_URL });
@@ -62,22 +62,102 @@ Deno.test({
       assertEquals(res.data()?.__schema.queryType.name, "Query");
     });
 
-    await t.step("query with variables", async () => {
-      // Using introspection to test variables since it's available on all GraphQL servers
-      const res = await client.query<{ __type: { name: string } | null }>(
+    await t.step("echo query - basic message", async () => {
+      const res = await client.query<{ echo: string }>(
         outdent`
-          query GetType($name: String!) {
-            __type(name: $name) {
-              name
+          query Echo($message: String!) {
+            echo(message: $message)
+          }
+        `,
+        { message: "Hello, Probitas!" },
+      );
+
+      expectGraphqlResponse(res).ok().hasData();
+      assertEquals(res.data()?.echo, "Hello, Probitas!");
+    });
+
+    await t.step("echoWithDelay for latency testing", async () => {
+      const start = Date.now();
+      const res = await client.query<{ echoWithDelay: string }>(
+        outdent`
+          query EchoWithDelay($message: String!, $delayMs: Int!) {
+            echoWithDelay(message: $message, delayMs: $delayMs)
+          }
+        `,
+        { message: "Delayed message", delayMs: 500 },
+      );
+      const elapsed = Date.now() - start;
+
+      expectGraphqlResponse(res).ok().hasData();
+      assertEquals(res.data()?.echoWithDelay, "Delayed message");
+
+      // Should have taken at least 500ms
+      assertEquals(
+        elapsed >= 450,
+        true,
+        `Expected elapsed >= 450ms, got ${elapsed}ms`,
+      );
+    });
+
+    await t.step("echoError returns GraphQL error", async () => {
+      const clientNoThrow = createGraphqlClient({
+        endpoint: GRAPHQL_URL,
+        throwOnError: false,
+      });
+
+      const res = await clientNoThrow.query<{ echoError: string }>(
+        outdent`
+          query EchoError($message: String!) {
+            echoError(message: $message)
+          }
+        `,
+        { message: "This should fail" },
+      );
+
+      expectGraphqlResponse(res).hasErrors();
+
+      await clientNoThrow.close();
+    });
+
+    await t.step(
+      "echoPartialError returns partial data with errors",
+      async () => {
+        const clientNoThrow = createGraphqlClient({
+          endpoint: GRAPHQL_URL,
+          throwOnError: false,
+        });
+
+        // echoPartialError takes [String!]! and returns [EchoResult!]!
+        // Messages containing "error" should fail per documentation
+        const res = await clientNoThrow.query<{
+          echoPartialError: Array<
+            { message: string | null; error: string | null }
+          >;
+        }>(
+          outdent`
+          query PartialError($messages: [String!]!) {
+            echoPartialError(messages: $messages) {
+              message
+              error
             }
           }
         `,
-        { name: "Query" },
-      );
+          { messages: ["success", "error", "also success"] },
+        );
 
-      expectGraphqlResponse(res).ok();
-      assertEquals(res.data()?.__type?.name, "Query");
-    });
+        expectGraphqlResponse(res).ok().hasData();
+        const results = res.data()?.echoPartialError;
+        // First and third should succeed, second should have error
+        assertEquals(results?.[0]?.message, "success");
+        assertEquals(results?.[0]?.error, null);
+        assertEquals(results?.[1]?.message, null);
+        assertEquals(results?.[1]?.error, "message contains 'error'");
+        assertEquals(results?.[2]?.message, "also success");
+        assertEquals(results?.[2]?.error, null);
+
+        await clientNoThrow.close();
+      },
+    );
 
     await t.step("query with operationName", async () => {
       const res = await client.query(
@@ -119,7 +199,6 @@ Deno.test({
     });
 
     await t.step("default headers from config", async () => {
-      // Cannot directly verify headers were sent, but can verify the request succeeds
       const clientWithHeaders = createGraphqlClient({
         endpoint: GRAPHQL_URL,
         headers: {
@@ -152,31 +231,37 @@ Deno.test({
     });
 
     await t.step(
-      "throws GraphqlExecutionError on validation error",
+      "throws GraphqlNetworkError on validation error (HTTP 422)",
       async () => {
+        // echo-graphql returns HTTP 422 for invalid queries
         try {
           await client.query("{ nonExistentField }");
-          throw new Error("Expected GraphqlExecutionError");
+          throw new Error("Expected GraphqlNetworkError");
         } catch (error) {
-          assertInstanceOf(error, GraphqlExecutionError);
-          assertEquals(error.errors.length > 0, true);
+          assertInstanceOf(error, GraphqlNetworkError);
+          assertEquals(error.message.includes("422"), true);
         }
       },
     );
 
     await t.step(
-      "returns errors without throwing when throwOnError: false",
+      "echoError query returns GraphQL error in response",
       async () => {
         const clientNoThrow = createGraphqlClient({
           endpoint: GRAPHQL_URL,
           throwOnError: false,
         });
 
-        const res = await clientNoThrow.query("{ nonExistentField }");
+        const res = await clientNoThrow.query<{ echoError: string }>(
+          outdent`
+            query EchoError($message: String!) {
+              echoError(message: $message)
+            }
+          `,
+          { message: "This triggers an error" },
+        );
 
-        expectGraphqlResponse(res)
-          .hasErrors()
-          .errorContains("nonExistentField");
+        expectGraphqlResponse(res).hasErrors();
 
         await clientNoThrow.close();
       },
@@ -188,13 +273,28 @@ Deno.test({
       expectGraphqlResponse(res).ok();
     });
 
-    await t.step("mutation method works", async () => {
-      // Using introspection as a "mutation" since we can't guarantee
-      // the test server has actual mutations. The method should still
-      // send the request correctly.
-      const res = await client.mutation("query { __typename }");
+    await t.step("mutation - createMessage", async () => {
+      const res = await client.mutation<{
+        createMessage: { id: string; text: string; createdAt: string };
+      }>(
+        outdent`
+          mutation CreateMessage($text: String!) {
+            createMessage(text: $text) {
+              id
+              text
+              createdAt
+            }
+          }
+        `,
+        { text: "Hello from integration test" },
+      );
 
-      expectGraphqlResponse(res).ok();
+      expectGraphqlResponse(res).ok().hasData();
+
+      const message = res.data()?.createMessage;
+      assertEquals(message?.text, "Hello from integration test");
+      assertEquals(typeof message?.id, "string");
+      assertEquals(typeof message?.createdAt, "string");
     });
 
     await t.step("fluent expectation chaining", async () => {
@@ -206,6 +306,127 @@ Deno.test({
         .hasData()
         .dataContains({ __typename: "Query" })
         .durationLessThan(5000);
+    });
+
+    await t.step(
+      "echoWithExtensions returns data with extensions",
+      async () => {
+        const res = await client.query<{
+          echoWithExtensions: string;
+        }>(
+          outdent`
+          query EchoWithExtensions($message: String!) {
+            echoWithExtensions(message: $message)
+          }
+        `,
+          { message: "Hello" },
+        );
+
+        expectGraphqlResponse(res).ok().hasData();
+        assertEquals(res.data()?.echoWithExtensions, "Hello");
+        // Server includes timing and tracing extensions
+        assertEquals(typeof res.extensions?.timing, "object");
+        assertEquals(typeof res.extensions?.tracing, "object");
+      },
+    );
+
+    await t.step("mutation - updateMessage", async () => {
+      // First create a message
+      const createRes = await client.mutation<{
+        createMessage: { id: string; text: string };
+      }>(
+        outdent`
+          mutation CreateMessage($text: String!) {
+            createMessage(text: $text) {
+              id
+              text
+            }
+          }
+        `,
+        { text: "Original text" },
+      );
+
+      const messageId = createRes.data()?.createMessage.id;
+
+      // Then update it
+      const updateRes = await client.mutation<{
+        updateMessage: { id: string; text: string };
+      }>(
+        outdent`
+          mutation UpdateMessage($id: ID!, $text: String!) {
+            updateMessage(id: $id, text: $text) {
+              id
+              text
+            }
+          }
+        `,
+        { id: messageId, text: "Updated text" },
+      );
+
+      expectGraphqlResponse(updateRes).ok().hasData();
+      assertEquals(updateRes.data()?.updateMessage.id, messageId);
+      assertEquals(updateRes.data()?.updateMessage.text, "Updated text");
+    });
+
+    await t.step("mutation - deleteMessage", async () => {
+      // First create a message
+      const createRes = await client.mutation<{
+        createMessage: { id: string };
+      }>(
+        outdent`
+          mutation CreateMessage($text: String!) {
+            createMessage(text: $text) {
+              id
+            }
+          }
+        `,
+        { text: "To be deleted" },
+      );
+
+      const messageId = createRes.data()?.createMessage.id;
+
+      // Then delete it
+      const deleteRes = await client.mutation<{
+        deleteMessage: boolean;
+      }>(
+        outdent`
+          mutation DeleteMessage($id: ID!) {
+            deleteMessage(id: $id)
+          }
+        `,
+        { id: messageId },
+      );
+
+      expectGraphqlResponse(deleteRes).ok().hasData();
+      assertEquals(deleteRes.data()?.deleteMessage, true);
+    });
+
+    await t.step("subscription - countdown", async () => {
+      const wsClient = createGraphqlClient({
+        endpoint: GRAPHQL_URL,
+        wsEndpoint: GRAPHQL_URL.replace("http", "ws"),
+      });
+
+      try {
+        const numbers: number[] = [];
+        for await (
+          const res of wsClient.subscribe<{ countdown: number }>(
+            outdent`
+              subscription Countdown($from: Int!) {
+                countdown(from: $from)
+              }
+            `,
+            { from: 3 },
+          )
+        ) {
+          expectGraphqlResponse(res).ok().hasData();
+          numbers.push(res.data()?.countdown ?? -1);
+        }
+
+        assertEquals(numbers, [3, 2, 1, 0]);
+      } finally {
+        await wsClient.close();
+      }
     });
 
     await client.close();

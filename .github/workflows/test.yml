@@ -25,16 +25,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     services:
-      httpbin:
-        image: kennethreitz/httpbin
+      echo-http:
+        image: ghcr.io/jsr-probitas/echo-http:latest
         ports:
           - 18080:80
-      grpc-greeter:
-        image: romk/grpc-helloworld-reflection
+      echo-grpc:
+        image: ghcr.io/jsr-probitas/echo-grpc:latest
         ports:
           - 50051:50051
-      graphql:
-        image: npalm/graphql-java-demo
+      echo-graphql:
+        image: ghcr.io/jsr-probitas/echo-graphql:latest
         ports:
           - 14000:8080
       postgres:

@@ -111,6 +111,7 @@ class GraphqlClientImpl implements GraphqlClient {
     const duration = performance.now() - startTime;
 
     if (!rawResponse.ok) {
+      await rawResponse.body?.cancel();
       throw new GraphqlNetworkError(
         `HTTP ${rawResponse.status}: ${rawResponse.statusText}`,
       );
@@ -158,7 +159,7 @@ class GraphqlClientImpl implements GraphqlClient {
       );
     }
 
-    const ws = new WebSocket(wsEndpoint, "graphql-ws");
+    const ws = new WebSocket(wsEndpoint, "graphql-transport-ws");
 
     // Wait for connection to open
     await new Promise<void>((resolve, reject) => {
@@ -296,11 +297,15 @@ class GraphqlClientImpl implements GraphqlClient {
       }
     } finally {
       // Clean up: send stop message and close WebSocket
+      ws.removeEventListener("message", messageHandler);
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ id: subscriptionId, type: "complete" }));
-        ws.close();
+        // Wait for WebSocket to close to avoid resource leaks
+        await new Promise<void>((resolve) => {
+          ws.onclose = () => resolve();
+          ws.close();
+        });
       }
-      ws.removeEventListener("message", messageHandler);
     }
   }
 
