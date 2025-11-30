@@ -27,6 +27,7 @@ probitas-client/
 ### Module Organization
 
 - **Single entry point**: Each package exports through `mod.ts`
+- **Use `export *`**: Prefer `export *` over explicit `export { ... }` in mod.ts
 - **Type-only exports**: Use `export type *` for types (tree-shaking)
 - **Colocated tests**: `*_test.ts` files adjacent to implementation
 
