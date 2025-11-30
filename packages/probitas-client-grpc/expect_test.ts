@@ -10,7 +10,7 @@ function createResponse(
     code: GrpcStatus.OK,
     message: "",
     body: null,
-    metadata: {},
+    trailers: {},
     duration: 100,
     ...overrides,
   });
@@ -148,47 +148,47 @@ Deno.test("expectGrpcResponse", async (t) => {
     });
   });
 
-  await t.step("metadata()", async (t) => {
-    await t.step("passes when metadata matches string", () => {
+  await t.step("trailers()", async (t) => {
+    await t.step("passes when trailer matches string", () => {
       const response = createResponse({
-        metadata: { "request-id": "abc123" },
+        trailers: { "request-id": "abc123" },
       });
-      expectGrpcResponse(response).metadata("request-id", "abc123");
+      expectGrpcResponse(response).trailers("request-id", "abc123");
     });
 
-    await t.step("passes when metadata matches regex", () => {
+    await t.step("passes when trailer matches regex", () => {
       const response = createResponse({
-        metadata: { "request-id": "abc123" },
+        trailers: { "request-id": "abc123" },
       });
-      expectGrpcResponse(response).metadata("request-id", /^abc/);
+      expectGrpcResponse(response).trailers("request-id", /^abc/);
     });
 
-    await t.step("fails when metadata does not match", () => {
+    await t.step("fails when trailer does not match", () => {
       const response = createResponse({
-        metadata: { "request-id": "xyz" },
+        trailers: { "request-id": "xyz" },
       });
       assertThrows(
-        () => expectGrpcResponse(response).metadata("request-id", "abc123"),
+        () => expectGrpcResponse(response).trailers("request-id", "abc123"),
         Error,
-        'Expected metadata "request-id" to be "abc123", got "xyz"',
+        'Expected trailer "request-id" to be "abc123", got "xyz"',
       );
     });
   });
 
-  await t.step("metadataExists()", async (t) => {
-    await t.step("passes when metadata key exists", () => {
+  await t.step("trailersExist()", async (t) => {
+    await t.step("passes when trailer key exists", () => {
       const response = createResponse({
-        metadata: { "request-id": "abc" },
+        trailers: { "request-id": "abc" },
       });
-      expectGrpcResponse(response).metadataExists("request-id");
+      expectGrpcResponse(response).trailersExist("request-id");
     });
 
-    await t.step("fails when metadata key does not exist", () => {
-      const response = createResponse({ metadata: {} });
+    await t.step("fails when trailer key does not exist", () => {
+      const response = createResponse({ trailers: {} });
       assertThrows(
-        () => expectGrpcResponse(response).metadataExists("request-id"),
+        () => expectGrpcResponse(response).trailersExist("request-id"),
         Error,
-        'Expected metadata "request-id" to exist',
+        'Expected trailer "request-id" to exist',
       );
     });
   });
@@ -306,14 +306,14 @@ Deno.test("expectGrpcResponse", async (t) => {
       code: GrpcStatus.OK,
       message: "success",
       body,
-      metadata: { "x-trace-id": "trace123" },
+      trailers: { "x-trace-id": "trace123" },
       duration: 50,
     });
 
     expectGrpcResponse(response)
       .ok()
       .message("success")
-      .metadataExists("x-trace-id")
+      .trailersExist("x-trace-id")
       .hasContent()
       .jsonContains({ status: "ok" })
       .durationLessThan(100);

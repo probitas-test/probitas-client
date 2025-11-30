@@ -1,4 +1,9 @@
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import {
+  assertEquals,
+  assertInstanceOf,
+  assertRejects,
+  assertThrows,
+} from "@std/assert";
 import { createHttpClient } from "./client.ts";
 import { HttpNotFoundError } from "./errors.ts";
 
@@ -515,5 +520,205 @@ Deno.test("HttpClient throwOnError option", async (t) => {
     await client.close();
 
     assertEquals(response.status, 405);
+  });
+});
+
+Deno.test("HttpClient cookie handling", async (t) => {
+  await t.step("getCookies returns empty object when no cookies set", () => {
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+    });
+    assertEquals(client.getCookies(), {});
+  });
+
+  await t.step("getCookies returns initial cookies", () => {
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      cookies: { initial: { foo: "bar", baz: "qux" } },
+    });
+    assertEquals(client.getCookies(), { foo: "bar", baz: "qux" });
+  });
+
+  await t.step("setCookie throws when cookies are disabled", () => {
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      cookies: { disabled: true },
+    });
+    assertThrows(
+      () => client.setCookie("foo", "bar"),
+      Error,
+      "Cookie handling is disabled",
+    );
+  });
+
+  await t.step("setCookie adds cookie (enabled by default)", () => {
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+    });
+    client.setCookie("session", "abc123");
+    assertEquals(client.getCookies(), { session: "abc123" });
+  });
+
+  await t.step("setCookie overwrites existing cookie", () => {
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      cookies: { initial: { session: "old" } },
+    });
+    client.setCookie("session", "new");
+    assertEquals(client.getCookies(), { session: "new" });
+  });
+
+  await t.step("clearCookies removes all cookies", () => {
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      cookies: { initial: { a: "1", b: "2" } },
+    });
+    client.clearCookies();
+    assertEquals(client.getCookies(), {});
+  });
+
+  await t.step("sends Cookie header when cookies are set", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response("ok", { status: 200 });
+    });
+
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      fetch: mockFetch,
+      cookies: { initial: { session: "abc", user: "john" } },
+    });
+
+    await client.get("/api");
+    await client.close();
+
+    const cookieHeader = capturedRequest?.headers.get("Cookie");
+    assertEquals(cookieHeader?.includes("session=abc"), true);
+    assertEquals(cookieHeader?.includes("user=john"), true);
+  });
+
+  await t.step("does not send Cookie header when disabled", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response("ok", { status: 200 });
+    });
+
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      fetch: mockFetch,
+      cookies: { disabled: true },
+    });
+
+    await client.get("/api");
+    await client.close();
+
+    assertEquals(capturedRequest?.headers.get("Cookie"), null);
+  });
+
+  await t.step("does not send Cookie header when jar is empty", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response("ok", { status: 200 });
+    });
+
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    await client.get("/api");
+    await client.close();
+
+    assertEquals(capturedRequest?.headers.get("Cookie"), null);
+  });
+
+  await t.step("stores cookies from Set-Cookie header (default)", async () => {
+    const mockFetch = createMockFetch(() => {
+      return new Response("ok", {
+        status: 200,
+        headers: { "Set-Cookie": "session=xyz789" },
+      });
+    });
+
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    await client.get("/login");
+    assertEquals(client.getCookies(), { session: "xyz789" });
+    await client.close();
+  });
+
+  await t.step(
+    "stores cookies with attributes (ignores attributes)",
+    async () => {
+      const mockFetch = createMockFetch(() => {
+        return new Response("ok", {
+          status: 200,
+          headers: { "Set-Cookie": "token=abc; Path=/; HttpOnly; Secure" },
+        });
+      });
+
+      const client = createHttpClient({
+        baseUrl: "http://localhost:3000",
+        fetch: mockFetch,
+      });
+
+      await client.get("/auth");
+      assertEquals(client.getCookies(), { token: "abc" });
+      await client.close();
+    },
+  );
+
+  await t.step("does not store cookies when disabled", async () => {
+    const mockFetch = createMockFetch(() => {
+      return new Response("ok", {
+        status: 200,
+        headers: { "Set-Cookie": "session=xyz789" },
+      });
+    });
+
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      fetch: mockFetch,
+      cookies: { disabled: true },
+    });
+
+    await client.get("/login");
+    assertEquals(client.getCookies(), {});
+    await client.close();
+  });
+
+  await t.step("cookies persist across requests", async () => {
+    let requestCount = 0;
+    let capturedRequest: Request | undefined;
+
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      requestCount++;
+      if (requestCount === 1) {
+        return new Response("ok", {
+          status: 200,
+          headers: { "Set-Cookie": "session=first" },
+        });
+      }
+      return new Response("ok", { status: 200 });
+    });
+
+    const client = createHttpClient({
+      baseUrl: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    await client.get("/login");
+    await client.get("/protected");
+
+    const cookieHeader = capturedRequest?.headers.get("Cookie");
+    assertEquals(cookieHeader, "session=first");
+    await client.close();
   });
 });

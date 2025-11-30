@@ -16,8 +16,8 @@ export interface GrpcResponse {
   /** Response body as protobuf binary, or null if no content. */
   readonly body: Uint8Array | null;
 
-  /** Trailing metadata. */
-  readonly metadata: Record<string, string>;
+  /** Trailing metadata sent by the server at the end of the call. */
+  readonly trailers: Record<string, string>;
 
   /** Response time in milliseconds. */
   readonly duration: number;
@@ -46,7 +46,7 @@ export interface GrpcResponseOptions {
   readonly code: GrpcStatusCode;
   readonly message: string;
   readonly body: Uint8Array | null;
-  readonly metadata: Record<string, string>;
+  readonly trailers: Record<string, string>;
   readonly duration: number;
   readonly deserializer?: (bytes: Uint8Array) => unknown;
 }
@@ -67,7 +67,7 @@ export class GrpcResponseImpl implements GrpcResponse {
   readonly code: GrpcStatusCode;
   readonly message: string;
   readonly body: Uint8Array | null;
-  readonly metadata: Record<string, string>;
+  readonly trailers: Record<string, string>;
   readonly duration: number;
 
   readonly #deserializer?: (bytes: Uint8Array) => unknown;
@@ -77,7 +77,7 @@ export class GrpcResponseImpl implements GrpcResponse {
     this.ok = options.code === 0;
     this.message = options.message;
     this.body = options.body;
-    this.metadata = options.metadata;
+    this.trailers = options.trailers;
     this.duration = options.duration;
     this.#deserializer = options.deserializer;
   }

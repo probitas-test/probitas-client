@@ -84,6 +84,27 @@ function mergeHeaders(
 }
 
 /**
+ * Serialize cookies to Cookie header value.
+ */
+function serializeCookies(cookies: Record<string, string>): string {
+  return Object.entries(cookies)
+    .map(([name, value]) => `${name}=${value}`)
+    .join("; ");
+}
+
+/**
+ * Parse Set-Cookie header value and extract cookie name/value.
+ * Only extracts the name=value pair, ignoring attributes.
+ */
+function parseSetCookie(
+  setCookie: string,
+): { name: string; value: string } | null {
+  const match = setCookie.match(/^([^=]+)=([^;]*)/);
+  if (!match) return null;
+  return { name: match[1].trim(), value: match[2].trim() };
+}
+
+/**
  * Throw appropriate HttpError based on status code.
  */
 function throwHttpError(response: HttpResponse): never {
@@ -116,9 +137,21 @@ function throwHttpError(response: HttpResponse): never {
  */
 class HttpClientImpl implements HttpClient {
   readonly config: HttpClientConfig;
+  readonly #cookieJar: Map<string, string>;
+  readonly #cookiesEnabled: boolean;
 
   constructor(config: HttpClientConfig) {
     this.config = config;
+    // Cookies are enabled by default
+    this.#cookiesEnabled = !(config.cookies?.disabled ?? false);
+    this.#cookieJar = new Map();
+
+    // Initialize with initial cookies if provided
+    if (config.cookies?.initial) {
+      for (const [name, value] of Object.entries(config.cookies.initial)) {
+        this.#cookieJar.set(name, value);
+      }
+    }
   }
 
   get(path: string, options?: HttpOptions): Promise<HttpResponse> {
@@ -161,6 +194,23 @@ class HttpClientImpl implements HttpClient {
     return this.#request(method, path, options?.body, options);
   }
 
+  getCookies(): Record<string, string> {
+    return Object.fromEntries(this.#cookieJar);
+  }
+
+  setCookie(name: string, value: string): void {
+    if (!this.#cookiesEnabled) {
+      throw new Error(
+        "Cookie handling is disabled. Remove cookies.disabled: true from HttpClientConfig.",
+      );
+    }
+    this.#cookieJar.set(name, value);
+  }
+
+  clearCookies(): void {
+    this.#cookieJar.clear();
+  }
+
   async #request(
     method: string,
     path: string,
@@ -175,7 +225,13 @@ class HttpClientImpl implements HttpClient {
       options?.headers,
     );
 
+    // Add Cookie header if cookies are enabled and jar is not empty
+    if (this.#cookiesEnabled && this.#cookieJar.size > 0) {
+      headers["Cookie"] = serializeCookies(Object.fromEntries(this.#cookieJar));
+    }
+
     const fetchFn = this.config.fetch ?? globalThis.fetch;
+    const redirect = options?.redirect ?? this.config.redirect ?? "follow";
     const startTime = performance.now();
 
     const rawResponse = await fetchFn(url, {
@@ -183,10 +239,24 @@ class HttpClientImpl implements HttpClient {
       headers,
       body: prepared.body as globalThis.BodyInit,
       signal: options?.signal,
+      redirect,
     });
 
     const duration = performance.now() - startTime;
     const response = await createHttpResponse(rawResponse, duration);
+
+    // Store cookies from Set-Cookie headers if cookies are enabled
+    if (this.#cookiesEnabled) {
+      // Use getSetCookie() if available (modern API), otherwise fallback to get()
+      const setCookies = rawResponse.headers.getSetCookie?.() ??
+        (rawResponse.headers.get("set-cookie")?.split(/,(?=\s*\w+=)/) ?? []);
+      for (const cookieStr of setCookies) {
+        const parsed = parseSetCookie(cookieStr.trim());
+        if (parsed) {
+          this.#cookieJar.set(parsed.name, parsed.value);
+        }
+      }
+    }
 
     // Determine whether to throw on error (request option > config > default true)
     const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??

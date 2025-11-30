@@ -429,6 +429,52 @@ Deno.test({
       }
     });
 
+    await t.step("echoHeaders - verify headers delivery", async () => {
+      const clientWithHeaders = createGraphqlClient({
+        endpoint: GRAPHQL_URL,
+        headers: {
+          "Authorization": "Bearer test-token-123",
+          "X-Client-Id": "probitas-integration-test",
+        },
+      });
+
+      try {
+        const res = await clientWithHeaders.query<{
+          echoHeaders: {
+            authorization: string | null;
+            custom: string | null;
+            all: Array<{ name: string; value: string }>;
+          };
+        }>(
+          outdent`
+            query EchoHeaders {
+              echoHeaders {
+                authorization
+                custom(name: "x-client-id")
+                all { name value }
+              }
+            }
+          `,
+          undefined,
+          { headers: { "X-Request-Id": "req-789" } },
+        );
+
+        expectGraphqlResponse(res).ok().hasData();
+
+        const headers = res.data()?.echoHeaders;
+        // Verify config-level headers were sent
+        assertEquals(headers?.authorization, "Bearer test-token-123");
+        assertEquals(headers?.custom, "probitas-integration-test");
+        // Verify request-level headers were sent via all field
+        const requestIdHeader = headers?.all.find((h) =>
+          h.name.toLowerCase() === "x-request-id"
+        );
+        assertEquals(requestIdHeader?.value, "req-789");
+      } finally {
+        await clientWithHeaders.close();
+      }
+    });
+
     await client.close();
   },
 });

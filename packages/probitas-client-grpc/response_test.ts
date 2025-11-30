@@ -8,7 +8,7 @@ Deno.test("GrpcResponse", async (t) => {
       code: GrpcStatus.OK,
       message: "",
       body: null,
-      metadata: {},
+      trailers: {},
       duration: 100,
     });
 
@@ -20,7 +20,7 @@ Deno.test("GrpcResponse", async (t) => {
       code: GrpcStatus.NOT_FOUND,
       message: "resource not found",
       body: null,
-      metadata: {},
+      trailers: {},
       duration: 100,
     });
 
@@ -29,19 +29,19 @@ Deno.test("GrpcResponse", async (t) => {
 
   await t.step("exposes all properties", () => {
     const body = new TextEncoder().encode('{"id": 1}');
-    const metadata = { "request-id": "abc123" };
+    const trailers = { "request-id": "abc123" };
     const response = new GrpcResponseImpl({
       code: GrpcStatus.OK,
       message: "success",
       body,
-      metadata,
+      trailers,
       duration: 50,
     });
 
     assertEquals(response.code, 0);
     assertEquals(response.message, "success");
     assertEquals(response.body, body);
-    assertEquals(response.metadata, metadata);
+    assertEquals(response.trailers, trailers);
     assertEquals(response.duration, 50);
   });
 
@@ -51,7 +51,7 @@ Deno.test("GrpcResponse", async (t) => {
       code: GrpcStatus.OK,
       message: "",
       body,
-      metadata: {},
+      trailers: {},
       duration: 10,
     });
 
@@ -64,7 +64,7 @@ Deno.test("GrpcResponse", async (t) => {
       code: GrpcStatus.OK,
       message: "",
       body: null,
-      metadata: {},
+      trailers: {},
       duration: 10,
     });
 
@@ -77,7 +77,7 @@ Deno.test("GrpcResponse", async (t) => {
       code: GrpcStatus.OK,
       message: "",
       body,
-      metadata: {},
+      trailers: {},
       duration: 10,
     });
 
@@ -93,7 +93,7 @@ Deno.test("GrpcResponse", async (t) => {
       code: GrpcStatus.OK,
       message: "",
       body: null,
-      metadata: {},
+      trailers: {},
       duration: 10,
     });
 
@@ -106,7 +106,7 @@ Deno.test("GrpcResponse", async (t) => {
       code: GrpcStatus.OK,
       message: "",
       body,
-      metadata: {},
+      trailers: {},
       duration: 10,
       deserializer: (_bytes) => ({ decoded: true }),
     });

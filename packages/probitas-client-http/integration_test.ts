@@ -205,6 +205,168 @@ Deno.test({
       await clientWithHeaders.close();
     });
 
+    await t.step("redirect: follow (default) follows redirects", async () => {
+      const res = await client.get("/redirect/3");
+
+      expectHttpResponse(res).ok().status(200);
+
+      const json = res.json<{ redirected: boolean }>();
+      assertEquals(json?.redirected, true);
+    });
+
+    await t.step("redirect: manual returns redirect response", async () => {
+      const res = await client.get("/redirect/3", {
+        redirect: "manual",
+        throwOnError: false,
+      });
+
+      // Should return the redirect response without following
+      assertEquals(res.status, 302);
+      assertEquals(res.ok, false);
+      // Location header should be present
+      assertEquals(res.headers.has("location"), true);
+    });
+
+    await t.step("redirect: error throws on redirect", async () => {
+      try {
+        await client.get("/redirect/1", {
+          redirect: "error",
+          throwOnError: false,
+        });
+        throw new Error("Expected fetch to throw on redirect");
+      } catch (error) {
+        // fetch throws TypeError when redirect is "error" and response is redirect
+        assertInstanceOf(error, TypeError);
+      }
+    });
+
+    await t.step("config-level redirect setting", async () => {
+      const clientManual = createHttpClient({
+        baseUrl: ECHO_HTTP_URL,
+        redirect: "manual",
+        throwOnError: false,
+      });
+
+      const res = await clientManual.get("/redirect/1");
+      assertEquals(res.status, 302);
+
+      await clientManual.close();
+    });
+
+    await t.step("request redirect overrides config redirect", async () => {
+      const clientManual = createHttpClient({
+        baseUrl: ECHO_HTTP_URL,
+        redirect: "manual",
+      });
+
+      // Override manual with follow
+      const res = await clientManual.get("/redirect/1", { redirect: "follow" });
+      expectHttpResponse(res).ok().status(200);
+
+      await clientManual.close();
+    });
+
     await client.close();
+  },
+});
+
+Deno.test({
+  name: "Integration: echo-http cookies",
+  ignore: !(await isEchoHttpAvailable()),
+  async fn(t) {
+    await t.step("GET /cookies returns cookies sent by client", async () => {
+      const client = createHttpClient({
+        baseUrl: ECHO_HTTP_URL,
+        cookies: { initial: { session: "test123", user: "alice" } },
+      });
+
+      const res = await client.get("/cookies");
+
+      expectHttpResponse(res).ok();
+      const json = res.json<{ cookies: Record<string, string> }>();
+      assertEquals(json?.cookies.session, "test123");
+      assertEquals(json?.cookies.user, "alice");
+
+      await client.close();
+    });
+
+    await t.step("GET /cookies/set stores cookies from response", async () => {
+      const client = createHttpClient({
+        baseUrl: ECHO_HTTP_URL,
+      });
+
+      // /cookies/set sets cookies and redirects; use manual redirect to capture cookies
+      const res = await client.get("/cookies/set", {
+        query: { flavor: "chocolate", count: "5" },
+        redirect: "manual",
+        throwOnError: false,
+      });
+      assertEquals(res.status, 302);
+
+      // Verify cookies were stored in jar from Set-Cookie header
+      const cookies = client.getCookies();
+      assertEquals(cookies.flavor, "chocolate");
+      assertEquals(cookies.count, "5");
+
+      await client.close();
+    });
+
+    await t.step("cookies persist across multiple requests", async () => {
+      const client = createHttpClient({
+        baseUrl: ECHO_HTTP_URL,
+      });
+
+      // First request sets a cookie (use manual redirect to capture Set-Cookie)
+      await client.get("/cookies/set", {
+        query: { auth: "bearer-token" },
+        redirect: "manual",
+        throwOnError: false,
+      });
+
+      // Second request should send the cookie back
+      const res = await client.get("/cookies");
+      const json = res.json<{ cookies: Record<string, string> }>();
+      assertEquals(json?.cookies.auth, "bearer-token");
+
+      await client.close();
+    });
+
+    await t.step("clearCookies removes all cookies", async () => {
+      const client = createHttpClient({
+        baseUrl: ECHO_HTTP_URL,
+        cookies: { initial: { initial: "value" } },
+      });
+
+      // Verify initial cookie is sent
+      let res = await client.get("/cookies");
+      let json = res.json<{ cookies: Record<string, string> }>();
+      assertEquals(json?.cookies.initial, "value");
+
+      // Clear cookies
+      client.clearCookies();
+
+      // Verify no cookies are sent
+      res = await client.get("/cookies");
+      json = res.json<{ cookies: Record<string, string> }>();
+      assertEquals(json?.cookies.initial, undefined);
+
+      await client.close();
+    });
+
+    await t.step("setCookie manually adds cookies", async () => {
+      const client = createHttpClient({
+        baseUrl: ECHO_HTTP_URL,
+      });
+
+      // Manually set a cookie
+      client.setCookie("manual", "cookie-value");
+
+      // Verify it's sent
+      const res = await client.get("/cookies");
+      const json = res.json<{ cookies: Record<string, string> }>();
+      assertEquals(json?.cookies.manual, "cookie-value");
+
+      await client.close();
+    });
   },
 });

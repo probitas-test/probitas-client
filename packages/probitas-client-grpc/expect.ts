@@ -26,11 +26,11 @@ export interface GrpcResponseExpectation {
   /** Verify the status message using a custom matcher. */
   messageMatch(matcher: (message: string) => void): this;
 
-  /** Verify a metadata value matches exactly or by regex. */
-  metadata(key: string, expected: string | RegExp): this;
+  /** Verify a trailer value matches exactly or by regex. */
+  trailers(key: string, expected: string | RegExp): this;
 
-  /** Verify that a metadata key exists. */
-  metadataExists(key: string): this;
+  /** Verify that a trailer key exists. */
+  trailersExist(key: string): this;
 
   /** Verify that body is null. */
   noContent(): this;
@@ -172,27 +172,27 @@ class GrpcResponseExpectationImpl implements GrpcResponseExpectation {
     return this;
   }
 
-  metadata(key: string, expected: string | RegExp): this {
-    const value = this.#response.metadata[key];
+  trailers(key: string, expected: string | RegExp): this {
+    const value = this.#response.trailers[key];
     if (typeof expected === "string") {
       if (value !== expected) {
         throw new Error(
-          `Expected metadata "${key}" to be "${expected}", got "${value}"`,
+          `Expected trailer "${key}" to be "${expected}", got "${value}"`,
         );
       }
     } else {
       if (value === undefined || !expected.test(value)) {
         throw new Error(
-          `Expected metadata "${key}" to match ${expected}, got "${value}"`,
+          `Expected trailer "${key}" to match ${expected}, got "${value}"`,
         );
       }
     }
     return this;
   }
 
-  metadataExists(key: string): this {
-    if (!(key in this.#response.metadata)) {
-      throw new Error(`Expected metadata "${key}" to exist`);
+  trailersExist(key: string): this {
+    if (!(key in this.#response.trailers)) {
+      throw new Error(`Expected trailer "${key}" to exist`);
     }
     return this;
   }

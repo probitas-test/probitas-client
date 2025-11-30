@@ -4,16 +4,30 @@ package echo.v1;
 
 option go_package = "github.com/jsr-probitas/dockerfiles/echo-grpc/proto";
 
+// Echo service with various RPC patterns
 service Echo {
   // Unary RPCs
-  rpc Echo (EchoRequest) returns (EchoResponse) {}
-  rpc EchoWithDelay (EchoWithDelayRequest) returns (EchoResponse) {}
-  rpc EchoError (EchoErrorRequest) returns (EchoResponse) {}
+  rpc Echo (EchoRequest) returns (EchoResponse);
+  rpc EchoWithDelay (EchoWithDelayRequest) returns (EchoResponse);
+  rpc EchoError (EchoErrorRequest) returns (EchoResponse);
+
+  // Metadata/Headers RPCs
+  rpc EchoRequestMetadata (EchoRequestMetadataRequest) returns (EchoRequestMetadataResponse);
+  rpc EchoWithTrailers (EchoWithTrailersRequest) returns (EchoResponse);
+
+  // Payload Testing RPCs
+  rpc EchoLargePayload (EchoLargePayloadRequest) returns (EchoLargePayloadResponse);
+
+  // Deadline/Timeout RPCs
+  rpc EchoDeadline (EchoDeadlineRequest) returns (EchoDeadlineResponse);
+
+  // Error Scenarios RPCs
+  rpc EchoErrorWithDetails (EchoErrorWithDetailsRequest) returns (EchoResponse);
 
   // Streaming RPCs
-  rpc ServerStream (ServerStreamRequest) returns (stream EchoResponse) {}
-  rpc ClientStream (stream EchoRequest) returns (EchoResponse) {}
-  rpc BidirectionalStream (stream EchoRequest) returns (stream EchoResponse) {}
+  rpc ServerStream (ServerStreamRequest) returns (stream EchoResponse);
+  rpc ClientStream (stream EchoRequest) returns (EchoResponse);
+  rpc BidirectionalStream (stream EchoRequest) returns (stream EchoResponse);
 }
 
 message EchoRequest {
@@ -22,7 +36,7 @@ message EchoRequest {
 
 message EchoResponse {
   string message = 1;
-  map<string, string> metadata = 2;
+  map<string, string> metadata = 2;  // Echo back request metadata
 }
 
 message EchoWithDelayRequest {
@@ -32,12 +46,86 @@ message EchoWithDelayRequest {
 
 message EchoErrorRequest {
   string message = 1;
-  int32 code = 2;
-  string details = 3;
+  int32 code = 2;        // gRPC status code (0-16)
+  string details = 3;    // Error details message
 }
 
 message ServerStreamRequest {
   string message = 1;
-  int32 count = 2;
-  int32 interval_ms = 3;
+  int32 count = 2;       // Number of responses to stream
+  int32 interval_ms = 3; // Interval between responses
+}
+
+// EchoRequestMetadata - Returns all request metadata in response body
+message EchoRequestMetadataRequest {
+  // Optional: filter to specific metadata keys (empty = return all)
+  repeated string keys = 1;
+}
+
+message EchoRequestMetadataResponse {
+  // All request metadata as key-value pairs
+  map<string, MetadataValues> metadata = 1;
+}
+
+// MetadataValues holds multiple values for a single metadata key
+message MetadataValues {
+  repeated string values = 1;
+}
+
+// EchoWithTrailers - Return response with trailing metadata
+message EchoWithTrailersRequest {
+  string message = 1;
+  map<string, string> trailers = 2;  // Trailers to send with response
+}
+
+// EchoLargePayload - Returns large payload of specified size
+message EchoLargePayloadRequest {
+  int32 size_bytes = 1;  // Size of payload to return (max 10MB)
+  string pattern = 2;    // Optional: pattern to repeat (default: 'X')
+}
+
+message EchoLargePayloadResponse {
+  bytes payload = 1;
+  int32 actual_size = 2;
+}
+
+// EchoDeadline - Echo the remaining deadline/timeout
+message EchoDeadlineRequest {
+  string message = 1;
+}
+
+message EchoDeadlineResponse {
+  string message = 1;
+  int64 deadline_remaining_ms = 2;  // -1 if no deadline set
+  bool has_deadline = 3;
+}
+
+// EchoErrorWithDetails - Return error with rich error details (google.rpc.Status)
+message EchoErrorWithDetailsRequest {
+  int32 code = 1;              // gRPC status code (0-16)
+  string message = 2;          // Error message
+  repeated ErrorDetail details = 3;  // Rich error details
+}
+
+message ErrorDetail {
+  string type = 1;  // Detail type: "bad_request", "retry_info", "debug_info", "quota_failure"
+  // Fields for BadRequest
+  repeated FieldViolation field_violations = 2;
+  // Fields for RetryInfo
+  int64 retry_delay_ms = 3;
+  // Fields for DebugInfo
+  repeated string stack_entries = 4;
+  string debug_detail = 5;
+  // Fields for QuotaFailure
+  repeated QuotaViolation quota_violations = 6;
+}
+
+message FieldViolation {
+  string field = 1;
+  string description = 2;
+}
+
+message QuotaViolation {
+  string subject = 1;
+  string description = 2;
 }
