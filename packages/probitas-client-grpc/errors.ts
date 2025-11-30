@@ -2,6 +2,31 @@ import { ClientError } from "@probitas/client";
 import type { GrpcStatusCode } from "./status.ts";
 
 /**
+ * Rich error detail from google.rpc.Status.
+ *
+ * gRPC errors can include structured details encoded in the
+ * `grpc-status-details-bin` trailing metadata. These details
+ * follow the google.protobuf.Any format with a type URL and value.
+ */
+export interface ErrorDetail {
+  /**
+   * Type URL identifying the error detail type.
+   * Common types include:
+   * - "type.googleapis.com/google.rpc.BadRequest"
+   * - "type.googleapis.com/google.rpc.DebugInfo"
+   * - "type.googleapis.com/google.rpc.RetryInfo"
+   * - "type.googleapis.com/google.rpc.QuotaFailure"
+   */
+  readonly typeUrl: string;
+
+  /**
+   * Decoded error detail value.
+   * The structure depends on the typeUrl.
+   */
+  readonly value: unknown;
+}
+
+/**
  * Options for GrpcError construction.
  */
 export interface GrpcErrorOptions extends ErrorOptions {
@@ -9,6 +34,11 @@ export interface GrpcErrorOptions extends ErrorOptions {
    * Trailing metadata from the gRPC response.
    */
   readonly metadata?: Record<string, string>;
+
+  /**
+   * Rich error details from google.rpc.Status.
+   */
+  readonly details?: readonly ErrorDetail[];
 }
 
 /**
@@ -19,6 +49,7 @@ export class GrpcError extends ClientError {
   readonly code: GrpcStatusCode;
   readonly grpcMessage: string;
   readonly metadata?: Record<string, string>;
+  readonly details: readonly ErrorDetail[];
 
   constructor(
     message: string,
@@ -30,6 +61,7 @@ export class GrpcError extends ClientError {
     this.code = code;
     this.grpcMessage = grpcMessage;
     this.metadata = options?.metadata;
+    this.details = options?.details ?? [];
   }
 }
 

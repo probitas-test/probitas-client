@@ -27,6 +27,23 @@ Deno.test("GrpcError", async (t) => {
     assertEquals(error.grpcMessage, "NOT_FOUND");
     assertEquals(error.metadata, metadata);
     assertEquals(error.kind, "unknown");
+    assertEquals(error.details, []);
+  });
+
+  await t.step("has details property", () => {
+    const details = [
+      {
+        typeUrl: "type.googleapis.com/google.rpc.BadRequest",
+        value: {
+          fieldViolations: [{ field: "email", description: "invalid" }],
+        },
+      },
+    ];
+    const error = new GrpcError("test error", 3, "INVALID_ARGUMENT", {
+      details,
+    });
+
+    assertEquals(error.details, details);
   });
 
   await t.step("supports error chaining", () => {

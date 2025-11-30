@@ -4,6 +4,7 @@ import { Client as ReflectionClient } from "grpc-reflection-js";
 import { Buffer } from "node:buffer";
 import { type CommonOptions, ConnectionError } from "@probitas/client";
 import {
+  type ErrorDetail,
   GrpcError,
   GrpcInternalError,
   GrpcNotFoundError,
@@ -12,6 +13,7 @@ import {
   GrpcUnauthenticatedError,
   GrpcUnavailableError,
 } from "./errors.ts";
+import { parseStatusDetails } from "./status_details.ts";
 import type { GrpcResponse } from "./response.ts";
 import { GrpcResponseImpl } from "./response.ts";
 import type { GrpcStatusCode } from "./status.ts";
@@ -198,6 +200,26 @@ function createCallOptions(options?: GrpcOptions): grpc.CallOptions {
 }
 
 /**
+ * Extract error details from metadata.
+ * The grpc-status-details-bin trailer contains base64-encoded google.rpc.Status.
+ */
+function extractErrorDetails(
+  metadata?: Record<string, string>,
+): ErrorDetail[] {
+  if (!metadata) {
+    return [];
+  }
+
+  // grpc-status-details-bin contains the encoded google.rpc.Status
+  const statusDetailsBin = metadata["grpc-status-details-bin"];
+  if (!statusDetailsBin) {
+    return [];
+  }
+
+  return parseStatusDetails(statusDetailsBin);
+}
+
+/**
  * Create appropriate GrpcError subclass based on status code.
  */
 function createGrpcError(
@@ -205,7 +227,8 @@ function createGrpcError(
   message: string,
   metadata?: Record<string, string>,
 ): GrpcError {
-  const options = metadata ? { metadata } : undefined;
+  const details = extractErrorDetails(metadata);
+  const options = { metadata, details };
 
   switch (code) {
     case 5:

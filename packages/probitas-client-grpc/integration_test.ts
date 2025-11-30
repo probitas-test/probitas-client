@@ -385,5 +385,191 @@ Deno.test({
         await client.close();
       }
     });
+
+    await t.step(
+      "EchoErrorWithDetails - error with BadRequest details",
+      async () => {
+        const client = await createGrpcClient({
+          address: GRPC_ADDRESS,
+          schema: PROTO_PATH,
+        });
+
+        try {
+          await client.call("echo.v1.Echo/EchoErrorWithDetails", {
+            code: 3, // INVALID_ARGUMENT
+            message: "Validation failed",
+            details: [
+              {
+                type: "bad_request",
+                field_violations: [
+                  { field: "email", description: "invalid email format" },
+                  { field: "age", description: "must be positive" },
+                ],
+              },
+            ],
+          });
+          throw new Error("Expected GrpcError");
+        } catch (error) {
+          assertInstanceOf(error, GrpcError);
+          assertEquals(error.code, 3);
+          // grpcMessage includes the full error string from gRPC
+          assertEquals(
+            error.grpcMessage.includes("Validation failed"),
+            true,
+            `Expected grpcMessage to contain "Validation failed", got: ${error.grpcMessage}`,
+          );
+
+          // Verify error details were parsed
+          assertEquals(error.details.length >= 1, true);
+          const badRequest = error.details.find(
+            (d) => d.typeUrl.includes("BadRequest"),
+          );
+          assertEquals(badRequest !== undefined, true);
+
+          // Verify the parsed BadRequest structure
+          const value = badRequest?.value as {
+            fieldViolations: Array<{ field: string; description: string }>;
+          };
+          assertEquals(Array.isArray(value?.fieldViolations), true);
+          assertEquals(value?.fieldViolations.length, 2);
+          assertEquals(value?.fieldViolations[0].field, "email");
+          assertEquals(
+            value?.fieldViolations[0].description,
+            "invalid email format",
+          );
+        } finally {
+          await client.close();
+        }
+      },
+    );
+
+    await t.step(
+      "EchoErrorWithDetails - error with DebugInfo details",
+      async () => {
+        const client = await createGrpcClient({
+          address: GRPC_ADDRESS,
+          schema: PROTO_PATH,
+        });
+
+        try {
+          await client.call("echo.v1.Echo/EchoErrorWithDetails", {
+            code: 13, // INTERNAL
+            message: "Internal error occurred",
+            details: [
+              {
+                type: "debug_info",
+                stack_entries: ["at handler()", "at server.serve()"],
+                debug_detail: "Null pointer exception",
+              },
+            ],
+          });
+          throw new Error("Expected GrpcError");
+        } catch (error) {
+          assertInstanceOf(error, GrpcError);
+          assertEquals(error.code, 13);
+
+          const debugInfo = error.details.find(
+            (d) => d.typeUrl.includes("DebugInfo"),
+          );
+          assertEquals(debugInfo !== undefined, true);
+
+          const value = debugInfo?.value as {
+            stackEntries: string[];
+            detail: string;
+          };
+          assertEquals(Array.isArray(value?.stackEntries), true);
+          assertEquals(value?.stackEntries.length, 2);
+          assertEquals(value?.detail, "Null pointer exception");
+        } finally {
+          await client.close();
+        }
+      },
+    );
+
+    await t.step(
+      "EchoErrorWithDetails - error with RetryInfo details",
+      async () => {
+        const client = await createGrpcClient({
+          address: GRPC_ADDRESS,
+          schema: PROTO_PATH,
+        });
+
+        try {
+          await client.call("echo.v1.Echo/EchoErrorWithDetails", {
+            code: 14, // UNAVAILABLE
+            message: "Service temporarily unavailable",
+            details: [
+              {
+                type: "retry_info",
+                retry_delay_ms: 5000,
+              },
+            ],
+          });
+          throw new Error("Expected GrpcError");
+        } catch (error) {
+          assertInstanceOf(error, GrpcError);
+          assertEquals(error.code, 14);
+
+          const retryInfo = error.details.find(
+            (d) => d.typeUrl.includes("RetryInfo"),
+          );
+          assertEquals(retryInfo !== undefined, true);
+
+          const value = retryInfo?.value as {
+            retryDelay: { seconds: number; nanos: number } | null;
+          };
+          assertEquals(value?.retryDelay !== null, true);
+          // 5000ms = 5 seconds
+          assertEquals(value?.retryDelay?.seconds, 5);
+        } finally {
+          await client.close();
+        }
+      },
+    );
+
+    await t.step(
+      "EchoErrorWithDetails - error with QuotaFailure details",
+      async () => {
+        const client = await createGrpcClient({
+          address: GRPC_ADDRESS,
+          schema: PROTO_PATH,
+        });
+
+        try {
+          await client.call("echo.v1.Echo/EchoErrorWithDetails", {
+            code: 8, // RESOURCE_EXHAUSTED
+            message: "Quota exceeded",
+            details: [
+              {
+                type: "quota_failure",
+                quota_violations: [
+                  {
+                    subject: "user:alice",
+                    description: "Daily request limit exceeded",
+                  },
+                ],
+              },
+            ],
+          });
+          throw new Error("Expected GrpcError");
+        } catch (error) {
+          assertInstanceOf(error, GrpcError);
+          assertEquals(error.code, 8);
+
+          const quotaFailure = error.details.find(
+            (d) => d.typeUrl.includes("QuotaFailure"),
+          );
+          assertEquals(quotaFailure !== undefined, true);
+
+          const value = quotaFailure?.value as {
+            violations: Array<{ subject: string; description: string }>;
+          };
+          assertEquals(Array.isArray(value?.violations), true);
+          assertEquals(value?.violations[0].subject, "user:alice");
+        } finally {
+          await client.close();
+        }
+      },
+    );
   },
 });
