@@ -1,8 +1,8 @@
 /**
- * Integration tests for @probitas/client-graphql.
+ * Integration tests for @probitas/client-graphql using echo-graphql.
  *
  * Run with:
- *   docker compose up -d
+ *   docker compose up -d echo-graphql
  *   deno test -A packages/probitas-client-graphql/integration_test.ts
  *   docker compose down
  */
@@ -34,7 +34,7 @@ async function isGraphqlServerAvailable(): Promise<boolean> {
 }
 
 Deno.test({
-  name: "Integration: GraphQL",
+  name: "Integration: echo-graphql",
   ignore: !(await isGraphqlServerAvailable()),
   async fn(t) {
     const client = createGraphqlClient({ endpoint: GRAPHQL_URL });
@@ -62,22 +62,92 @@ Deno.test({
       assertEquals(res.data()?.__schema.queryType.name, "Query");
     });
 
-    await t.step("query with variables", async () => {
-      // Using introspection to test variables since it's available on all GraphQL servers
-      const res = await client.query<{ __type: { name: string } | null }>(
+    await t.step("echo query - basic message", async () => {
+      const res = await client.query<{ echo: string }>(
         outdent`
-          query GetType($name: String!) {
-            __type(name: $name) {
-              name
-            }
+          query Echo($message: String!) {
+            echo(message: $message)
           }
         `,
-        { name: "Query" },
+        { message: "Hello, Probitas!" },
       );
 
-      expectGraphqlResponse(res).ok();
-      assertEquals(res.data()?.__type?.name, "Query");
+      expectGraphqlResponse(res).ok().hasData();
+      assertEquals(res.data()?.echo, "Hello, Probitas!");
     });
+
+    await t.step("echoWithDelay for latency testing", async () => {
+      const start = Date.now();
+      const res = await client.query<{ echoWithDelay: string }>(
+        outdent`
+          query EchoWithDelay($message: String!, $delayMs: Int!) {
+            echoWithDelay(message: $message, delayMs: $delayMs)
+          }
+        `,
+        { message: "Delayed message", delayMs: 500 },
+      );
+      const elapsed = Date.now() - start;
+
+      expectGraphqlResponse(res).ok().hasData();
+      assertEquals(res.data()?.echoWithDelay, "Delayed message");
+
+      // Should have taken at least 500ms
+      assertEquals(
+        elapsed >= 450,
+        true,
+        `Expected elapsed >= 450ms, got ${elapsed}ms`,
+      );
+    });
+
+    await t.step("echoError returns GraphQL error", async () => {
+      const clientNoThrow = createGraphqlClient({
+        endpoint: GRAPHQL_URL,
+        throwOnError: false,
+      });
+
+      const res = await clientNoThrow.query<{ echoError: string }>(
+        outdent`
+          query EchoError($message: String!) {
+            echoError(message: $message)
+          }
+        `,
+        { message: "This should fail" },
+      );
+
+      expectGraphqlResponse(res).hasErrors();
+
+      await clientNoThrow.close();
+    });
+
+    await t.step(
+      "echoPartialError returns partial data with errors",
+      async () => {
+        const clientNoThrow = createGraphqlClient({
+          endpoint: GRAPHQL_URL,
+          throwOnError: false,
+        });
+
+        const res = await clientNoThrow.query<{
+          echo: string;
+          echoPartialError: string | null;
+        }>(
+          outdent`
+          query PartialError($message: String!) {
+            echo(message: $message)
+            echoPartialError(message: $message)
+          }
+        `,
+          { message: "Test" },
+        );
+
+        // Should have both data and errors
+        expectGraphqlResponse(res).hasErrors();
+        // echo should still return data even if echoPartialError fails
+        assertEquals(res.data()?.echo, "Test");
+
+        await clientNoThrow.close();
+      },
+    );
 
     await t.step("query with operationName", async () => {
       const res = await client.query(
@@ -119,7 +189,6 @@ Deno.test({
     });
 
     await t.step("default headers from config", async () => {
-      // Cannot directly verify headers were sent, but can verify the request succeeds
       const clientWithHeaders = createGraphqlClient({
         endpoint: GRAPHQL_URL,
         headers: {
@@ -188,13 +257,28 @@ Deno.test({
       expectGraphqlResponse(res).ok();
     });
 
-    await t.step("mutation method works", async () => {
-      // Using introspection as a "mutation" since we can't guarantee
-      // the test server has actual mutations. The method should still
-      // send the request correctly.
-      const res = await client.mutation("query { __typename }");
+    await t.step("mutation - createMessage", async () => {
+      const res = await client.mutation<{
+        createMessage: { id: string; text: string; timestamp: string };
+      }>(
+        outdent`
+          mutation CreateMessage($text: String!) {
+            createMessage(text: $text) {
+              id
+              text
+              timestamp
+            }
+          }
+        `,
+        { text: "Hello from integration test" },
+      );
 
-      expectGraphqlResponse(res).ok();
+      expectGraphqlResponse(res).ok().hasData();
+
+      const message = res.data()?.createMessage;
+      assertEquals(message?.text, "Hello from integration test");
+      assertEquals(typeof message?.id, "string");
+      assertEquals(typeof message?.timestamp, "string");
     });
 
     await t.step("fluent expectation chaining", async () => {

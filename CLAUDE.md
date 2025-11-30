@@ -108,8 +108,8 @@ Follow test-driven development principles:
 **Integration Tests (`integration_test.ts`)**
 
 - File naming: `integration_test.ts` (distinguishes from unit tests `*_test.ts`)
-- Add test services to root `compose.yaml` (e.g., httpbin, graphql,
-  grpc-greeter)
+- Add test services to root `compose.yaml` (e.g., echo-http, echo-grpc,
+  echo-graphql)
 - Test actual requests against real services
 - Services should be defined for each client package that needs them
 
@@ -148,26 +148,26 @@ When adding a new integration test:
 
 **Current Integration Test Services:**
 
-| Package        | Service      | Image                             | Local Port | CI Port |
-| -------------- | ------------ | --------------------------------- | ---------- | ------- |
-| client-http    | httpbin      | `kennethreitz/httpbin`            | 18080      | 18080   |
-| client-grpc    | grpc-greeter | `romk/grpc-helloworld-reflection` | 50051      | 50051   |
-| client-graphql | graphql      | `npalm/graphql-java-demo`         | 14000      | 14000   |
+| Package        | Service      | Image                               | Local Port | CI Port |
+| -------------- | ------------ | ----------------------------------- | ---------- | ------- |
+| client-http    | echo-http    | `ghcr.io/jsr-probitas/echo-http`    | 18080      | 18080   |
+| client-grpc    | echo-grpc    | `ghcr.io/jsr-probitas/echo-grpc`    | 50051      | 50051   |
+| client-graphql | echo-graphql | `ghcr.io/jsr-probitas/echo-graphql` | 14000      | 14000   |
 
 Example `compose.yaml` structure:
 
 ```yaml
 services:
-  httpbin:
-    image: kennethreitz/httpbin
+  echo-http:
+    image: ghcr.io/jsr-probitas/echo-http:latest
     ports:
       - "18080:80"
-  grpc-greeter:
-    image: romk/grpc-helloworld-reflection
+  echo-grpc:
+    image: ghcr.io/jsr-probitas/echo-grpc:latest
     ports:
       - "50051:50051"
-  graphql:
-    image: npalm/graphql-java-demo
+  echo-graphql:
+    image: ghcr.io/jsr-probitas/echo-graphql:latest
     ports:
       - "14000:8080"
 ```

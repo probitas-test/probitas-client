@@ -1,8 +1,8 @@
 /**
- * Integration tests for @probitas/client-http using httpbin.
+ * Integration tests for @probitas/client-http using echo-http.
  *
  * Run with:
- *   docker compose up -d
+ *   docker compose up -d echo-http
  *   deno test -A packages/probitas-client-http/integration_test.ts
  *   docker compose down
  */
@@ -14,14 +14,13 @@ import {
   HttpNotFoundError,
 } from "./mod.ts";
 
-const HTTPBIN_URL = Deno.env.get("HTTPBIN_URL") ?? "http://localhost:18080";
+const ECHO_HTTP_URL = Deno.env.get("ECHO_HTTP_URL") ?? "http://localhost:18080";
 
-async function isHttpbinAvailable(): Promise<boolean> {
+async function isEchoHttpAvailable(): Promise<boolean> {
   try {
-    const res = await fetch(`${HTTPBIN_URL}/get`, {
+    const res = await fetch(`${ECHO_HTTP_URL}/health`, {
       signal: AbortSignal.timeout(1000),
     });
-    // Consume the body to avoid resource leak
     await res.body?.cancel();
     return res.ok;
   } catch {
@@ -30,10 +29,10 @@ async function isHttpbinAvailable(): Promise<boolean> {
 }
 
 Deno.test({
-  name: "Integration: httpbin",
-  ignore: !(await isHttpbinAvailable()),
+  name: "Integration: echo-http",
+  ignore: !(await isEchoHttpAvailable()),
   async fn(t) {
-    const client = createHttpClient({ baseUrl: HTTPBIN_URL });
+    const client = createHttpClient({ baseUrl: ECHO_HTTP_URL });
 
     await t.step("GET /get returns request info", async () => {
       const res = await client.get("/get", {
@@ -139,7 +138,7 @@ Deno.test({
       expectHttpResponse(res).ok();
 
       const json = res.json<{ headers: Record<string, string> }>();
-      // Verify Accept header was sent (httpbin echoes back headers)
+      // Verify Accept header was sent (echo-http echoes back headers)
       assertEquals(json?.headers["Accept"], "application/json");
     });
 
@@ -174,7 +173,7 @@ Deno.test({
 
     await t.step("uses default headers from config", async () => {
       const clientWithHeaders = createHttpClient({
-        baseUrl: HTTPBIN_URL,
+        baseUrl: ECHO_HTTP_URL,
         headers: {
           "Authorization": "Bearer token123",
           "X-Api-Version": "v1",
@@ -192,7 +191,7 @@ Deno.test({
 
     await t.step("request headers override config headers", async () => {
       const clientWithHeaders = createHttpClient({
-        baseUrl: HTTPBIN_URL,
+        baseUrl: ECHO_HTTP_URL,
         headers: { "X-Header": "from-config" },
       });
 
