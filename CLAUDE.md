@@ -182,6 +182,14 @@ deno task test:coverage  # Run tests with coverage
 deno task coverage    # Generate coverage report
 ```
 
+## Development Environment
+
+- A Nix flake is provided to supply the Deno toolchain without global installs.
+- Enter the shell with `nix develop`, or add `use flake` to `.envrc` and run
+  `direnv allow` for auto-activation.
+- Run project tasks (e.g., `deno task check`, `deno task test`) from within the
+  Nix shell for consistent tooling.
+
 ---
 
 ## STRICT RULES (MUST FOLLOW)
