@@ -33,6 +33,9 @@ async function isGrpcServerAvailable(): Promise<boolean> {
 Deno.test({
   name: "Integration: gRPC",
   ignore: !(await isGrpcServerAvailable()),
+  // grpc-js DNS resolver cannot cancel in-flight DNS requests on close().
+  // This is a known limitation: https://github.com/denoland/deno/issues/28307
+  sanitizeOps: false,
   async fn(t) {
     await t.step("unary call - SayHello", async () => {
       const client = await createGrpcClient({
