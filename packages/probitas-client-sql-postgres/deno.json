@@ -1,0 +1,13 @@
+{
+  "name": "@probitas/client-sql-postgres",
+  "version": "0.0.0",
+  "exports": "./mod.ts",
+  "publish": {
+    "exclude": ["**/*_test.ts", "**/*_bench.ts"]
+  },
+  "imports": {
+    "@probitas/client": "jsr:@probitas/client@^0",
+    "@probitas/client-sql": "jsr:@probitas/client-sql@^0",
+    "postgres": "npm:postgres@^3"
+  }
+}

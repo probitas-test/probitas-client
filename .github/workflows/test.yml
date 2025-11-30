@@ -37,6 +37,19 @@ jobs:
         image: npalm/graphql-java-demo
         ports:
           - 14000:8080
+      postgres:
+        image: postgres:16
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: testdb
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+        options: >-
+          --health-cmd "pg_isready -U testuser -d testdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2

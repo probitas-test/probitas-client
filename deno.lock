@@ -18,7 +18,8 @@
     "npm:@grpc/grpc-js@1.12": "1.12.6",
     "npm:@grpc/proto-loader@0.7": "0.7.15",
     "npm:@types/node@*": "24.2.0",
-    "npm:grpc-reflection-js@0.3": "0.3.0_@grpc+grpc-js@1.12.6"
+    "npm:grpc-reflection-js@0.3": "0.3.0_@grpc+grpc-js@1.12.6",
+    "npm:postgres@3": "3.4.7"
   },
   "jsr": {
     "@cspotcode/outdent@0.8.0": {
@@ -215,6 +216,9 @@
     "long@5.3.2": {
       "integrity": "sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA=="
     },
+    "postgres@3.4.7": {
+      "integrity": "sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw=="
+    },
     "protobufjs@7.5.4": {
       "integrity": "sha512-CvexbZtbov6jW2eXAvLukXjXUW1TzFaivC46BpWc/3BpcCysb5Vffu+B3XHMm8lVEuy2Mm4XGex8hBSg1yapPg==",
       "dependencies": [
@@ -314,6 +318,13 @@
       "packages/probitas-client-sql": {
         "dependencies": [
           "jsr:@probitas/client@0"
+        ]
+      },
+      "packages/probitas-client-sql-postgres": {
+        "dependencies": [
+          "jsr:@probitas/client-sql@0",
+          "jsr:@probitas/client@0",
+          "npm:postgres@3"
         ]
       }
     }

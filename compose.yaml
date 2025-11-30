@@ -15,3 +15,18 @@ services:
     image: npalm/graphql-java-demo
     ports:
       - "14000:8080"
+
+  # PostgreSQL server for integration testing
+  postgres:
+    image: postgres:16
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpassword
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

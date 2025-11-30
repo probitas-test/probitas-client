@@ -4,7 +4,8 @@
     "./packages/probitas-client-graphql",
     "./packages/probitas-client-grpc",
     "./packages/probitas-client-http",
-    "./packages/probitas-client-sql"
+    "./packages/probitas-client-sql",
+    "./packages/probitas-client-sql-postgres"
   ],
   "exclude": [
     ".coverage/**",
@@ -26,6 +27,7 @@
     "jsr:@probitas/client-graphql@^0": "./packages/probitas-client-graphql/mod.ts",
     "jsr:@probitas/client-grpc@^0": "./packages/probitas-client-grpc/mod.ts",
     "jsr:@probitas/client-http@^0": "./packages/probitas-client-http/mod.ts",
-    "jsr:@probitas/client-sql@^0": "./packages/probitas-client-sql/mod.ts"
+    "jsr:@probitas/client-sql@^0": "./packages/probitas-client-sql/mod.ts",
+    "jsr:@probitas/client-sql-postgres@^0": "./packages/probitas-client-sql-postgres/mod.ts"
   }
 }
