@@ -6,7 +6,8 @@
     "./packages/probitas-client-http",
     "./packages/probitas-client-sql",
     "./packages/probitas-client-sql-mysql",
-    "./packages/probitas-client-sql-postgres"
+    "./packages/probitas-client-sql-postgres",
+    "./packages/probitas-client-sql-sqlite"
   ],
   "exclude": [
     ".coverage/**",
@@ -30,6 +31,7 @@
     "jsr:@probitas/client-http@^0": "./packages/probitas-client-http/mod.ts",
     "jsr:@probitas/client-sql@^0": "./packages/probitas-client-sql/mod.ts",
     "jsr:@probitas/client-sql-mysql@^0": "./packages/probitas-client-sql-mysql/mod.ts",
-    "jsr:@probitas/client-sql-postgres@^0": "./packages/probitas-client-sql-postgres/mod.ts"
+    "jsr:@probitas/client-sql-postgres@^0": "./packages/probitas-client-sql-postgres/mod.ts",
+    "jsr:@probitas/client-sql-sqlite@^0": "./packages/probitas-client-sql-sqlite/mod.ts"
   }
 }
