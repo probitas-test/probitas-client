@@ -153,6 +153,7 @@ When adding a new integration test:
 | client-http    | echo-http    | `ghcr.io/jsr-probitas/echo-http`    | 18080      | 18080   |
 | client-grpc    | echo-grpc    | `ghcr.io/jsr-probitas/echo-grpc`    | 50051      | 50051   |
 | client-graphql | echo-graphql | `ghcr.io/jsr-probitas/echo-graphql` | 14000      | 14000   |
+| client-redis   | redis        | `redis:7`                           | 16379      | 16379   |
 
 Example `compose.yaml` structure:
 
