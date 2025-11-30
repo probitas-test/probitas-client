@@ -101,11 +101,54 @@ Follow test-driven development principles:
 - Test in isolation without external dependencies
 - Run with `deno task test`
 
-**Integration Tests (with `compose.yaml`)**
+**Integration Tests (`integration_test.ts`)**
 
-- Add test services to root `compose.yaml` (e.g., httpbin, postgres, redis)
+- File naming: `integration_test.ts` (distinguishes from unit tests `*_test.ts`)
+- Add test services to root `compose.yaml` (e.g., httpbin, graphql,
+  grpc-greeter)
 - Test actual requests against real services
 - Services should be defined for each client package that needs them
+
+**CI Compatibility Requirements:**
+
+When adding a new integration test:
+
+1. Add service to `compose.yaml` for local development
+2. Add the same service to `.github/workflows/test.yml` `services` section
+3. Use environment variables for service URLs with sensible defaults:
+   ```typescript
+   const SERVICE_URL = Deno.env.get("SERVICE_URL") ?? "http://localhost:8080";
+   ```
+4. Use `isServiceAvailable()` pattern to skip tests when service is unavailable:
+   ```typescript
+   async function isServiceAvailable(): Promise<boolean> {
+     try {
+       const res = await fetch(SERVICE_URL, {
+         signal: AbortSignal.timeout(1000),
+       });
+       await res.body?.cancel();
+       return res.ok;
+     } catch {
+       return false;
+     }
+   }
+
+   Deno.test({
+     name: "Integration: ServiceName",
+     ignore: !(await isServiceAvailable()),
+     async fn(t) {
+       // test implementation
+     },
+   });
+   ```
+
+**Current Integration Test Services:**
+
+| Package        | Service      | Image                             | Local Port | CI Port |
+| -------------- | ------------ | --------------------------------- | ---------- | ------- |
+| client-http    | httpbin      | `kennethreitz/httpbin`            | 18080      | 18080   |
+| client-grpc    | grpc-greeter | `romk/grpc-helloworld-reflection` | 50051      | 50051   |
+| client-graphql | graphql      | `npalm/graphql-java-demo`         | 14000      | 14000   |
 
 Example `compose.yaml` structure:
 
@@ -114,17 +157,15 @@ services:
   httpbin:
     image: kennethreitz/httpbin
     ports:
-      - "8080:80"
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_PASSWORD: test
+      - "18080:80"
+  grpc-greeter:
+    image: romk/grpc-helloworld-reflection
     ports:
-      - "5432:5432"
-  redis:
-    image: redis:7
+      - "50051:50051"
+  graphql:
+    image: npalm/graphql-java-demo
     ports:
-      - "6379:6379"
+      - "14000:8080"
 ```
 
 ## Commands

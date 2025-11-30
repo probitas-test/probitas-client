@@ -33,6 +33,10 @@ jobs:
         image: romk/grpc-helloworld-reflection
         ports:
           - 50051:50051
+      graphql:
+        image: npalm/graphql-java-demo
+        ports:
+          - 14000:8080
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
