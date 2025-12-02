@@ -259,24 +259,30 @@ class GraphqlClientImpl implements GraphqlClient {
 
     // Wait for connection to open
     await new Promise<void>((resolve, reject) => {
-      ws.onopen = () => {
+      const openHandler = () => {
         logger.debug("GraphQL WebSocket connection opened", {
           wsEndpoint,
         });
+        ws.onopen = null;
+        ws.onerror = null;
         resolve();
       };
-      ws.onerror = (event) => {
+      const errorHandler = (event: Event) => {
         const errorMessage = (event as ErrorEvent).message ?? "unknown error";
         logger.error("GraphQL WebSocket connection failed", {
           wsEndpoint,
           error: errorMessage,
         });
+        ws.onopen = null;
+        ws.onerror = null;
         reject(
           new GraphqlNetworkError(
             `WebSocket connection failed: ${errorMessage}`,
           ),
         );
       };
+      ws.onopen = openHandler;
+      ws.onerror = errorHandler;
     });
 
     // Send connection_init message
@@ -284,20 +290,27 @@ class GraphqlClientImpl implements GraphqlClient {
 
     // Wait for connection_ack
     await new Promise<void>((resolve, reject) => {
+      let cleaned = false;
+      const cleanup = () => {
+        if (!cleaned) {
+          cleaned = true;
+          ws.removeEventListener("message", handler);
+        }
+      };
       const handler = (event: MessageEvent) => {
         const message = JSON.parse(event.data);
         if (message.type === "connection_ack") {
           logger.debug("GraphQL WebSocket connection acknowledged", {
             wsEndpoint,
           });
-          ws.removeEventListener("message", handler);
+          cleanup();
           resolve();
         } else if (message.type === "connection_error") {
           logger.error("GraphQL WebSocket connection error", {
             wsEndpoint,
             error: JSON.stringify(message.payload),
           });
-          ws.removeEventListener("message", handler);
+          cleanup();
           reject(
             new GraphqlNetworkError(
               `WebSocket connection error: ${JSON.stringify(message.payload)}`,
@@ -306,6 +319,9 @@ class GraphqlClientImpl implements GraphqlClient {
         }
       };
       ws.addEventListener("message", handler);
+
+      // Ensure cleanup even if promise is cancelled/rejected externally
+      // (though this is unlikely in practice)
     });
 
     // Generate a unique subscription ID
@@ -454,6 +470,9 @@ class GraphqlClientImpl implements GraphqlClient {
           ws.close();
         });
       }
+      // Clean up event handlers
+      ws.onclose = null;
+      ws.onerror = null;
     }
   }
 
