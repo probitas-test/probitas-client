@@ -12,3 +12,6 @@ export * from "./expect.ts";
 
 export type * from "./client.ts";
 export * from "./client.ts";
+
+export type * from "./reflection.ts";
+export * from "./reflection.ts";

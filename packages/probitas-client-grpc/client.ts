@@ -1,6 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
-import { GrpcReflection } from "grpc-js-reflection-client";
 import { Buffer } from "node:buffer";
 import { type CommonOptions, ConnectionError } from "@probitas/client";
 import {
@@ -17,6 +16,7 @@ import { parseStatusDetails } from "./status_details.ts";
 import type { GrpcResponse } from "./response.ts";
 import { GrpcResponseImpl } from "./response.ts";
 import type { GrpcStatusCode } from "./status.ts";
+import { GrpcReflectionClient } from "./reflection.ts";
 
 /**
  * TLS configuration for gRPC connections.
@@ -303,11 +303,11 @@ export async function createGrpcClient<TService = unknown>(
   // Load proto definition if schema is provided as file path(s)
   let packageDefinition: protoLoader.PackageDefinition | undefined;
   let grpcObject: grpc.GrpcObject | undefined;
-  let reflectionClient: GrpcReflection | undefined;
+  let reflectionClient: GrpcReflectionClient | undefined;
 
   if (config.schema === "reflection") {
     // Use Server Reflection to discover services dynamically
-    reflectionClient = new GrpcReflection(
+    reflectionClient = new GrpcReflectionClient(
       config.address,
       credentials,
     );
@@ -348,7 +348,7 @@ class GrpcClientImpl<TService> implements GrpcClient<TService> {
   readonly #credentials: grpc.ChannelCredentials;
   readonly #packageDefinition?: protoLoader.PackageDefinition;
   #grpcObject?: grpc.GrpcObject;
-  readonly #reflectionClient?: GrpcReflection;
+  readonly #reflectionClient?: GrpcReflectionClient;
   readonly #clients: Map<string, ServiceClient> = new Map();
   readonly #reflectionCache: Map<string, grpc.GrpcObject> = new Map();
   readonly #protoLoaderOptions: protoLoader.Options;
@@ -359,7 +359,7 @@ class GrpcClientImpl<TService> implements GrpcClient<TService> {
     credentials: grpc.ChannelCredentials,
     packageDefinition?: protoLoader.PackageDefinition,
     grpcObject?: grpc.GrpcObject,
-    reflectionClient?: GrpcReflection,
+    reflectionClient?: GrpcReflectionClient,
     protoLoaderOptions: protoLoader.Options = {},
   ) {
     this.config = config;
@@ -878,13 +878,8 @@ class GrpcClientImpl<TService> implements GrpcClient<TService> {
     this.#clients.clear();
 
     // Close the reflection client's internal gRPC client
-    // grpc-js-reflection-client stores the gRPC client in `client` property
     if (this.#reflectionClient) {
-      // deno-lint-ignore no-explicit-any
-      const grpcClient = (this.#reflectionClient as any).client;
-      if (grpcClient && typeof grpcClient.close === "function") {
-        grpcClient.close();
-      }
+      this.#reflectionClient.close();
     }
 
     return Promise.resolve();
