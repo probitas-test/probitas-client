@@ -220,36 +220,41 @@ class DuckDbClientImpl implements DuckDbClient {
       if (params && params.length > 0) {
         // Use prepared statement with positional parameters ($1, $2, etc.)
         const prepared = await this.#connection.prepare(sql);
-        for (let i = 0; i < params.length; i++) {
-          const value = params[i];
-          // Bind by position (1-indexed)
-          if (value === null || value === undefined) {
-            // DuckDB node-api handles null automatically
-            prepared.bindNull(i + 1);
-          } else if (typeof value === "number") {
-            if (Number.isInteger(value)) {
-              prepared.bindInteger(i + 1, value);
+        try {
+          for (let i = 0; i < params.length; i++) {
+            const value = params[i];
+            // Bind by position (1-indexed)
+            if (value === null || value === undefined) {
+              // DuckDB node-api handles null automatically
+              prepared.bindNull(i + 1);
+            } else if (typeof value === "number") {
+              if (Number.isInteger(value)) {
+                prepared.bindInteger(i + 1, value);
+              } else {
+                prepared.bindDouble(i + 1, value);
+              }
+            } else if (typeof value === "string") {
+              prepared.bindVarchar(i + 1, value);
+            } else if (typeof value === "boolean") {
+              prepared.bindBoolean(i + 1, value);
+            } else if (typeof value === "bigint") {
+              prepared.bindBigInt(i + 1, value);
+            } else if (value instanceof Date) {
+              // DuckDB expects ISO format for dates
+              prepared.bindVarchar(i + 1, value.toISOString());
+            } else if (value instanceof Uint8Array) {
+              prepared.bindBlob(i + 1, value);
             } else {
-              prepared.bindDouble(i + 1, value);
+              // Fallback: convert to string
+              prepared.bindVarchar(i + 1, String(value));
             }
-          } else if (typeof value === "string") {
-            prepared.bindVarchar(i + 1, value);
-          } else if (typeof value === "boolean") {
-            prepared.bindBoolean(i + 1, value);
-          } else if (typeof value === "bigint") {
-            prepared.bindBigInt(i + 1, value);
-          } else if (value instanceof Date) {
-            // DuckDB expects ISO format for dates
-            prepared.bindVarchar(i + 1, value.toISOString());
-          } else if (value instanceof Uint8Array) {
-            prepared.bindBlob(i + 1, value);
-          } else {
-            // Fallback: convert to string
-            prepared.bindVarchar(i + 1, String(value));
           }
+          const reader = await prepared.runAndReadAll();
+          rows = reader.getRowObjects() as T[];
+        } finally {
+          // Note: DuckDB node-api doesn't provide an explicit cleanup method
+          // for prepared statements. They are garbage collected automatically.
         }
-        const reader = await prepared.runAndReadAll();
-        rows = reader.getRowObjects() as T[];
       } else {
         const reader = await this.#connection.runAndReadAll(sql);
         rows = reader.getRowObjects() as T[];
