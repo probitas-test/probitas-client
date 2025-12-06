@@ -24,6 +24,6 @@ jobs:
 
       - run: |
           git fetch --unshallow origin
-          deno run -A jsr:@deno/bump-workspaces@^0.1/cli --import-map import_map.json
+          deno run -A jsr:@deno/bump-workspaces@^0.1/cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
