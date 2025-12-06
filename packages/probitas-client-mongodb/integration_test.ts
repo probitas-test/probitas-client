@@ -1,7 +1,9 @@
 import { assertEquals, assertExists } from "@std/assert";
 import {
   createMongoClient,
+  expectMongoCountResult,
   expectMongoDeleteResult,
+  expectMongoFindOneResult,
   expectMongoFindResult,
   expectMongoInsertResult,
   expectMongoUpdateResult,
@@ -129,16 +131,17 @@ Deno.test({
 
     await t.step("findOne: retrieves single document", async () => {
       const users = client.collection<User>(testCollection);
-      const doc = await users.findOne({ name: "Alice" });
-      assertExists(doc);
-      assertEquals(doc.name, "Alice");
-      assertEquals(doc.age, 30);
+      const result = await users.findOne({ name: "Alice" });
+      expectMongoFindOneResult(result).ok().found();
+      assertExists(result.doc);
+      assertEquals(result.doc.name, "Alice");
+      assertEquals(result.doc.age, 30);
     });
 
     await t.step("findOne: returns undefined when not found", async () => {
       const users = client.collection<User>(testCollection);
-      const doc = await users.findOne({ name: "NonExistent" });
-      assertEquals(doc, undefined);
+      const result = await users.findOne({ name: "NonExistent" });
+      expectMongoFindOneResult(result).ok().notFound();
     });
 
     await t.step("updateOne: updates a document", async () => {
@@ -179,14 +182,14 @@ Deno.test({
 
     await t.step("countDocuments: counts documents", async () => {
       const users = client.collection<User>(testCollection);
-      const count = await users.countDocuments();
-      assertEquals(count, 5);
+      const result = await users.countDocuments();
+      expectMongoCountResult(result).ok().count(5);
     });
 
     await t.step("countDocuments: with filter", async () => {
       const users = client.collection<User>(testCollection);
-      const count = await users.countDocuments({ age: { $gte: 30 } });
-      assertEquals(count, 2);
+      const result = await users.countDocuments({ age: { $gte: 30 } });
+      expectMongoCountResult(result).ok().count(2);
     });
 
     await t.step("aggregate: runs aggregation pipeline", async () => {
@@ -250,8 +253,8 @@ Deno.test({
       });
 
       const users = client.collection<User>(testCollection);
-      const count = await users.countDocuments();
-      assertEquals(count, 2);
+      const result = await users.countDocuments();
+      expectMongoCountResult(result).ok().count(2);
     });
 
     await t.step("cleanup", async () => {

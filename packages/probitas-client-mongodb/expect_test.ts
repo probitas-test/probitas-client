@@ -1,13 +1,17 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import type {
+  MongoCountResult,
   MongoDeleteResult,
+  MongoFindOneResult,
   MongoFindResult,
   MongoInsertManyResult,
   MongoInsertOneResult,
   MongoUpdateResult,
 } from "./types.ts";
 import {
+  expectMongoCountResult,
   expectMongoDeleteResult,
+  expectMongoFindOneResult,
   expectMongoFindResult,
   expectMongoInsertResult,
   expectMongoUpdateResult,
@@ -54,6 +58,22 @@ function createDeleteResult(
   duration = 10,
 ): MongoDeleteResult {
   return { ok, deletedCount, duration };
+}
+
+function createFindOneResult<T>(
+  doc: T | undefined,
+  ok = true,
+  duration = 10,
+): MongoFindOneResult<T> {
+  return { ok, doc, duration };
+}
+
+function createCountResult(
+  count: number,
+  ok = true,
+  duration = 10,
+): MongoCountResult {
+  return { ok, count, duration };
 }
 
 Deno.test("expectMongoFindResult", async (t) => {
@@ -467,6 +487,294 @@ Deno.test("expectMongoDeleteResult", async (t) => {
       .ok()
       .deletedCount(10)
       .deletedAtLeast(5)
+      .durationLessThan(100);
+  });
+});
+
+Deno.test("expectMongoFindOneResult", async (t) => {
+  await t.step("ok() passes when ok is true", () => {
+    const result = createFindOneResult({ id: 1, name: "Alice" });
+    expectMongoFindOneResult(result).ok();
+  });
+
+  await t.step("ok() throws when ok is false", () => {
+    const result = createFindOneResult({ id: 1 }, false);
+    assertThrows(
+      () => expectMongoFindOneResult(result).ok(),
+      Error,
+      "Expected ok result",
+    );
+  });
+
+  await t.step("notOk() passes when ok is false", () => {
+    const result = createFindOneResult({ id: 1 }, false);
+    expectMongoFindOneResult(result).notOk();
+  });
+
+  await t.step("notOk() throws when ok is true", () => {
+    const result = createFindOneResult({ id: 1 });
+    assertThrows(
+      () => expectMongoFindOneResult(result).notOk(),
+      Error,
+      "Expected not ok result",
+    );
+  });
+
+  await t.step("found() passes when document exists", () => {
+    const result = createFindOneResult({ id: 1, name: "Alice" });
+    expectMongoFindOneResult(result).found();
+  });
+
+  await t.step("found() throws when document is undefined", () => {
+    const result = createFindOneResult<{ id: number }>(undefined);
+    assertThrows(
+      () => expectMongoFindOneResult(result).found(),
+      Error,
+      "Expected document to be found",
+    );
+  });
+
+  await t.step("notFound() passes when document is undefined", () => {
+    const result = createFindOneResult<{ id: number }>(undefined);
+    expectMongoFindOneResult(result).notFound();
+  });
+
+  await t.step("notFound() throws when document exists", () => {
+    const result = createFindOneResult({ id: 1 });
+    assertThrows(
+      () => expectMongoFindOneResult(result).notFound(),
+      Error,
+      "Expected document not to be found",
+    );
+  });
+
+  await t.step("docContains() passes when subset matches", () => {
+    const result = createFindOneResult({ id: 1, name: "Alice", age: 30 });
+    expectMongoFindOneResult(result).docContains({ name: "Alice" });
+  });
+
+  await t.step("docContains() passes with nested object", () => {
+    // deno-lint-ignore no-explicit-any
+    const result = createFindOneResult<any>({
+      id: 1,
+      user: { name: "Alice", profile: { city: "NYC" } },
+    });
+    expectMongoFindOneResult(result).docContains({
+      user: { name: "Alice" },
+    });
+  });
+
+  await t.step("docContains() throws when doc is undefined", () => {
+    const result = createFindOneResult<{ name: string }>(undefined);
+    assertThrows(
+      () => expectMongoFindOneResult(result).docContains({ name: "Alice" }),
+      Error,
+      "doc is undefined",
+    );
+  });
+
+  await t.step("docContains() throws when subset doesn't match", () => {
+    const result = createFindOneResult({ id: 1, name: "Alice" });
+    assertThrows(
+      () => expectMongoFindOneResult(result).docContains({ name: "Bob" }),
+      Error,
+      "Expected document to contain",
+    );
+  });
+
+  await t.step("docMatch() calls matcher with document", () => {
+    const result = createFindOneResult({ id: 1, name: "Alice" });
+    let called = false;
+    expectMongoFindOneResult(result).docMatch((doc) => {
+      assertEquals(doc.id, 1);
+      assertEquals(doc.name, "Alice");
+      called = true;
+    });
+    assertEquals(called, true);
+  });
+
+  await t.step("docMatch() throws when doc is undefined", () => {
+    const result = createFindOneResult<{ id: number }>(undefined);
+    assertThrows(
+      () => expectMongoFindOneResult(result).docMatch(() => {}),
+      Error,
+      "doc is undefined",
+    );
+  });
+
+  await t.step("durationLessThan() passes when duration is less", () => {
+    const result = createFindOneResult({ id: 1 }, true, 50);
+    expectMongoFindOneResult(result).durationLessThan(100);
+  });
+
+  await t.step("durationLessThan() throws when duration is greater", () => {
+    const result = createFindOneResult({ id: 1 }, true, 150);
+    assertThrows(
+      () => expectMongoFindOneResult(result).durationLessThan(100),
+      Error,
+      "Expected duration",
+    );
+  });
+
+  await t.step("methods can be chained", () => {
+    const result = createFindOneResult(
+      { id: 1, name: "Alice", age: 30 },
+      true,
+      50,
+    );
+    expectMongoFindOneResult(result)
+      .ok()
+      .found()
+      .docContains({ name: "Alice" })
+      .durationLessThan(100);
+  });
+});
+
+Deno.test("expectMongoCountResult", async (t) => {
+  await t.step("ok() passes when ok is true", () => {
+    const result = createCountResult(10);
+    expectMongoCountResult(result).ok();
+  });
+
+  await t.step("ok() throws when ok is false", () => {
+    const result = createCountResult(10, false);
+    assertThrows(
+      () => expectMongoCountResult(result).ok(),
+      Error,
+      "Expected ok result",
+    );
+  });
+
+  await t.step("notOk() passes when ok is false", () => {
+    const result = createCountResult(0, false);
+    expectMongoCountResult(result).notOk();
+  });
+
+  await t.step("notOk() throws when ok is true", () => {
+    const result = createCountResult(10);
+    assertThrows(
+      () => expectMongoCountResult(result).notOk(),
+      Error,
+      "Expected not ok result",
+    );
+  });
+
+  await t.step("count() passes when count matches", () => {
+    const result = createCountResult(42);
+    expectMongoCountResult(result).count(42);
+  });
+
+  await t.step("count() throws when count doesn't match", () => {
+    const result = createCountResult(42);
+    assertThrows(
+      () => expectMongoCountResult(result).count(10),
+      Error,
+      "Expected count 10, got 42",
+    );
+  });
+
+  await t.step("countAtLeast() passes when count is sufficient", () => {
+    const result = createCountResult(10);
+    expectMongoCountResult(result).countAtLeast(5);
+  });
+
+  await t.step("countAtLeast() throws when count is insufficient", () => {
+    const result = createCountResult(3);
+    assertThrows(
+      () => expectMongoCountResult(result).countAtLeast(5),
+      Error,
+      "Expected count at least 5, got 3",
+    );
+  });
+
+  await t.step("countAtMost() passes when count is within limit", () => {
+    const result = createCountResult(5);
+    expectMongoCountResult(result).countAtMost(10);
+  });
+
+  await t.step("countAtMost() throws when count exceeds limit", () => {
+    const result = createCountResult(15);
+    assertThrows(
+      () => expectMongoCountResult(result).countAtMost(10),
+      Error,
+      "Expected count at most 10, got 15",
+    );
+  });
+
+  await t.step("countBetween() passes when count is within range", () => {
+    const result = createCountResult(7);
+    expectMongoCountResult(result).countBetween(5, 10);
+  });
+
+  await t.step("countBetween() throws when count is below range", () => {
+    const result = createCountResult(2);
+    assertThrows(
+      () => expectMongoCountResult(result).countBetween(5, 10),
+      Error,
+      "Expected count between 5 and 10, got 2",
+    );
+  });
+
+  await t.step("countBetween() throws when count exceeds range", () => {
+    const result = createCountResult(15);
+    assertThrows(
+      () => expectMongoCountResult(result).countBetween(5, 10),
+      Error,
+      "Expected count between 5 and 10, got 15",
+    );
+  });
+
+  await t.step("isEmpty() passes when count is 0", () => {
+    const result = createCountResult(0);
+    expectMongoCountResult(result).isEmpty();
+  });
+
+  await t.step("isEmpty() throws when count is not 0", () => {
+    const result = createCountResult(5);
+    assertThrows(
+      () => expectMongoCountResult(result).isEmpty(),
+      Error,
+      "Expected count to be 0, got 5",
+    );
+  });
+
+  await t.step("isNotEmpty() passes when count is not 0", () => {
+    const result = createCountResult(5);
+    expectMongoCountResult(result).isNotEmpty();
+  });
+
+  await t.step("isNotEmpty() throws when count is 0", () => {
+    const result = createCountResult(0);
+    assertThrows(
+      () => expectMongoCountResult(result).isNotEmpty(),
+      Error,
+      "Expected count to be non-zero",
+    );
+  });
+
+  await t.step("durationLessThan() passes when duration is less", () => {
+    const result = createCountResult(10, true, 50);
+    expectMongoCountResult(result).durationLessThan(100);
+  });
+
+  await t.step("durationLessThan() throws when duration is greater", () => {
+    const result = createCountResult(10, true, 150);
+    assertThrows(
+      () => expectMongoCountResult(result).durationLessThan(100),
+      Error,
+      "Expected duration",
+    );
+  });
+
+  await t.step("methods can be chained", () => {
+    const result = createCountResult(25, true, 50);
+    expectMongoCountResult(result)
+      .ok()
+      .count(25)
+      .countAtLeast(10)
+      .countAtMost(50)
+      .countBetween(20, 30)
+      .isNotEmpty()
       .durationLessThan(100);
   });
 });

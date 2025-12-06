@@ -1,7 +1,9 @@
 import { containsSubset } from "@probitas/client";
 import type {
+  MongoCountResult,
   MongoDeleteResult,
   MongoDocs,
+  MongoFindOneResult,
   MongoFindResult,
   MongoInsertManyResult,
   MongoInsertOneResult,
@@ -55,6 +57,34 @@ export interface MongoDeleteResultExpectation {
   notOk(): this;
   deletedCount(count: number): this;
   deletedAtLeast(count: number): this;
+  durationLessThan(ms: number): this;
+}
+
+/**
+ * Fluent API for MongoDB findOne result validation.
+ */
+export interface MongoFindOneResultExpectation<T> {
+  ok(): this;
+  notOk(): this;
+  found(): this;
+  notFound(): this;
+  docContains(subset: Partial<T>): this;
+  docMatch(matcher: (doc: T) => void): this;
+  durationLessThan(ms: number): this;
+}
+
+/**
+ * Fluent API for MongoDB count result validation.
+ */
+export interface MongoCountResultExpectation {
+  ok(): this;
+  notOk(): this;
+  count(expected: number): this;
+  countAtLeast(min: number): this;
+  countAtMost(max: number): this;
+  countBetween(min: number, max: number): this;
+  isEmpty(): this;
+  isNotEmpty(): this;
   durationLessThan(ms: number): this;
 }
 
@@ -309,6 +339,157 @@ class MongoDeleteResultExpectationImpl implements MongoDeleteResultExpectation {
   }
 }
 
+class MongoFindOneResultExpectationImpl<T>
+  implements MongoFindOneResultExpectation<T> {
+  readonly #result: MongoFindOneResult<T>;
+
+  constructor(result: MongoFindOneResult<T>) {
+    this.#result = result;
+  }
+
+  ok(): this {
+    if (!this.#result.ok) {
+      throw new Error("Expected ok result, but ok is false");
+    }
+    return this;
+  }
+
+  notOk(): this {
+    if (this.#result.ok) {
+      throw new Error("Expected not ok result, but ok is true");
+    }
+    return this;
+  }
+
+  found(): this {
+    if (this.#result.doc === undefined) {
+      throw new Error("Expected document to be found, but got undefined");
+    }
+    return this;
+  }
+
+  notFound(): this {
+    if (this.#result.doc !== undefined) {
+      throw new Error("Expected document not to be found, but got a document");
+    }
+    return this;
+  }
+
+  docContains(subset: Partial<T>): this {
+    if (this.#result.doc === undefined) {
+      throw new Error(
+        "Expected document to contain subset, but doc is undefined",
+      );
+    }
+    if (!containsSubset(this.#result.doc, subset)) {
+      throw new Error(
+        `Expected document to contain ${JSON.stringify(subset)}`,
+      );
+    }
+    return this;
+  }
+
+  docMatch(matcher: (doc: T) => void): this {
+    if (this.#result.doc === undefined) {
+      throw new Error("Expected document for matching, but doc is undefined");
+    }
+    matcher(this.#result.doc);
+    return this;
+  }
+
+  durationLessThan(ms: number): this {
+    if (this.#result.duration >= ms) {
+      throw new Error(
+        `Expected duration < ${ms}ms, got ${this.#result.duration}ms`,
+      );
+    }
+    return this;
+  }
+}
+
+class MongoCountResultExpectationImpl implements MongoCountResultExpectation {
+  readonly #result: MongoCountResult;
+
+  constructor(result: MongoCountResult) {
+    this.#result = result;
+  }
+
+  ok(): this {
+    if (!this.#result.ok) {
+      throw new Error("Expected ok result, but ok is false");
+    }
+    return this;
+  }
+
+  notOk(): this {
+    if (this.#result.ok) {
+      throw new Error("Expected not ok result, but ok is true");
+    }
+    return this;
+  }
+
+  count(expected: number): this {
+    if (this.#result.count !== expected) {
+      throw new Error(
+        `Expected count ${expected}, got ${this.#result.count}`,
+      );
+    }
+    return this;
+  }
+
+  countAtLeast(min: number): this {
+    if (this.#result.count < min) {
+      throw new Error(
+        `Expected count at least ${min}, got ${this.#result.count}`,
+      );
+    }
+    return this;
+  }
+
+  countAtMost(max: number): this {
+    if (this.#result.count > max) {
+      throw new Error(
+        `Expected count at most ${max}, got ${this.#result.count}`,
+      );
+    }
+    return this;
+  }
+
+  countBetween(min: number, max: number): this {
+    if (this.#result.count < min || this.#result.count > max) {
+      throw new Error(
+        `Expected count between ${min} and ${max}, got ${this.#result.count}`,
+      );
+    }
+    return this;
+  }
+
+  isEmpty(): this {
+    if (this.#result.count !== 0) {
+      throw new Error(
+        `Expected count to be 0, got ${this.#result.count}`,
+      );
+    }
+    return this;
+  }
+
+  isNotEmpty(): this {
+    if (this.#result.count === 0) {
+      throw new Error("Expected count to be non-zero, but got 0");
+    }
+    return this;
+  }
+
+  durationLessThan(ms: number): this {
+    if (this.#result.duration >= ms) {
+      throw new Error(
+        `Expected duration < ${ms}ms, got ${this.#result.duration}ms`,
+      );
+    }
+    return this;
+  }
+}
+
 /**
  * Create a fluent expectation chain for MongoDB find result validation.
  */
@@ -344,4 +525,23 @@ export function expectMongoDeleteResult(
   result: MongoDeleteResult,
 ): MongoDeleteResultExpectation {
   return new MongoDeleteResultExpectationImpl(result);
+}
+
+/**
+ * Create a fluent expectation chain for MongoDB findOne result validation.
+ */
+// deno-lint-ignore no-explicit-any
+export function expectMongoFindOneResult<T = any>(
+  result: MongoFindOneResult<T>,
+): MongoFindOneResultExpectation<T> {
+  return new MongoFindOneResultExpectationImpl(result);
+}
+
+/**
+ * Create a fluent expectation chain for MongoDB count result validation.
+ */
+export function expectMongoCountResult(
+  result: MongoCountResult,
+): MongoCountResultExpectation {
+  return new MongoCountResultExpectationImpl(result);
 }

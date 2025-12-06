@@ -4,19 +4,21 @@ import type { CommonOptions } from "@probitas/client";
  * MongoDB document type
  */
 // deno-lint-ignore no-explicit-any
-export type Document = Record<string, any>;
+export type Document<T = any> = Record<string, T>;
 
 /**
  * MongoDB filter type (simplified for compatibility with mongodb driver)
+ * Allows query operators like $gte, $lt, $in, etc.
  */
 // deno-lint-ignore no-explicit-any
-export type Filter<T> = Record<string, any>;
+export type Filter = Record<string, any>;
 
 /**
  * MongoDB update filter type (simplified for compatibility with mongodb driver)
+ * Allows update operators like $set, $inc, $unset, etc.
  */
 // deno-lint-ignore no-explicit-any
-export type UpdateFilter<T> = Record<string, any>;
+export type UpdateFilter = Record<string, any>;
 
 /**
  * Document array with first/last methods
@@ -77,6 +79,24 @@ export interface MongoDeleteResult {
 }
 
 /**
+ * FindOne result
+ */
+export interface MongoFindOneResult<T = Document> {
+  readonly ok: boolean;
+  readonly doc: T | undefined;
+  readonly duration: number;
+}
+
+/**
+ * Count result
+ */
+export interface MongoCountResult {
+  readonly ok: boolean;
+  readonly count: number;
+  readonly duration: number;
+}
+
+/**
  * MongoDB find options
  */
 export interface MongoFindOptions extends CommonOptions {
@@ -113,10 +133,13 @@ export interface MongoSession {
  */
 export interface MongoCollection<T extends Document> {
   find(
-    filter?: Filter<T>,
+    filter?: Filter,
     options?: MongoFindOptions,
   ): Promise<MongoFindResult<T>>;
-  findOne(filter: Filter<T>, options?: CommonOptions): Promise<T | undefined>;
+  findOne(
+    filter: Filter,
+    options?: CommonOptions,
+  ): Promise<MongoFindOneResult<T>>;
   insertOne(
     doc: Omit<T, "_id">,
     options?: CommonOptions,
@@ -126,21 +149,21 @@ export interface MongoCollection<T extends Document> {
     options?: CommonOptions,
   ): Promise<MongoInsertManyResult>;
   updateOne(
-    filter: Filter<T>,
-    update: UpdateFilter<T>,
+    filter: Filter,
+    update: UpdateFilter,
     options?: MongoUpdateOptions,
   ): Promise<MongoUpdateResult>;
   updateMany(
-    filter: Filter<T>,
-    update: UpdateFilter<T>,
+    filter: Filter,
+    update: UpdateFilter,
     options?: MongoUpdateOptions,
   ): Promise<MongoUpdateResult>;
   deleteOne(
-    filter: Filter<T>,
+    filter: Filter,
     options?: CommonOptions,
   ): Promise<MongoDeleteResult>;
   deleteMany(
-    filter: Filter<T>,
+    filter: Filter,
     options?: CommonOptions,
   ): Promise<MongoDeleteResult>;
   aggregate<R = T>(
@@ -148,9 +171,9 @@ export interface MongoCollection<T extends Document> {
     options?: CommonOptions,
   ): Promise<MongoFindResult<R>>;
   countDocuments(
-    filter?: Filter<T>,
+    filter?: Filter,
     options?: CommonOptions,
-  ): Promise<number>;
+  ): Promise<MongoCountResult>;
 }
 
 /**

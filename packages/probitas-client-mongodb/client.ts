@@ -14,7 +14,9 @@ import type {
   MongoClient,
   MongoClientConfig,
   MongoCollection,
+  MongoCountResult,
   MongoDeleteResult,
+  MongoFindOneResult,
   MongoFindOptions,
   MongoFindResult,
   MongoInsertManyResult,
@@ -358,7 +360,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
   }
 
   async find(
-    filter: Filter<T> = {},
+    filter: Filter = {},
     options?: MongoFindOptions,
   ): Promise<MongoFindResult<T>> {
     const startTime = performance.now();
@@ -421,9 +423,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
   }
 
   async findOne(
-    filter: Filter<T>,
+    filter: Filter,
     options?: CommonOptions,
-  ): Promise<T | undefined> {
+  ): Promise<MongoFindOneResult<T>> {
     const startTime = performance.now();
     const operation = `findOne(${this.#name})`;
 
@@ -454,7 +456,11 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         });
       }
 
-      return (doc ?? undefined) as T | undefined;
+      return {
+        ok: true,
+        doc: (doc ?? undefined) as T | undefined,
+        duration,
+      };
     } catch (error) {
       const duration = performance.now() - startTime;
       logger.error("MongoDB findOne operation failed", {
@@ -566,8 +572,8 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
   }
 
   async updateOne(
-    filter: Filter<T>,
-    update: UpdateFilter<T>,
+    filter: Filter,
+    update: UpdateFilter,
     options?: MongoUpdateOptions,
   ): Promise<MongoUpdateResult> {
     const startTime = performance.now();
@@ -623,8 +629,8 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
   }
 
   async updateMany(
-    filter: Filter<T>,
-    update: UpdateFilter<T>,
+    filter: Filter,
+    update: UpdateFilter,
     options?: MongoUpdateOptions,
   ): Promise<MongoUpdateResult> {
     const startTime = performance.now();
@@ -684,7 +690,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
   }
 
   async deleteOne(
-    filter: Filter<T>,
+    filter: Filter,
     options?: CommonOptions,
   ): Promise<MongoDeleteResult> {
     const startTime = performance.now();
@@ -733,7 +739,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
   }
 
   async deleteMany(
-    filter: Filter<T>,
+    filter: Filter,
     options?: CommonOptions,
   ): Promise<MongoDeleteResult> {
     const startTime = performance.now();
@@ -835,9 +841,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
   }
 
   async countDocuments(
-    filter: Filter<T> = {},
+    filter: Filter = {},
     options?: CommonOptions,
-  ): Promise<number> {
+  ): Promise<MongoCountResult> {
     const startTime = performance.now();
     const operation = `countDocuments(${this.#name})`;
 
@@ -866,7 +872,11 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         count,
       });
 
-      return count;
+      return {
+        ok: true,
+        count,
+        duration,
+      };
     } catch (error) {
       const duration = performance.now() - startTime;
       logger.error("MongoDB countDocuments operation failed", {
