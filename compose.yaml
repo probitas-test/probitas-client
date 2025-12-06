@@ -11,6 +11,12 @@ services:
     ports:
       - "50051:50051"
 
+  # ConnectRPC echo server for integration testing
+  echo-connectrpc:
+    image: ghcr.io/jsr-probitas/echo-connectrpc:latest
+    ports:
+      - "18082:8080"
+
   # GraphQL echo server for integration testing
   echo-graphql:
     image: ghcr.io/jsr-probitas/echo-graphql:latest

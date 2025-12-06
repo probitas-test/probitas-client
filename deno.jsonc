@@ -1,6 +1,7 @@
 {
   "workspace": [
     "./packages/probitas-client",
+    "./packages/probitas-client-connectrpc",
     "./packages/probitas-client-deno-kv",
     "./packages/probitas-client-graphql",
     "./packages/probitas-client-grpc",
@@ -15,7 +16,16 @@
     "./packages/probitas-client-sql-sqlite",
     "./packages/probitas-client-sqs"
   ],
-  "unstable": ["kv"],
+  "lint": {
+    "rules": {
+      "tags": [
+        "recommended"
+      ]
+    }
+  },
+  "unstable": [
+    "kv"
+  ],
   "exclude": [
     ".coverage/**",
     ".worktrees/**"
@@ -35,6 +45,7 @@
     "@std/semver": "jsr:@std/semver@^1.0.4",
     "@std/testing": "jsr:@std/testing@^1.0.16",
     "jsr:@probitas/client@^0": "./packages/probitas-client/mod.ts",
+    "jsr:@probitas/client-connectrpc@^0": "./packages/probitas-client-connectrpc/mod.ts",
     "jsr:@probitas/client-deno-kv@^0": "./packages/probitas-client-deno-kv/mod.ts",
     "jsr:@probitas/client-graphql@^0": "./packages/probitas-client-graphql/mod.ts",
     "jsr:@probitas/client-grpc@^0": "./packages/probitas-client-grpc/mod.ts",

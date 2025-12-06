@@ -1,0 +1,16 @@
+{
+  "name": "@probitas/client-connectrpc",
+  "version": "0.0.0",
+  "exports": "./mod.ts",
+  "publish": {
+    "exclude": ["**/*_test.ts", "**/*_bench.ts"]
+  },
+  "imports": {
+    "@probitas/client": "jsr:@probitas/client@^0",
+    "@probitas/logger": "jsr:@probitas/logger@^0",
+    "@connectrpc/connect": "npm:@connectrpc/connect@^2.1.1",
+    "@connectrpc/connect-node": "npm:@connectrpc/connect-node@^2.1.1",
+    "@bufbuild/protobuf": "npm:@bufbuild/protobuf@^2.7.0",
+    "@lambdalisue/connectrpc-grpcreflect": "npm:@lambdalisue/connectrpc-grpcreflect@^0.4.0"
+  }
+}
