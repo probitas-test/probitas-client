@@ -3,10 +3,10 @@ import type {
   RedisArrayResult,
   RedisClient,
   RedisClientConfig,
+  RedisCommonResult,
   RedisCountResult,
   RedisGetResult,
   RedisHashResult,
-  RedisResult,
   RedisSetResult,
 } from "./types.ts";
 import { RedisCommandError, RedisConnectionError } from "./errors.ts";
@@ -18,57 +18,70 @@ import { RedisCommandError, RedisConnectionError } from "./errors.ts";
 function createMockRedisClient(
   overrides: Partial<RedisClient> = {},
 ): RedisClient {
-  const defaultResult = <T>(value: T): Promise<RedisResult<T>> =>
-    Promise.resolve({
-      ok: true,
-      value,
-      duration: 1,
-    });
+  // Helper functions for creating specific result types
+  const createGetResult = (
+    value: string | null,
+  ): Promise<RedisGetResult> =>
+    Promise.resolve({ type: "redis:get", ok: true, value, duration: 1 });
+
+  const createSetResult = (): Promise<RedisSetResult> =>
+    Promise.resolve({ type: "redis:set", ok: true, value: "OK", duration: 1 });
+
+  const createCountResult = (value: number): Promise<RedisCountResult> =>
+    Promise.resolve({ type: "redis:count", ok: true, value, duration: 1 });
+
+  const createHashResult = (
+    value: Record<string, string>,
+  ): Promise<RedisHashResult> =>
+    Promise.resolve({ type: "redis:hash", ok: true, value, duration: 1 });
+
+  const createArrayResult = <T>(
+    value: readonly T[],
+  ): Promise<RedisArrayResult<T>> =>
+    Promise.resolve({ type: "redis:array", ok: true, value, duration: 1 });
+
+  const createCommonResult = <T>(
+    value: T,
+  ): Promise<RedisCommonResult<T>> =>
+    Promise.resolve({ type: "redis:common", ok: true, value, duration: 1 });
 
   const client: RedisClient = {
     config: {} as RedisClientConfig,
 
     // Strings
-    get: () =>
-      defaultResult<string | null>("mock-value") as Promise<RedisGetResult>,
-    set: () => defaultResult("OK") as Promise<RedisSetResult>,
-    del: () => defaultResult(1) as Promise<RedisCountResult>,
-    incr: () => defaultResult(1) as Promise<RedisCountResult>,
-    decr: () => defaultResult(0) as Promise<RedisCountResult>,
+    get: () => createGetResult("mock-value"),
+    set: () => createSetResult(),
+    del: () => createCountResult(1),
+    incr: () => createCountResult(1),
+    decr: () => createCountResult(0),
 
     // Hashes
-    hget: () =>
-      defaultResult<string | null>("value") as Promise<RedisGetResult>,
-    hset: () => defaultResult(1) as Promise<RedisCountResult>,
-    hgetall: () =>
-      defaultResult({ field: "value" }) as Promise<RedisHashResult>,
-    hdel: () => defaultResult(1) as Promise<RedisCountResult>,
+    hget: () => createGetResult("value"),
+    hset: () => createCountResult(1),
+    hgetall: () => createHashResult({ field: "value" }),
+    hdel: () => createCountResult(1),
 
     // Lists
-    lpush: () => defaultResult(1) as Promise<RedisCountResult>,
-    rpush: () => defaultResult(1) as Promise<RedisCountResult>,
-    lpop: () => defaultResult<string | null>("item") as Promise<RedisGetResult>,
-    rpop: () => defaultResult<string | null>("item") as Promise<RedisGetResult>,
-    lrange: () =>
-      defaultResult(["a", "b"]) as unknown as Promise<RedisArrayResult>,
-    llen: () => defaultResult(2) as Promise<RedisCountResult>,
+    lpush: () => createCountResult(1),
+    rpush: () => createCountResult(1),
+    lpop: () => createGetResult("item"),
+    rpop: () => createGetResult("item"),
+    lrange: () => createArrayResult(["a", "b"]),
+    llen: () => createCountResult(2),
 
     // Sets
-    sadd: () => defaultResult(1) as Promise<RedisCountResult>,
-    srem: () => defaultResult(1) as Promise<RedisCountResult>,
-    smembers: () =>
-      defaultResult(["a", "b"]) as unknown as Promise<RedisArrayResult>,
-    sismember: () => defaultResult(true) as Promise<RedisResult<boolean>>,
+    sadd: () => createCountResult(1),
+    srem: () => createCountResult(1),
+    smembers: () => createArrayResult(["a", "b"]),
+    sismember: () => createCommonResult(true),
 
     // Sorted Sets
-    zadd: () => defaultResult(1) as Promise<RedisCountResult>,
-    zrange: () =>
-      defaultResult(["a", "b"]) as unknown as Promise<RedisArrayResult>,
-    zscore: () =>
-      defaultResult<number | null>(1.5) as Promise<RedisResult<number | null>>,
+    zadd: () => createCountResult(1),
+    zrange: () => createArrayResult(["a", "b"]),
+    zscore: () => createCommonResult<number | null>(1.5),
 
     // Pub/Sub
-    publish: () => defaultResult(1) as Promise<RedisCountResult>,
+    publish: () => createCountResult(1),
     subscribe: async function* () {
       yield { channel: "test", message: "hello" };
     },
@@ -143,6 +156,7 @@ function createMockRedisClient(
       },
       exec: () =>
         Promise.resolve({
+          type: "redis:array",
           ok: true,
           value: ["OK", 1, "value"],
           duration: 1,
@@ -151,8 +165,7 @@ function createMockRedisClient(
     }),
 
     // Raw command
-    command: <T = unknown>() =>
-      defaultResult("PONG") as unknown as Promise<RedisResult<T>>,
+    command: <T = unknown>() => createCommonResult("PONG" as T),
 
     close: () => Promise.resolve(),
     [Symbol.asyncDispose]: () => Promise.resolve(),
@@ -256,6 +269,7 @@ Deno.test("RedisClient.get", async (t) => {
     const client = createMockRedisClient({
       get: () =>
         Promise.resolve({
+          type: "redis:get",
           ok: true,
           value: "test-value",
           duration: 5,
@@ -273,6 +287,7 @@ Deno.test("RedisClient.get", async (t) => {
     const client = createMockRedisClient({
       get: () =>
         Promise.resolve({
+          type: "redis:get",
           ok: true,
           value: null,
           duration: 1,
@@ -290,6 +305,7 @@ Deno.test("RedisClient.get", async (t) => {
       get: (_key, options) => {
         assertEquals(options?.timeout, 5000);
         return Promise.resolve({
+          type: "redis:get",
           ok: true,
           value: "value",
           duration: 1,
@@ -306,6 +322,7 @@ Deno.test("RedisClient.get", async (t) => {
       get: (_key, options) => {
         assertEquals(options?.signal, controller.signal);
         return Promise.resolve({
+          type: "redis:get",
           ok: true,
           value: "value",
           duration: 1,
@@ -322,6 +339,7 @@ Deno.test("RedisClient.set", async (t) => {
     const client = createMockRedisClient({
       set: () =>
         Promise.resolve({
+          type: "redis:set",
           ok: true,
           value: "OK",
           duration: 2,
@@ -339,6 +357,7 @@ Deno.test("RedisClient.set", async (t) => {
       set: (_key, _value, options) => {
         assertEquals(options?.ex, 3600);
         return Promise.resolve({
+          type: "redis:set",
           ok: true,
           value: "OK",
           duration: 1,
@@ -354,6 +373,7 @@ Deno.test("RedisClient.set", async (t) => {
       set: (_key, _value, options) => {
         assertEquals(options?.px, 5000);
         return Promise.resolve({
+          type: "redis:set",
           ok: true,
           value: "OK",
           duration: 1,
@@ -369,6 +389,7 @@ Deno.test("RedisClient.set", async (t) => {
       set: (_key, _value, options) => {
         assertEquals(options?.nx, true);
         return Promise.resolve({
+          type: "redis:set",
           ok: true,
           value: "OK",
           duration: 1,
@@ -384,6 +405,7 @@ Deno.test("RedisClient.set", async (t) => {
       set: (_key, _value, options) => {
         assertEquals(options?.xx, true);
         return Promise.resolve({
+          type: "redis:set",
           ok: true,
           value: "OK",
           duration: 1,
@@ -400,6 +422,7 @@ Deno.test("RedisClient.del", async (t) => {
     const client = createMockRedisClient({
       del: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 3,
           duration: 1,
@@ -416,6 +439,7 @@ Deno.test("RedisClient.del", async (t) => {
     const client = createMockRedisClient({
       del: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 0,
           duration: 1,
@@ -433,6 +457,7 @@ Deno.test("RedisClient.incr and decr", async (t) => {
     const client = createMockRedisClient({
       incr: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 11,
           duration: 1,
@@ -448,6 +473,7 @@ Deno.test("RedisClient.incr and decr", async (t) => {
     const client = createMockRedisClient({
       decr: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 9,
           duration: 1,
@@ -465,6 +491,7 @@ Deno.test("RedisClient hash commands", async (t) => {
     const client = createMockRedisClient({
       hget: () =>
         Promise.resolve({
+          type: "redis:get",
           ok: true,
           value: "field-value",
           duration: 1,
@@ -480,6 +507,7 @@ Deno.test("RedisClient hash commands", async (t) => {
     const client = createMockRedisClient({
       hget: () =>
         Promise.resolve({
+          type: "redis:get",
           ok: true,
           value: null,
           duration: 1,
@@ -495,6 +523,7 @@ Deno.test("RedisClient hash commands", async (t) => {
     const client = createMockRedisClient({
       hset: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 1,
           duration: 1,
@@ -510,6 +539,7 @@ Deno.test("RedisClient hash commands", async (t) => {
     const client = createMockRedisClient({
       hgetall: () =>
         Promise.resolve({
+          type: "redis:hash",
           ok: true,
           value: { field1: "value1", field2: "value2" },
           duration: 1,
@@ -525,6 +555,7 @@ Deno.test("RedisClient hash commands", async (t) => {
     const client = createMockRedisClient({
       hdel: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 2,
           duration: 1,
@@ -542,6 +573,7 @@ Deno.test("RedisClient list commands", async (t) => {
     const client = createMockRedisClient({
       lpush: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 3,
           duration: 1,
@@ -557,6 +589,7 @@ Deno.test("RedisClient list commands", async (t) => {
     const client = createMockRedisClient({
       rpush: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 5,
           duration: 1,
@@ -572,6 +605,7 @@ Deno.test("RedisClient list commands", async (t) => {
     const client = createMockRedisClient({
       lpop: () =>
         Promise.resolve({
+          type: "redis:get",
           ok: true,
           value: "first",
           duration: 1,
@@ -587,6 +621,7 @@ Deno.test("RedisClient list commands", async (t) => {
     const client = createMockRedisClient({
       rpop: () =>
         Promise.resolve({
+          type: "redis:get",
           ok: true,
           value: "last",
           duration: 1,
@@ -602,6 +637,7 @@ Deno.test("RedisClient list commands", async (t) => {
     const client = createMockRedisClient({
       lrange: () =>
         Promise.resolve({
+          type: "redis:array",
           ok: true,
           value: ["a", "b", "c"],
           duration: 1,
@@ -617,6 +653,7 @@ Deno.test("RedisClient list commands", async (t) => {
     const client = createMockRedisClient({
       llen: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 5,
           duration: 1,
@@ -634,6 +671,7 @@ Deno.test("RedisClient set commands", async (t) => {
     const client = createMockRedisClient({
       sadd: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 3,
           duration: 1,
@@ -649,6 +687,7 @@ Deno.test("RedisClient set commands", async (t) => {
     const client = createMockRedisClient({
       srem: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 2,
           duration: 1,
@@ -664,6 +703,7 @@ Deno.test("RedisClient set commands", async (t) => {
     const client = createMockRedisClient({
       smembers: () =>
         Promise.resolve({
+          type: "redis:array",
           ok: true,
           value: ["a", "b", "c"],
           duration: 1,
@@ -679,6 +719,7 @@ Deno.test("RedisClient set commands", async (t) => {
     const client = createMockRedisClient({
       sismember: () =>
         Promise.resolve({
+          type: "redis:common",
           ok: true,
           value: true,
           duration: 1,
@@ -694,6 +735,7 @@ Deno.test("RedisClient set commands", async (t) => {
     const client = createMockRedisClient({
       sismember: () =>
         Promise.resolve({
+          type: "redis:common",
           ok: true,
           value: false,
           duration: 1,
@@ -711,6 +753,7 @@ Deno.test("RedisClient sorted set commands", async (t) => {
     const client = createMockRedisClient({
       zadd: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 2,
           duration: 1,
@@ -730,6 +773,7 @@ Deno.test("RedisClient sorted set commands", async (t) => {
     const client = createMockRedisClient({
       zrange: () =>
         Promise.resolve({
+          type: "redis:array",
           ok: true,
           value: ["a", "b", "c"],
           duration: 1,
@@ -745,6 +789,7 @@ Deno.test("RedisClient sorted set commands", async (t) => {
     const client = createMockRedisClient({
       zscore: () =>
         Promise.resolve({
+          type: "redis:common",
           ok: true,
           value: 2.5,
           duration: 1,
@@ -760,6 +805,7 @@ Deno.test("RedisClient sorted set commands", async (t) => {
     const client = createMockRedisClient({
       zscore: () =>
         Promise.resolve({
+          type: "redis:common",
           ok: true,
           value: null,
           duration: 1,
@@ -777,6 +823,7 @@ Deno.test("RedisClient pub/sub", async (t) => {
     const client = createMockRedisClient({
       publish: () =>
         Promise.resolve({
+          type: "redis:count",
           ok: true,
           value: 3,
           duration: 1,
@@ -904,6 +951,7 @@ Deno.test("RedisClient transaction", async (t) => {
         },
         exec: () =>
           Promise.resolve({
+            type: "redis:array",
             ok: true,
             value: ["OK", 2, "value"],
             duration: 5,
@@ -928,6 +976,7 @@ Deno.test("RedisClient.command (raw)", async (t) => {
     const client = createMockRedisClient({
       command: <T = unknown>() =>
         Promise.resolve({
+          type: "redis:common",
           ok: true,
           value: "PONG" as T,
           duration: 1,
@@ -943,6 +992,7 @@ Deno.test("RedisClient.command (raw)", async (t) => {
     const client = createMockRedisClient({
       command: <T = unknown>() =>
         Promise.resolve({
+          type: "redis:common",
           ok: true,
           value: "test-value" as T,
           duration: 1,

@@ -23,7 +23,7 @@ function createFindResult<T>(
   ok = true,
   duration = 10,
 ): MongoFindResult<T> {
-  return { ok, docs: createMongoDocs(docs), duration };
+  return { type: "mongo:find", ok, docs: createMongoDocs(docs), duration };
 }
 
 function createInsertOneResult(
@@ -31,7 +31,7 @@ function createInsertOneResult(
   ok = true,
   duration = 10,
 ): MongoInsertOneResult {
-  return { ok, insertedId, duration };
+  return { type: "mongo:insert", ok, insertedId, duration };
 }
 
 function createInsertManyResult(
@@ -39,7 +39,13 @@ function createInsertManyResult(
   ok = true,
   duration = 10,
 ): MongoInsertManyResult {
-  return { ok, insertedIds, insertedCount: insertedIds.length, duration };
+  return {
+    type: "mongo:insert",
+    ok,
+    insertedIds,
+    insertedCount: insertedIds.length,
+    duration,
+  };
 }
 
 function createUpdateResult(
@@ -49,7 +55,14 @@ function createUpdateResult(
   duration = 10,
   upsertedId?: string,
 ): MongoUpdateResult {
-  return { ok, matchedCount, modifiedCount, upsertedId, duration };
+  return {
+    type: "mongo:update",
+    ok,
+    matchedCount,
+    modifiedCount,
+    upsertedId,
+    duration,
+  };
 }
 
 function createDeleteResult(
@@ -57,7 +70,7 @@ function createDeleteResult(
   ok = true,
   duration = 10,
 ): MongoDeleteResult {
-  return { ok, deletedCount, duration };
+  return { type: "mongo:delete", ok, deletedCount, duration };
 }
 
 function createFindOneResult<T>(
@@ -65,7 +78,7 @@ function createFindOneResult<T>(
   ok = true,
   duration = 10,
 ): MongoFindOneResult<T> {
-  return { ok, doc, duration };
+  return { type: "mongo:find-one", ok, doc, duration };
 }
 
 function createCountResult(
@@ -73,7 +86,7 @@ function createCountResult(
   ok = true,
   duration = 10,
 ): MongoCountResult {
-  return { ok, count, duration };
+  return { type: "mongo:count", ok, count, duration };
 }
 
 Deno.test("expectMongoFindResult", async (t) => {

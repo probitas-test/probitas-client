@@ -96,6 +96,7 @@ export interface SqsReceiveOptions extends CommonOptions {
  * Result of sending a message.
  */
 export interface SqsSendResult {
+  readonly type: "sqs:send";
   readonly ok: boolean;
   readonly messageId: string;
   readonly md5OfBody: string;
@@ -124,6 +125,7 @@ export interface SqsBatchFailedEntry {
  * Result of batch sending messages.
  */
 export interface SqsSendBatchResult {
+  readonly type: "sqs:send-batch";
   readonly ok: boolean;
   readonly successful: readonly SqsBatchSuccessEntry[];
   readonly failed: readonly SqsBatchFailedEntry[];
@@ -134,6 +136,7 @@ export interface SqsSendBatchResult {
  * Result of receiving messages.
  */
 export interface SqsReceiveResult {
+  readonly type: "sqs:receive";
   readonly ok: boolean;
   readonly messages: SqsMessages;
   readonly duration: number;
@@ -143,6 +146,7 @@ export interface SqsReceiveResult {
  * Result of deleting a message.
  */
 export interface SqsDeleteResult {
+  readonly type: "sqs:delete";
   readonly ok: boolean;
   readonly duration: number;
 }
@@ -151,6 +155,7 @@ export interface SqsDeleteResult {
  * Result of batch deleting messages.
  */
 export interface SqsDeleteBatchResult {
+  readonly type: "sqs:delete-batch";
   readonly ok: boolean;
   readonly successful: readonly string[];
   readonly failed: readonly SqsBatchFailedEntry[];
@@ -171,6 +176,7 @@ export interface SqsEnsureQueueOptions extends CommonOptions {
  * Result of ensuring a queue exists.
  */
 export interface SqsEnsureQueueResult {
+  readonly type: "sqs:ensure-queue";
   readonly ok: boolean;
   readonly queueUrl: string;
   readonly duration: number;
@@ -180,6 +186,7 @@ export interface SqsEnsureQueueResult {
  * Result of deleting a queue.
  */
 export interface SqsDeleteQueueResult {
+  readonly type: "sqs:delete-queue";
   readonly ok: boolean;
   readonly duration: number;
 }

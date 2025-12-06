@@ -16,6 +16,7 @@ export interface GraphqlResponseOptions<T> {
  * Implementation of GraphqlResponse.
  */
 class GraphqlResponseImpl<T> implements GraphqlResponse<T> {
+  readonly type = "graphql" as const;
   readonly ok: boolean;
   readonly errors: readonly GraphqlErrorItem[] | null;
   readonly extensions?: Record<string, unknown>;

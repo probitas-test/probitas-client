@@ -382,6 +382,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:exchange",
         ok: true,
         duration,
       };
@@ -421,6 +422,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:exchange",
         ok: true,
         duration,
       };
@@ -493,6 +495,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:queue",
         ok: true,
         queue: result.queue,
         messageCount: result.messageCount,
@@ -535,6 +538,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:queue",
         ok: true,
         queue: name,
         messageCount: result.messageCount,
@@ -577,6 +581,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:queue",
         ok: true,
         queue: name,
         messageCount: result.messageCount,
@@ -626,6 +631,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:exchange",
         ok: true,
         duration,
       };
@@ -674,6 +680,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:exchange",
         ok: true,
         duration,
       };
@@ -750,6 +757,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:publish",
         ok: true,
         duration,
       };
@@ -801,6 +809,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
           duration: `${duration.toFixed(2)}ms`,
         });
         return {
+          type: "rabbitmq:consume",
           ok: true,
           message: null,
           duration,
@@ -823,6 +832,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return {
+        type: "rabbitmq:consume",
         ok: true,
         message,
         duration,
@@ -952,6 +962,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return Promise.resolve({
+        type: "rabbitmq:ack",
         ok: true,
         duration,
       });
@@ -1004,6 +1015,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return Promise.resolve({
+        type: "rabbitmq:ack",
         ok: true,
         duration,
       });
@@ -1055,6 +1067,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       });
 
       return Promise.resolve({
+        type: "rabbitmq:ack",
         ok: true,
         duration,
       });

@@ -10,6 +10,9 @@ import type { ConnectRpcStatusCode } from "./status.ts";
  * ConnectRPC response interface.
  */
 export interface ConnectRpcResponse {
+  /** Result type identifier */
+  readonly type: "connectrpc";
+
   /** Whether the request was successful (code === 0). */
   readonly ok: boolean;
 
@@ -58,6 +61,7 @@ export interface ConnectRpcResponseOptions {
  * Implementation of ConnectRpcResponse.
  */
 export class ConnectRpcResponseImpl implements ConnectRpcResponse {
+  readonly type = "connectrpc" as const;
   readonly ok: boolean;
   readonly code: ConnectRpcStatusCode;
   readonly message: string;

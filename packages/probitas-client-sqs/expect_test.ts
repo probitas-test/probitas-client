@@ -23,6 +23,7 @@ import {
 
 Deno.test("expectSqsSendResult", async (t) => {
   const successResult: SqsSendResult = {
+    type: "sqs:send",
     ok: true,
     messageId: "msg-123",
     md5OfBody: "abc123",
@@ -30,6 +31,7 @@ Deno.test("expectSqsSendResult", async (t) => {
   };
 
   const failedResult: SqsSendResult = {
+    type: "sqs:send",
     ok: false,
     messageId: "",
     md5OfBody: "",
@@ -94,6 +96,7 @@ Deno.test("expectSqsSendResult", async (t) => {
 
 Deno.test("expectSqsSendBatchResult", async (t) => {
   const allSuccess: SqsSendBatchResult = {
+    type: "sqs:send-batch",
     ok: true,
     successful: [
       { messageId: "msg-1", id: "0" },
@@ -104,6 +107,7 @@ Deno.test("expectSqsSendBatchResult", async (t) => {
   };
 
   const partialFailure: SqsSendBatchResult = {
+    type: "sqs:send-batch",
     ok: false,
     successful: [{ messageId: "msg-1", id: "0" }],
     failed: [{ id: "1", code: "InvalidParameterValue", message: "Invalid" }],
@@ -186,12 +190,14 @@ Deno.test("expectSqsReceiveResult", async (t) => {
   ];
 
   const withMessages: SqsReceiveResult = {
+    type: "sqs:receive",
     ok: true,
     messages: createSqsMessages(messages),
     duration: 50,
   };
 
   const emptyResult: SqsReceiveResult = {
+    type: "sqs:receive",
     ok: true,
     messages: createSqsMessages([]),
     duration: 30,
@@ -304,11 +310,13 @@ Deno.test("expectSqsReceiveResult", async (t) => {
 
 Deno.test("expectSqsDeleteResult", async (t) => {
   const successResult: SqsDeleteResult = {
+    type: "sqs:delete",
     ok: true,
     duration: 30,
   };
 
   const failedResult: SqsDeleteResult = {
+    type: "sqs:delete",
     ok: false,
     duration: 50,
   };
@@ -336,6 +344,7 @@ Deno.test("expectSqsDeleteResult", async (t) => {
 
 Deno.test("expectSqsDeleteBatchResult", async (t) => {
   const allSuccess: SqsDeleteBatchResult = {
+    type: "sqs:delete-batch",
     ok: true,
     successful: ["0", "1", "2"],
     failed: [],
@@ -343,6 +352,7 @@ Deno.test("expectSqsDeleteBatchResult", async (t) => {
   };
 
   const partialFailure: SqsDeleteBatchResult = {
+    type: "sqs:delete-batch",
     ok: false,
     successful: ["0"],
     failed: [{ id: "1", code: "ReceiptHandleIsInvalid", message: "Invalid" }],
@@ -598,12 +608,14 @@ Deno.test("expectSqsMessage", async (t) => {
 
 Deno.test("expectSqsEnsureQueueResult", async (t) => {
   const successResult: SqsEnsureQueueResult = {
+    type: "sqs:ensure-queue",
     ok: true,
     queueUrl: "https://sqs.us-east-1.amazonaws.com/123456789/test-queue",
     duration: 50,
   };
 
   const failedResult: SqsEnsureQueueResult = {
+    type: "sqs:ensure-queue",
     ok: false,
     queueUrl: "",
     duration: 100,
@@ -684,11 +696,13 @@ Deno.test("expectSqsEnsureQueueResult", async (t) => {
 
 Deno.test("expectSqsDeleteQueueResult", async (t) => {
   const successResult: SqsDeleteQueueResult = {
+    type: "sqs:delete-queue",
     ok: true,
     duration: 30,
   };
 
   const failedResult: SqsDeleteQueueResult = {
+    type: "sqs:delete-queue",
     ok: false,
     duration: 50,
   };

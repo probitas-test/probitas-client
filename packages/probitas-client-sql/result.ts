@@ -36,6 +36,7 @@ export interface SqlQueryResultInit<T> {
  */
 // deno-lint-ignore no-explicit-any
 export class SqlQueryResult<T = Record<string, any>> {
+  readonly type = "sql" as const;
   readonly ok: boolean;
   readonly rows: SqlRows<T>;
   readonly rowCount: number;

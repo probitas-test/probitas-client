@@ -34,6 +34,7 @@ export interface MongoDocs<T> extends ReadonlyArray<T> {
  * Query result (find, aggregate)
  */
 export interface MongoFindResult<T = Document> {
+  readonly type: "mongo:find";
   readonly ok: boolean;
   readonly docs: MongoDocs<T>;
   readonly duration: number;
@@ -43,6 +44,7 @@ export interface MongoFindResult<T = Document> {
  * Insert one result
  */
 export interface MongoInsertOneResult {
+  readonly type: "mongo:insert";
   readonly ok: boolean;
   readonly insertedId: string;
   readonly duration: number;
@@ -52,6 +54,7 @@ export interface MongoInsertOneResult {
  * Insert many result
  */
 export interface MongoInsertManyResult {
+  readonly type: "mongo:insert";
   readonly ok: boolean;
   readonly insertedIds: readonly string[];
   readonly insertedCount: number;
@@ -62,6 +65,7 @@ export interface MongoInsertManyResult {
  * Update result
  */
 export interface MongoUpdateResult {
+  readonly type: "mongo:update";
   readonly ok: boolean;
   readonly matchedCount: number;
   readonly modifiedCount: number;
@@ -73,6 +77,7 @@ export interface MongoUpdateResult {
  * Delete result
  */
 export interface MongoDeleteResult {
+  readonly type: "mongo:delete";
   readonly ok: boolean;
   readonly deletedCount: number;
   readonly duration: number;
@@ -82,6 +87,7 @@ export interface MongoDeleteResult {
  * FindOne result
  */
 export interface MongoFindOneResult<T = Document> {
+  readonly type: "mongo:find-one";
   readonly ok: boolean;
   readonly doc: T | undefined;
   readonly duration: number;
@@ -91,6 +97,7 @@ export interface MongoFindOneResult<T = Document> {
  * Count result
  */
 export interface MongoCountResult {
+  readonly type: "mongo:count";
   readonly ok: boolean;
   readonly count: number;
   readonly duration: number;

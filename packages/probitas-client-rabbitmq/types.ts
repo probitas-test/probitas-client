@@ -43,6 +43,7 @@ export interface RabbitMqMessage {
  * Publish result.
  */
 export interface RabbitMqPublishResult {
+  readonly type: "rabbitmq:publish";
   readonly ok: boolean;
   readonly duration: number;
 }
@@ -51,6 +52,7 @@ export interface RabbitMqPublishResult {
  * Consume result (single message retrieval).
  */
 export interface RabbitMqConsumeResult {
+  readonly type: "rabbitmq:consume";
   readonly ok: boolean;
   readonly message: RabbitMqMessage | null;
   readonly duration: number;
@@ -60,6 +62,7 @@ export interface RabbitMqConsumeResult {
  * Ack/Nack result.
  */
 export interface RabbitMqAckResult {
+  readonly type: "rabbitmq:ack";
   readonly ok: boolean;
   readonly duration: number;
 }
@@ -68,6 +71,7 @@ export interface RabbitMqAckResult {
  * Queue declaration result.
  */
 export interface RabbitMqQueueResult {
+  readonly type: "rabbitmq:queue";
   readonly ok: boolean;
   readonly queue: string;
   readonly messageCount: number;
@@ -79,6 +83,7 @@ export interface RabbitMqQueueResult {
  * Exchange declaration result.
  */
 export interface RabbitMqExchangeResult {
+  readonly type: "rabbitmq:exchange";
   readonly ok: boolean;
   readonly duration: number;
 }

@@ -1,39 +1,58 @@
 import type { CommonOptions } from "@probitas/client";
 
 /**
- * Redis operation result (common)
+ * Redis operation result (internal base - not exported directly)
  */
-export interface RedisResult<T = unknown> {
+interface RedisResultBase<T = unknown> {
+  readonly type: string;
   readonly ok: boolean;
   readonly value: T;
   readonly duration: number;
 }
 
 /**
+ * Redis operation result (common/generic)
+ */
+export interface RedisCommonResult<T = unknown> extends RedisResultBase<T> {
+  readonly type: "redis:common";
+}
+
+/**
  * Redis GET result
  */
-export interface RedisGetResult extends RedisResult<string | null> {}
+export interface RedisGetResult extends RedisResultBase<string | null> {
+  readonly type: "redis:get";
+}
 
 /**
  * Redis SET result
  */
-export interface RedisSetResult extends RedisResult<"OK"> {}
+export interface RedisSetResult extends RedisResultBase<"OK"> {
+  readonly type: "redis:set";
+}
 
 /**
  * Redis numeric result (DEL, LPUSH, SADD, etc.)
  */
-export interface RedisCountResult extends RedisResult<number> {}
+export interface RedisCountResult extends RedisResultBase<number> {
+  readonly type: "redis:count";
+}
 
 /**
  * Redis array result (LRANGE, SMEMBERS, etc.)
  */
 export interface RedisArrayResult<T = string>
-  extends RedisResult<readonly T[]> {}
+  extends RedisResultBase<readonly T[]> {
+  readonly type: "redis:array";
+}
 
 /**
  * Redis hash result (HGETALL)
  */
-export interface RedisHashResult extends RedisResult<Record<string, string>> {}
+export interface RedisHashResult
+  extends RedisResultBase<Record<string, string>> {
+  readonly type: "redis:hash";
+}
 
 /**
  * Redis SET options
@@ -152,7 +171,7 @@ export interface RedisClient extends AsyncDisposable {
   sadd(key: string, ...members: string[]): Promise<RedisCountResult>;
   srem(key: string, ...members: string[]): Promise<RedisCountResult>;
   smembers(key: string, options?: CommonOptions): Promise<RedisArrayResult>;
-  sismember(key: string, member: string): Promise<RedisResult<boolean>>;
+  sismember(key: string, member: string): Promise<RedisCommonResult<boolean>>;
 
   // Sorted Sets
   zadd(
@@ -165,7 +184,10 @@ export interface RedisClient extends AsyncDisposable {
     stop: number,
     options?: CommonOptions,
   ): Promise<RedisArrayResult>;
-  zscore(key: string, member: string): Promise<RedisResult<number | null>>;
+  zscore(
+    key: string,
+    member: string,
+  ): Promise<RedisCommonResult<number | null>>;
 
   // Pub/Sub
   publish(channel: string, message: string): Promise<RedisCountResult>;
@@ -178,7 +200,7 @@ export interface RedisClient extends AsyncDisposable {
   command<T = unknown>(
     cmd: string,
     ...args: unknown[]
-  ): Promise<RedisResult<T>>;
+  ): Promise<RedisCommonResult<T>>;
 
   close(): Promise<void>;
 }

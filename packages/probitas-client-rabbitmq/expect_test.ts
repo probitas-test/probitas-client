@@ -19,7 +19,7 @@ function createPublishResult(
   ok = true,
   duration = 10,
 ): RabbitMqPublishResult {
-  return { ok, duration };
+  return { type: "rabbitmq:publish", ok, duration };
 }
 
 function createMessage(
@@ -60,7 +60,7 @@ function createConsumeResult(
   ok = true,
   duration = 10,
 ): RabbitMqConsumeResult {
-  return { ok, message, duration };
+  return { type: "rabbitmq:consume", ok, message, duration };
 }
 
 function createQueueResult(
@@ -70,7 +70,14 @@ function createQueueResult(
   ok = true,
   duration = 10,
 ): RabbitMqQueueResult {
-  return { ok, queue, messageCount, consumerCount, duration };
+  return {
+    type: "rabbitmq:queue",
+    ok,
+    queue,
+    messageCount,
+    consumerCount,
+    duration,
+  };
 }
 
 Deno.test("expectRabbitMqPublishResult", async (t) => {
@@ -365,8 +372,16 @@ Deno.test("expectRabbitMqQueueResult", async (t) => {
 });
 
 Deno.test("expectRabbitMqExchangeResult", async (t) => {
-  const successResult: RabbitMqExchangeResult = { ok: true, duration: 10 };
-  const failedResult: RabbitMqExchangeResult = { ok: false, duration: 10 };
+  const successResult: RabbitMqExchangeResult = {
+    type: "rabbitmq:exchange",
+    ok: true,
+    duration: 10,
+  };
+  const failedResult: RabbitMqExchangeResult = {
+    type: "rabbitmq:exchange",
+    ok: false,
+    duration: 10,
+  };
 
   await t.step("ok() passes when ok is true", () => {
     expectRabbitMqExchangeResult(successResult).ok();
@@ -386,8 +401,16 @@ Deno.test("expectRabbitMqExchangeResult", async (t) => {
 });
 
 Deno.test("expectRabbitMqAckResult", async (t) => {
-  const successResult: RabbitMqAckResult = { ok: true, duration: 10 };
-  const failedResult: RabbitMqAckResult = { ok: false, duration: 10 };
+  const successResult: RabbitMqAckResult = {
+    type: "rabbitmq:ack",
+    ok: true,
+    duration: 10,
+  };
+  const failedResult: RabbitMqAckResult = {
+    type: "rabbitmq:ack",
+    ok: false,
+    duration: 10,
+  };
 
   await t.step("ok() passes when ok is true", () => {
     expectRabbitMqAckResult(successResult).ok();

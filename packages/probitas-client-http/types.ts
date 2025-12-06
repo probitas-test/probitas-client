@@ -7,6 +7,9 @@ import type { CommonOptions } from "@probitas/client";
  * and multiple times (unlike the streaming-based standard Response).
  */
 export interface HttpResponse {
+  /** Result type identifier */
+  readonly type: "http";
+
   // --- Web standard Response compatible properties ---
 
   /** Whether the response was successful (status 200-299) */

@@ -1,17 +1,21 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import type {
   RedisArrayResult,
+  RedisCommonResult,
   RedisCountResult,
-  RedisResult,
 } from "./types.ts";
 import {
   expectRedisArrayResult,
+  expectRedisCommonResult,
   expectRedisCountResult,
-  expectRedisResult,
 } from "./expect.ts";
 
-function createResult<T>(value: T, ok = true, duration = 10): RedisResult<T> {
-  return { ok, value, duration };
+function createResult<T>(
+  value: T,
+  ok = true,
+  duration = 10,
+): RedisCommonResult<T> {
+  return { type: "redis:common", ok, value, duration };
 }
 
 function createCountResult(
@@ -19,7 +23,7 @@ function createCountResult(
   ok = true,
   duration = 10,
 ): RedisCountResult {
-  return { ok, value, duration };
+  return { type: "redis:count", ok, value, duration };
 }
 
 function createArrayResult<T>(
@@ -27,19 +31,19 @@ function createArrayResult<T>(
   ok = true,
   duration = 10,
 ): RedisArrayResult<T> {
-  return { ok, value, duration };
+  return { type: "redis:array", ok, value, duration };
 }
 
-Deno.test("expectRedisResult", async (t) => {
+Deno.test("expectRedisCommonResult", async (t) => {
   await t.step("ok() passes when ok is true", () => {
     const result = createResult("value");
-    expectRedisResult(result).ok();
+    expectRedisCommonResult(result).ok();
   });
 
   await t.step("ok() throws when ok is false", () => {
     const result = createResult("value", false);
     assertThrows(
-      () => expectRedisResult(result).ok(),
+      () => expectRedisCommonResult(result).ok(),
       Error,
       "Expected ok result",
     );
@@ -47,13 +51,13 @@ Deno.test("expectRedisResult", async (t) => {
 
   await t.step("notOk() passes when ok is false", () => {
     const result = createResult("value", false);
-    expectRedisResult(result).notOk();
+    expectRedisCommonResult(result).notOk();
   });
 
   await t.step("notOk() throws when ok is true", () => {
     const result = createResult("value");
     assertThrows(
-      () => expectRedisResult(result).notOk(),
+      () => expectRedisCommonResult(result).notOk(),
       Error,
       "Expected not ok result",
     );
@@ -61,13 +65,13 @@ Deno.test("expectRedisResult", async (t) => {
 
   await t.step("value() passes when values match", () => {
     const result = createResult("expected");
-    expectRedisResult(result).value("expected");
+    expectRedisCommonResult(result).value("expected");
   });
 
   await t.step("value() throws when values don't match", () => {
     const result = createResult("actual");
     assertThrows(
-      () => expectRedisResult(result).value("expected"),
+      () => expectRedisCommonResult(result).value("expected"),
       Error,
       "Expected value",
     );
@@ -76,7 +80,7 @@ Deno.test("expectRedisResult", async (t) => {
   await t.step("valueMatch() calls matcher with value", () => {
     const result = createResult("test");
     let called = false;
-    expectRedisResult(result).valueMatch((v) => {
+    expectRedisCommonResult(result).valueMatch((v) => {
       assertEquals(v, "test");
       called = true;
     });
@@ -85,13 +89,13 @@ Deno.test("expectRedisResult", async (t) => {
 
   await t.step("durationLessThan() passes when duration is less", () => {
     const result = createResult("value", true, 50);
-    expectRedisResult(result).durationLessThan(100);
+    expectRedisCommonResult(result).durationLessThan(100);
   });
 
   await t.step("durationLessThan() throws when duration is greater", () => {
     const result = createResult("value", true, 150);
     assertThrows(
-      () => expectRedisResult(result).durationLessThan(100),
+      () => expectRedisCommonResult(result).durationLessThan(100),
       Error,
       "Expected duration",
     );
@@ -99,7 +103,7 @@ Deno.test("expectRedisResult", async (t) => {
 
   await t.step("methods can be chained", () => {
     const result = createResult("test", true, 50);
-    expectRedisResult(result)
+    expectRedisCommonResult(result)
       .ok()
       .value("test")
       .durationLessThan(100);

@@ -6,11 +6,11 @@ import type {
   RedisArrayResult,
   RedisClient,
   RedisClientConfig,
+  RedisCommonResult,
   RedisCountResult,
   RedisGetResult,
   RedisHashResult,
   RedisMessage,
-  RedisResult,
   RedisSetOptions,
   RedisSetResult,
   RedisTransaction,
@@ -224,6 +224,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
+        type: "redis:get",
         ok: true,
         value,
         duration,
@@ -294,6 +295,7 @@ class RedisClientImpl implements RedisClient {
         result,
       });
       return {
+        type: "redis:set",
         ok: result === "OK",
         value: "OK",
         duration,
@@ -334,6 +336,7 @@ class RedisClientImpl implements RedisClient {
         deletedCount: count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -374,6 +377,7 @@ class RedisClientImpl implements RedisClient {
         value,
       });
       return {
+        type: "redis:count",
         ok: true,
         value,
         duration,
@@ -414,6 +418,7 @@ class RedisClientImpl implements RedisClient {
         value,
       });
       return {
+        type: "redis:count",
         ok: true,
         value,
         duration,
@@ -467,6 +472,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
+        type: "redis:get",
         ok: true,
         value,
         duration,
@@ -521,6 +527,7 @@ class RedisClientImpl implements RedisClient {
         count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -569,6 +576,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
+        type: "redis:hash",
         ok: true,
         value,
         duration,
@@ -612,6 +620,7 @@ class RedisClientImpl implements RedisClient {
         deletedCount: count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -658,6 +667,7 @@ class RedisClientImpl implements RedisClient {
         newLength: count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -702,6 +712,7 @@ class RedisClientImpl implements RedisClient {
         newLength: count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -743,6 +754,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
+        type: "redis:get",
         ok: true,
         value,
         duration,
@@ -783,6 +795,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
+        type: "redis:get",
         ok: true,
         value,
         duration,
@@ -838,6 +851,7 @@ class RedisClientImpl implements RedisClient {
         elements: value.map((v) => formatValue(v)),
       });
       return {
+        type: "redis:array",
         ok: true,
         value,
         duration,
@@ -880,6 +894,7 @@ class RedisClientImpl implements RedisClient {
         length: value,
       });
       return {
+        type: "redis:count",
         ok: true,
         value,
         duration,
@@ -925,6 +940,7 @@ class RedisClientImpl implements RedisClient {
         addedCount: count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -969,6 +985,7 @@ class RedisClientImpl implements RedisClient {
         removedCount: count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -1017,6 +1034,7 @@ class RedisClientImpl implements RedisClient {
         members: value,
       });
       return {
+        type: "redis:array",
         ok: true,
         value,
         duration,
@@ -1036,7 +1054,7 @@ class RedisClientImpl implements RedisClient {
   async sismember(
     key: string,
     member: string,
-  ): Promise<RedisResult<boolean>> {
+  ): Promise<RedisCommonResult<boolean>> {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `SISMEMBER ${key} ${member}`;
@@ -1063,6 +1081,7 @@ class RedisClientImpl implements RedisClient {
         isMember: result === 1,
       });
       return {
+        type: "redis:common",
         ok: true,
         value: result === 1,
         duration,
@@ -1116,6 +1135,7 @@ class RedisClientImpl implements RedisClient {
         addedCount: count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count as number,
         duration,
@@ -1172,6 +1192,7 @@ class RedisClientImpl implements RedisClient {
         members: value,
       });
       return {
+        type: "redis:array",
         ok: true,
         value,
         duration,
@@ -1193,7 +1214,7 @@ class RedisClientImpl implements RedisClient {
   async zscore(
     key: string,
     member: string,
-  ): Promise<RedisResult<number | null>> {
+  ): Promise<RedisCommonResult<number | null>> {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `ZSCORE ${key} ${member}`;
@@ -1220,6 +1241,7 @@ class RedisClientImpl implements RedisClient {
         score: value !== null ? parseFloat(value) : null,
       });
       return {
+        type: "redis:common",
         ok: true,
         value: value !== null ? parseFloat(value) : null,
         duration,
@@ -1267,6 +1289,7 @@ class RedisClientImpl implements RedisClient {
         subscriberCount: count,
       });
       return {
+        type: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -1395,7 +1418,7 @@ class RedisClientImpl implements RedisClient {
   async command<T = unknown>(
     cmd: string,
     ...args: unknown[]
-  ): Promise<RedisResult<T>> {
+  ): Promise<RedisCommonResult<T>> {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `${cmd} ${args.join(" ")}`;
@@ -1421,6 +1444,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
+        type: "redis:common",
         ok: true,
         value: value as T,
         duration,
@@ -1620,6 +1644,7 @@ class RedisTransactionImpl implements RedisTransaction {
         duration: `${duration.toFixed(2)}ms`,
       });
       return {
+        type: "redis:array",
         ok: true,
         value: values,
         duration,

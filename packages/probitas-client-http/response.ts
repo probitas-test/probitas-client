@@ -4,6 +4,7 @@ import type { HttpResponse } from "./types.ts";
  * Implementation of HttpResponse with pre-loaded body.
  */
 class HttpResponseImpl implements HttpResponse {
+  readonly type = "http" as const;
   readonly ok: boolean;
   readonly status: number;
   readonly statusText: string;

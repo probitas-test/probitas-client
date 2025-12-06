@@ -407,6 +407,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       }
 
       return {
+        type: "mongo:find",
         ok: true,
         docs: createMongoDocs(docs),
         duration,
@@ -457,6 +458,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       }
 
       return {
+        type: "mongo:find-one",
         ok: true,
         doc: (doc ?? undefined) as T | undefined,
         duration,
@@ -505,6 +507,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
+        type: "mongo:insert",
         ok: result.acknowledged,
         insertedId: String(result.insertedId),
         duration,
@@ -554,6 +557,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
+        type: "mongo:insert",
         ok: result.acknowledged,
         insertedIds: Object.values(result.insertedIds).map(String),
         insertedCount: result.insertedCount,
@@ -611,6 +615,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
+        type: "mongo:update",
         ok: result.acknowledged,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
@@ -672,6 +677,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
+        type: "mongo:update",
         ok: result.acknowledged,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
@@ -723,6 +729,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
+        type: "mongo:delete",
         ok: result.acknowledged,
         deletedCount: result.deletedCount,
         duration,
@@ -772,6 +779,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
+        type: "mongo:delete",
         ok: result.acknowledged,
         deletedCount: result.deletedCount,
         duration,
@@ -824,6 +832,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       }
 
       return {
+        type: "mongo:find",
         ok: true,
         docs: createMongoDocs(docs),
         duration,
@@ -873,6 +882,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
+        type: "mongo:count",
         ok: true,
         count,
         duration,

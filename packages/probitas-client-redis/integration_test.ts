@@ -3,8 +3,11 @@ import { AbortError } from "@probitas/client";
 import { createRedisClient } from "./client.ts";
 import {
   expectRedisArrayResult,
+  expectRedisCommonResult,
   expectRedisCountResult,
-  expectRedisResult,
+  expectRedisGetResult,
+  expectRedisHashResult,
+  expectRedisSetResult,
 } from "./expect.ts";
 
 const REDIS_URL = Deno.env.get("REDIS_URL") ?? "redis://localhost:16379";
@@ -40,17 +43,17 @@ Deno.test({
 
         await t.step("SET and GET", async () => {
           const setResult = await client.set(testKey, "hello");
-          expectRedisResult(setResult).ok().value("OK");
+          expectRedisSetResult(setResult).ok().value("OK");
 
           const getResult = await client.get(testKey);
-          expectRedisResult(getResult).ok().value("hello");
+          expectRedisGetResult(getResult).ok().value("hello");
         });
 
         await t.step("SET with expiration", async () => {
           const key = `${testKey}:ex`;
           await client.set(key, "expires", { ex: 60 });
           const result = await client.get(key);
-          expectRedisResult(result).ok().value("expires");
+          expectRedisGetResult(result).ok().value("expires");
         });
 
         await t.step("INCR and DECR", async () => {
@@ -82,13 +85,13 @@ Deno.test({
           expectRedisCountResult(hsetResult).ok();
 
           const hgetResult = await client.hget(testKey, "field1");
-          expectRedisResult(hgetResult).ok().value("value1");
+          expectRedisGetResult(hgetResult).ok().value("value1");
         });
 
         await t.step("HGETALL", async () => {
           await client.hset(testKey, "field2", "value2");
           const result = await client.hgetall(testKey);
-          expectRedisResult(result).ok();
+          expectRedisHashResult(result).ok();
           assertEquals(result.value.field1, "value1");
           assertEquals(result.value.field2, "value2");
         });
@@ -119,10 +122,10 @@ Deno.test({
 
         await t.step("LPOP and RPOP", async () => {
           const lpopResult = await client.lpop(testKey);
-          expectRedisResult(lpopResult).ok();
+          expectRedisGetResult(lpopResult).ok();
 
           const rpopResult = await client.rpop(testKey);
-          expectRedisResult(rpopResult).ok().value("c");
+          expectRedisGetResult(rpopResult).ok().value("c");
         });
 
         await t.step("LLEN", async () => {
@@ -148,10 +151,10 @@ Deno.test({
 
         await t.step("SISMEMBER", async () => {
           const existsResult = await client.sismember(testKey, "a");
-          expectRedisResult(existsResult).ok().value(true);
+          expectRedisCommonResult(existsResult).ok().value(true);
 
           const notExistsResult = await client.sismember(testKey, "x");
-          expectRedisResult(notExistsResult).ok().value(false);
+          expectRedisCommonResult(notExistsResult).ok().value(false);
         });
 
         await t.step("SREM", async () => {
@@ -182,10 +185,10 @@ Deno.test({
 
         await t.step("ZSCORE", async () => {
           const result = await client.zscore(testKey, "b");
-          expectRedisResult(result).ok().value(2);
+          expectRedisCommonResult(result).ok().value(2);
 
           const notExistsResult = await client.zscore(testKey, "x");
-          expectRedisResult(notExistsResult).ok().value(null);
+          expectRedisCommonResult(notExistsResult).ok().value(null);
         });
 
         await client.del(testKey);
@@ -212,7 +215,7 @@ Deno.test({
 
       await t.step("Raw command", async () => {
         const result = await client.command("PING");
-        expectRedisResult(result).ok().value("PONG");
+        expectRedisCommonResult(result).ok().value("PONG");
       });
 
       await t.step("CommonOptions support", async (t) => {
@@ -221,7 +224,7 @@ Deno.test({
         await t.step("GET with timeout option succeeds", async () => {
           await client.set(testKey, "value");
           const result = await client.get(testKey, { timeout: 5000 });
-          expectRedisResult(result).ok().value("value");
+          expectRedisGetResult(result).ok().value("value");
         });
 
         await t.step("GET with signal option succeeds", async () => {
@@ -229,7 +232,7 @@ Deno.test({
           const result = await client.get(testKey, {
             signal: controller.signal,
           });
-          expectRedisResult(result).ok().value("value");
+          expectRedisGetResult(result).ok().value("value");
         });
 
         await t.step(
@@ -250,7 +253,7 @@ Deno.test({
           const hashKey = `${testKey}:hash`;
           await client.hset(hashKey, "field", "value");
           const result = await client.hgetall(hashKey, { timeout: 5000 });
-          expectRedisResult(result).ok();
+          expectRedisHashResult(result).ok();
           assertEquals(result.value.field, "value");
           await client.del(hashKey);
         });

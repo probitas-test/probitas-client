@@ -1,8 +1,21 @@
 import type {
   RedisArrayResult,
+  RedisCommonResult,
   RedisCountResult,
-  RedisResult,
+  RedisGetResult,
+  RedisHashResult,
+  RedisSetResult,
 } from "./types.ts";
+
+/**
+ * Common shape for all Redis results (internal use only).
+ */
+interface RedisResultShape<T> {
+  readonly type: string;
+  readonly ok: boolean;
+  readonly value: T;
+  readonly duration: number;
+}
 
 /**
  * Base fluent API for Redis result validation.
@@ -64,9 +77,9 @@ export interface RedisArrayResultExpectation<T>
  * Base implementation for Redis result expectations.
  */
 class RedisResultExpectationImpl<T> implements RedisResultExpectation<T> {
-  protected readonly result: RedisResult<T>;
+  protected readonly result: RedisResultShape<T>;
 
-  constructor(result: RedisResult<T>) {
+  constructor(result: RedisResultShape<T>) {
     this.result = result;
   }
 
@@ -202,11 +215,38 @@ class RedisArrayResultExpectationImpl<T>
 }
 
 /**
- * Create a fluent expectation chain for Redis result validation.
+ * Create a fluent expectation chain for Redis common result validation.
  */
-export function expectRedisResult<T>(
-  result: RedisResult<T>,
+export function expectRedisCommonResult<T>(
+  result: RedisCommonResult<T>,
 ): RedisResultExpectation<T> {
+  return new RedisResultExpectationImpl(result);
+}
+
+/**
+ * Create a fluent expectation chain for Redis GET result validation.
+ */
+export function expectRedisGetResult(
+  result: RedisGetResult,
+): RedisResultExpectation<string | null> {
+  return new RedisResultExpectationImpl(result);
+}
+
+/**
+ * Create a fluent expectation chain for Redis SET result validation.
+ */
+export function expectRedisSetResult(
+  result: RedisSetResult,
+): RedisResultExpectation<"OK"> {
+  return new RedisResultExpectationImpl(result);
+}
+
+/**
+ * Create a fluent expectation chain for Redis hash result validation.
+ */
+export function expectRedisHashResult(
+  result: RedisHashResult,
+): RedisResultExpectation<Record<string, string>> {
   return new RedisResultExpectationImpl(result);
 }
 

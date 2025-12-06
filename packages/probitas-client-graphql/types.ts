@@ -23,6 +23,9 @@ export interface GraphqlErrorItem {
  */
 // deno-lint-ignore no-explicit-any
 export interface GraphqlResponse<T = any> {
+  /** Result type identifier */
+  readonly type: "graphql";
+
   /** Whether the request was successful (no errors) */
   readonly ok: boolean;
 

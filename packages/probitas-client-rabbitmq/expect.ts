@@ -94,13 +94,21 @@ export interface RabbitMqQueueResultExpectation {
 }
 
 /**
+ * Base result type for simple ok/duration results.
+ */
+interface SimpleResult {
+  readonly ok: boolean;
+  readonly duration: number;
+}
+
+/**
  * Implementation for RabbitMQ publish result expectations.
  */
-class RabbitMqPublishResultExpectationImpl
+class RabbitMqPublishResultExpectationImpl<T extends SimpleResult>
   implements RabbitMqPublishResultExpectation {
-  readonly #result: RabbitMqPublishResult;
+  readonly #result: T;
 
-  constructor(result: RabbitMqPublishResult) {
+  constructor(result: T) {
     this.#result = result;
   }
 
@@ -312,7 +320,9 @@ class RabbitMqQueueResultExpectationImpl
 export function expectRabbitMqPublishResult(
   result: RabbitMqPublishResult,
 ): RabbitMqPublishResultExpectation {
-  return new RabbitMqPublishResultExpectationImpl(result);
+  return new RabbitMqPublishResultExpectationImpl<RabbitMqPublishResult>(
+    result,
+  );
 }
 
 /**
@@ -339,7 +349,9 @@ export function expectRabbitMqQueueResult(
 export function expectRabbitMqExchangeResult(
   result: RabbitMqExchangeResult,
 ): RabbitMqExchangeResultExpectation {
-  return new RabbitMqPublishResultExpectationImpl(result);
+  return new RabbitMqPublishResultExpectationImpl<RabbitMqExchangeResult>(
+    result,
+  );
 }
 
 /**
@@ -348,5 +360,5 @@ export function expectRabbitMqExchangeResult(
 export function expectRabbitMqAckResult(
   result: RabbitMqAckResult,
 ): RabbitMqAckResultExpectation {
-  return new RabbitMqPublishResultExpectationImpl(result);
+  return new RabbitMqPublishResultExpectationImpl<RabbitMqAckResult>(result);
 }

@@ -3,6 +3,7 @@ import { AbortError } from "@probitas/client";
 import { createRabbitMqClient } from "./client.ts";
 import {
   expectRabbitMqConsumeResult,
+  expectRabbitMqExchangeResult,
   expectRabbitMqPublishResult,
   expectRabbitMqQueueResult,
 } from "./expect.ts";
@@ -79,12 +80,12 @@ Deno.test({
                 autoDelete: true,
               },
             );
-            expectRabbitMqPublishResult(result).ok();
+            expectRabbitMqExchangeResult(result).ok();
           });
 
           await t.step("deleteExchange removes the exchange", async () => {
             const result = await channel.deleteExchange(testExchange);
-            expectRabbitMqPublishResult(result).ok();
+            expectRabbitMqExchangeResult(result).ok();
           });
         } finally {
           await channel.close();
@@ -164,7 +165,7 @@ Deno.test({
               testExchange,
               routingKey,
             );
-            expectRabbitMqPublishResult(result).ok();
+            expectRabbitMqExchangeResult(result).ok();
           });
 
           await t.step(
@@ -192,7 +193,7 @@ Deno.test({
               testExchange,
               routingKey,
             );
-            expectRabbitMqPublishResult(result).ok();
+            expectRabbitMqExchangeResult(result).ok();
           });
 
           await channel.deleteQueue(testQueue);

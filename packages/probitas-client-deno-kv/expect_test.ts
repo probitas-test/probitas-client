@@ -19,6 +19,7 @@ function createGetResult<T>(
   overrides: Partial<DenoKvGetResult<T>> = {},
 ): DenoKvGetResult<T> {
   return {
+    type: "deno-kv:get",
     ok: overrides.ok ?? true,
     key: overrides.key ?? ["test"],
     value: ("value" in overrides ? overrides.value : { name: "test" }) as
@@ -35,6 +36,7 @@ function createListResult<T>(
   overrides: Partial<DenoKvListResult<T>> = {},
 ): DenoKvListResult<T> {
   return {
+    type: "deno-kv:list",
     ok: overrides.ok ?? true,
     entries: overrides.entries ?? createDenoKvEntries([]),
     duration: overrides.duration ?? 10,
@@ -45,6 +47,7 @@ function createSetResult(
   overrides: Partial<DenoKvSetResult> = {},
 ): DenoKvSetResult {
   return {
+    type: "deno-kv:set",
     ok: overrides.ok ?? true,
     versionstamp: overrides.versionstamp ?? "00000001",
     duration: overrides.duration ?? 10,
@@ -55,6 +58,7 @@ function createDeleteResult(
   overrides: Partial<DenoKvDeleteResult> = {},
 ): DenoKvDeleteResult {
   return {
+    type: "deno-kv:delete",
     ok: overrides.ok ?? true,
     duration: overrides.duration ?? 10,
   };
@@ -64,6 +68,7 @@ function createAtomicResult(
   overrides: Partial<DenoKvAtomicResult> = {},
 ): DenoKvAtomicResult {
   return {
+    type: "deno-kv:atomic",
     ok: overrides.ok ?? true,
     versionstamp: overrides.versionstamp ?? "00000001",
     duration: overrides.duration ?? 10,
@@ -696,6 +701,7 @@ Deno.test("expectDenoKvAtomicResult.hasVersionstamp", async (t) => {
 
   await t.step("throws when versionstamp is missing", () => {
     const result: DenoKvAtomicResult = {
+      type: "deno-kv:atomic",
       ok: false,
       duration: 10,
     };

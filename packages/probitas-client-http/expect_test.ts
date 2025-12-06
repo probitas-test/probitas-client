@@ -13,6 +13,7 @@ function createMockResponse(
     new Headers({ "Content-Type": "text/plain" });
 
   return {
+    type: "http" as const,
     ok: overrides.ok ?? true,
     status: overrides.status ?? 200,
     statusText: overrides.statusText ?? "OK",
