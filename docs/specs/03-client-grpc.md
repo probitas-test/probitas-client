@@ -2,11 +2,29 @@
 
 gRPC client package.
 
+This package is a **thin wrapper** around `@probitas/client-connectrpc` with
+`protocol: "grpc"` fixed. All types are re-exported with `Grpc` prefix aliases
+for familiarity.
+
+## Relationship with client-connectrpc
+
+```
+@probitas/client-grpc
+    └── @probitas/client-connectrpc (with protocol: "grpc")
+```
+
+- All functionality is provided by `@probitas/client-connectrpc`
+- Types like `GrpcClient`, `GrpcResponse`, `GrpcError` are aliases for
+  `ConnectRpcClient`, `ConnectRpcResponse`, `ConnectRpcError`
+- Use `@probitas/client-grpc` when you only need gRPC protocol
+- Use `@probitas/client-connectrpc` directly if you need Connect or gRPC-Web
+  protocols
+
 ## GrpcResponse
 
 ```typescript
 /**
- * gRPC response
+ * gRPC response (alias for ConnectRpcResponse)
  */
 interface GrpcResponse {
   /** Whether the call succeeded (code === 0) */
@@ -15,38 +33,28 @@ interface GrpcResponse {
   /** gRPC status code */
   readonly code: GrpcStatusCode;
 
-  /** Status message */
+  /** Status message (empty string for successful responses) */
   readonly message: string;
 
-  /** Response body (protobuf bytes, or null) */
-  readonly body: Uint8Array | null;
+  /** Response headers */
+  readonly headers: Record<string, string>;
 
-  /** Trailing metadata */
+  /** Response trailers (sent at end of RPC) */
   readonly trailers: Record<string, string>;
 
   /** Response time in milliseconds */
   readonly duration: number;
 
   /**
-   * Deserialize data (or null).
-   *
-   * Requires schema (reflection / .proto / FileDescriptorSet). Without schema
-   * this throws:
-   *
-   * "Cannot deserialize gRPC response: no schema available.
-   *  Configure schema in GrpcClientConfig:
-   *  - Use server reflection (default, requires reflection-enabled server)
-   *  - Provide .proto file path: schema: './path/to/service.proto'
-   *  - Provide FileDescriptorSet: schema: await Deno.readFile('descriptor.pb')
-   *  Or use json() for JSON-encoded responses."
+   * Get deserialized response data.
+   * Returns null if the response is an error or has no data.
    */
   data<T = any>(): T | null;
 
   /**
-   * Parse as JSON (or null).
-   * Does not require schema.
+   * Get raw response message.
    */
-  json<T = any>(): T | null;
+  raw(): unknown;
 }
 
 /** gRPC status codes */
@@ -68,6 +76,13 @@ type GrpcStatusCode =
   | 14 // UNAVAILABLE
   | 15 // DATA_LOSS
   | 16; // UNAUTHENTICATED
+
+/** Status code constants */
+const GrpcStatus = {
+  OK: 0,
+  CANCELLED: 1,
+  // ... same as ConnectRpcStatus
+} as const;
 ```
 
 ## GrpcError
@@ -75,43 +90,20 @@ type GrpcStatusCode =
 ```typescript
 /**
  * Error detail (google.rpc.Status.details)
- *
- * Parsed from the `grpc-status-details-bin` trailer.
- * Supported detail types:
- * - google.rpc.BadRequest: field validation errors
- * - google.rpc.DebugInfo: stack traces and debugging info
- * - google.rpc.RetryInfo: retry hints
- * - google.rpc.QuotaFailure: quota violations
- * - Unknown types: kept as Uint8Array
  */
 interface ErrorDetail {
-  /** Type URL (e.g., "type.googleapis.com/google.rpc.BadRequest") */
   readonly typeUrl: string;
-
-  /**
-   * Decoded value.
-   * Known types are converted to objects:
-   * - BadRequest: { fieldViolations: Array<{ field: string; description: string }> }
-   * - DebugInfo: { stackEntries: string[]; detail: string }
-   * - RetryInfo: { retryDelay: { seconds: number; nanos: number } | null }
-   * - QuotaFailure: { violations: Array<{ subject: string; description: string }> }
-   * - Unknown: Uint8Array
-   */
   readonly value: unknown;
 }
 
 class GrpcError extends ClientError {
   readonly code: GrpcStatusCode;
-  readonly grpcMessage: string;
+  readonly rawMessage: string;
   readonly metadata?: Record<string, string>;
-
-  /**
-   * Array of decoded error details.
-   * Empty when no `grpc-status-details-bin` trailer is present.
-   */
   readonly details: readonly ErrorDetail[];
 }
 
+// Error subclasses (aliases for ConnectRpc* errors)
 class GrpcUnauthenticatedError extends GrpcError {
   readonly code = 16;
 }
@@ -147,23 +139,19 @@ interface GrpcResponseExpectation {
   messageContains(substring: string): this;
   messageMatch(matcher: (message: string) => void): this;
 
+  // --- Header checks ---
+  headers(key: string, expected: string | RegExp): this;
+  headersExist(key: string): this;
+
   // --- Trailer checks ---
   trailers(key: string, expected: string | RegExp): this;
   trailersExist(key: string): this;
 
-  // --- Body checks (Uint8Array) ---
+  // --- Data checks ---
   noContent(): this;
   hasContent(): this;
-  bodyContains(subbody: Uint8Array): this;
-  bodyMatch(matcher: (body: Uint8Array) => void): this;
-
-  // --- Data checks (data) ---
   dataContains<T = any>(subset: Partial<T>): this;
   dataMatch<T = any>(matcher: (data: T) => void): this;
-
-  // --- JSON checks ---
-  jsonContains<T = any>(subset: Partial<T>): this;
-  jsonMatch<T = any>(matcher: (body: T) => void): this;
 
   // --- Performance ---
   durationLessThan(ms: number): this;
@@ -176,50 +164,63 @@ function expectGrpcResponse(response: GrpcResponse): GrpcResponseExpectation;
 
 ```typescript
 interface GrpcClientConfig extends CommonOptions {
+  /** Server address (host:port or full URL) */
   readonly address: string;
+
+  /** TLS configuration */
   readonly tls?: TlsConfig;
+
+  /** Default metadata to send with every request */
   readonly metadata?: Record<string, string>;
 
   /**
-   * Schema resolution settings:
-   * - "reflection": use server reflection (default)
-   * - string/string[]: .proto file path(s)
-   * - Uint8Array: FileDescriptorSet binary
-   *
-   * With "reflection", schemas are fetched automatically on connect.
-   * If that fails, data() will throw when called.
+   * Schema resolution configuration.
+   * - "reflection": Use Server Reflection (default)
+   * - string: Path to FileDescriptorSet binary file
+   * - Uint8Array: FileDescriptorSet binary data
+   * - FileDescriptorSet: Pre-parsed FileDescriptorSet message object
+   * @default "reflection"
    */
-  readonly schema?: "reflection" | string | string[] | Uint8Array;
+  readonly schema?: "reflection" | string | Uint8Array | FileDescriptorSet;
 
   /**
    * Throw GrpcError on non-OK responses (code !== 0).
-   * Overridable per request via GrpcOptions.throwOnError.
    * @default true
    */
   readonly throwOnError?: boolean;
 }
 
-interface GrpcClient<TService = unknown> extends AsyncDisposable {
+interface GrpcClient extends AsyncDisposable {
   readonly config: GrpcClientConfig;
 
-  call(
-    method: keyof TService & string,
-    request: Uint8Array,
+  /** Reflection API (only available when schema: "reflection") */
+  readonly reflection: ReflectionApi;
+
+  call<TRequest = unknown>(
+    serviceName: string,
+    methodName: string,
+    request: TRequest,
     options?: GrpcOptions,
   ): Promise<GrpcResponse>;
-  serverStream(
-    method: keyof TService & string,
-    request: Uint8Array,
+
+  serverStream<TRequest = unknown>(
+    serviceName: string,
+    methodName: string,
+    request: TRequest,
     options?: GrpcOptions,
   ): AsyncIterable<GrpcResponse>;
-  clientStream(
-    method: keyof TService & string,
-    requests: AsyncIterable<Uint8Array>,
+
+  clientStream<TRequest = unknown>(
+    serviceName: string,
+    methodName: string,
+    requests: AsyncIterable<TRequest>,
     options?: GrpcOptions,
   ): Promise<GrpcResponse>;
-  bidiStream(
-    method: keyof TService & string,
-    requests: AsyncIterable<Uint8Array>,
+
+  bidiStream<TRequest = unknown>(
+    serviceName: string,
+    methodName: string,
+    requests: AsyncIterable<TRequest>,
     options?: GrpcOptions,
   ): AsyncIterable<GrpcResponse>;
 
@@ -228,18 +229,10 @@ interface GrpcClient<TService = unknown> extends AsyncDisposable {
 
 interface GrpcOptions extends CommonOptions {
   readonly metadata?: Record<string, string>;
-
-  /**
-   * Throw GrpcError on non-OK responses (code !== 0).
-   * Overrides GrpcClientConfig.throwOnError.
-   * @default true (when client config leaves it unset)
-   */
   readonly throwOnError?: boolean;
 }
 
-function createGrpcClient<TService>(
-  config: GrpcClientConfig,
-): GrpcClient<TService>;
+function createGrpcClient(config: GrpcClientConfig): GrpcClient;
 ```
 
 ## Examples
@@ -249,22 +242,27 @@ import {
   createGrpcClient,
   expectGrpcResponse,
   GrpcError,
+  GrpcStatus,
 } from "@probitas/client-grpc";
 
-const grpc = await createGrpcClient({
+// Create client (uses reflection by default)
+const grpc = createGrpcClient({
   address: "localhost:50051",
-  schema: "./proto/service.proto",
 });
 
+// Discover available services
+const services = await grpc.reflection.listServices();
+console.log("Services:", services);
+
 // Unary call
-const res = await grpc.call("example.v1.Service/GetUser", { id: "123" });
+const res = await grpc.call("echo.EchoService", "echo", { message: "Hello!" });
 expectGrpcResponse(res)
   .ok()
   .hasContent()
-  .jsonContains({ name: "John" });
+  .dataContains({ message: "Hello!" });
 
-// Validate trailing metadata
-const res2 = await grpc.call("example.v1.Service/GetWithTrailers", {
+// Validate headers/trailers
+const res2 = await grpc.call("example.v1.Service", "GetWithTrailers", {
   id: "456",
 });
 expectGrpcResponse(res2)
@@ -272,36 +270,48 @@ expectGrpcResponse(res2)
   .trailersExist("x-request-id")
   .trailers("x-request-id", /^req-/);
 
-// Parse Rich Error Model details
+// Handle errors
 try {
-  await grpc.call("example.v1.Service/ValidateUser", {
-    email: "invalid",
-    age: -1,
-  });
+  await grpc.call("echo.EchoService", "echo", { invalid: true });
 } catch (error) {
   if (error instanceof GrpcError) {
-    console.log(error.code); // 3 (INVALID_ARGUMENT)
-    console.log(error.grpcMessage); // "Validation failed"
+    console.log(error.code); // e.g., 3 (INVALID_ARGUMENT)
+    console.log(error.rawMessage);
 
     for (const detail of error.details) {
-      if (detail.typeUrl.includes("BadRequest")) {
-        const badRequest = detail.value as {
-          fieldViolations: Array<{ field: string; description: string }>;
-        };
-        for (const violation of badRequest.fieldViolations) {
-          console.log(`${violation.field}: ${violation.description}`);
-        }
-      }
+      console.log(detail.typeUrl, detail.value);
     }
   }
 }
 
+// Test error responses without throwing
+const errorRes = await grpc.call(
+  "echo.EchoService",
+  "echo",
+  { invalid: true },
+  { throwOnError: false },
+);
+expectGrpcResponse(errorRes)
+  .notOk()
+  .code(GrpcStatus.INVALID_ARGUMENT);
+
 // Server streaming
-for await (const res of grpc.serverStream("example.v1.Service/ListUsers", {})) {
+for await (
+  const res of grpc.serverStream("echo.EchoService", "streamEcho", {
+    message: "Hello",
+    count: 3,
+  })
+) {
   expectGrpcResponse(res).ok();
-  const user = res.json<User>();
-  console.log(user);
+  console.log(res.data());
 }
+
+// Using FileDescriptorSet instead of reflection
+const descriptorBytes = await Deno.readFile("./descriptor.pb");
+const staticGrpc = createGrpcClient({
+  address: "localhost:50051",
+  schema: descriptorBytes,
+});
 
 await grpc.close();
 ```

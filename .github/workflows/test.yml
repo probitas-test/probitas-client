@@ -33,6 +33,10 @@ jobs:
         image: ghcr.io/jsr-probitas/echo-grpc:latest
         ports:
           - 50051:50051
+      echo-connectrpc:
+        image: ghcr.io/jsr-probitas/echo-connectrpc:latest
+        ports:
+          - 18082:8080
       echo-graphql:
         image: ghcr.io/jsr-probitas/echo-graphql:latest
         ports:

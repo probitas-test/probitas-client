@@ -33,7 +33,8 @@ independent package but follows shared ergonomics.
 | ------------------------------- | ------------------------------------------------------- | --------- |
 | `@probitas/client`              | Core (CommonOptions, ClientError base)                  | ✅        |
 | `@probitas/client-http`         | HTTP client                                             | ✅        |
-| `@probitas/client-grpc`         | gRPC client                                             | ✅        |
+| `@probitas/client-connectrpc`   | ConnectRPC client (Connect/gRPC/gRPC-Web protocols)     | ✅        |
+| `@probitas/client-grpc`         | gRPC client (thin wrapper over client-connectrpc)       | ✅        |
 | `@probitas/client-graphql`      | GraphQL client                                          | ✅        |
 | `@probitas/client-sql`          | Shared SQL types (SqlQueryResult, SqlTransaction, etc.) | ✅        |
 | `@probitas/client-sql-postgres` | PostgreSQL client                                       | ✅        |
@@ -64,7 +65,14 @@ import {
   type HttpResponse,
 } from "@probitas/client-http";
 
-// gRPC
+// ConnectRPC (supports Connect, gRPC, and gRPC-Web protocols)
+import {
+  type ConnectRpcResponse,
+  createConnectRpcClient,
+  expectConnectRpcResponse,
+} from "@probitas/client-connectrpc";
+
+// gRPC (thin wrapper over ConnectRPC with protocol="grpc")
 import {
   createGrpcClient,
   expectGrpcResponse,
@@ -106,6 +114,7 @@ import { createRedisClient } from "@probitas/client-redis";
 
 - [01-client](./01-client.md)
 - [02-client-http](./02-client-http.md)
+- [03-client-connectrpc](./03-client-connectrpc.md)
 - [03-client-grpc](./03-client-grpc.md)
 - [04-client-graphql](./04-client-graphql.md)
 - [05-client-sql](./05-client-sql.md)

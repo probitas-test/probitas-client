@@ -26,11 +26,17 @@ scenarios.
   headers, cookie jar, redirect modes, and `throwOnError` toggles.
   `HttpResponse` buffers the body and surfaces `duration`. `expectHttpResponse`
   validates status, headers, text/JSON/body content, and latency.
-- **@probitas/client-grpc**: `createGrpcClient` supports server reflection by
-  default or accepts `.proto`/FileDescriptorSet schema hints. `GrpcResponse`
-  exposes status, trailers, buffered body, `data()` decoding, and `json()`
-  parsing. Errors include decoded Rich Error Model details. Expectations cover
-  status/metadata and duration.
+- **@probitas/client-connectrpc**: `createConnectRpcClient` provides ConnectRPC
+  support with three protocol options: Connect, gRPC, and gRPC-Web. Supports
+  Server Reflection by default or accepts FileDescriptorSet schema hints.
+  `ConnectRpcResponse` exposes status, headers, trailers, and `data()` accessor.
+  Includes `ReflectionApi` for runtime service discovery. Errors include decoded
+  Rich Error Model details.
+- **@probitas/client-grpc**: Thin wrapper around `@probitas/client-connectrpc`
+  with `protocol: "grpc"` fixed. All types are re-exported with `Grpc` prefix
+  aliases (`GrpcClient`, `GrpcResponse`, `GrpcError`, etc.). Use this when you
+  only need gRPC protocol; use `client-connectrpc` directly for Connect or
+  gRPC-Web.
 - **@probitas/client-graphql**: Thin wrapper over HTTP with GraphQL-specific
   response helpers. `GraphqlResponse` keeps `data` and `errors` accessible
   without throwing. `expectGraphqlResponse` validates status, error presence,
@@ -69,14 +75,14 @@ scenarios.
 | RabbitMQ (AMQP + mgmt) | `rabbitmq:3-management`                    | `5672`, `15672` |
 | LocalStack (SQS)       | `localstack/localstack`                    | `4566`          |
 
-Docker images for the echo services live in `../dockerfiles`; keep versioning
-aligned when updating integration tests. Use availability checks
-(`isServiceAvailable`) when adding new integration tests so CI can skip
+Echo server images are published to `ghcr.io/jsr-probitas/`. Use availability
+checks (`isServiceAvailable`) when adding new integration tests so CI can skip
 gracefully.
 
 ## Additional References
 
-- Probitas scenario authoring and CLI: see the sibling `../probitas` repository.
+- Probitas scenario authoring and CLI: see the
+  [Probitas framework](https://github.com/jsr-probitas/probitas).
 - Protocol specifications and API expectations:
   [`docs/specs/00-overview.md`](./specs/00-overview.md) (HTTP, gRPC, GraphQL,
   SQL variants, MongoDB, Redis, Deno KV, SQS, RabbitMQ).

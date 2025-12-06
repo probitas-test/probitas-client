@@ -54,9 +54,10 @@ designed for scenario-driven tests authored with the Probitas framework.
 - Integration dependencies are defined in `compose.yaml` (echo servers,
   databases, message brokers, LocalStack, Deno KV). Services are mirrored in CI;
   guard integration tests with availability checks when adding new ones.
-- Reuse docker images from the sibling `../dockerfiles` repository (echo-http,
-  echo-grpc, echo-graphql) and follow the Probitas CLI conventions from
-  `../probitas`.
+- Echo server images (echo-http, echo-connectrpc, echo-grpc, echo-graphql) are
+  published to `ghcr.io/jsr-probitas/`. Refer to the
+  [Probitas framework](https://github.com/jsr-probitas/probitas) for CLI
+  conventions.
 
 ## Specifications
 
@@ -66,6 +67,6 @@ extending a client:
 
 - `00-overview.md`: package list and shared rules
 - `01-client*.md`: core options and `ClientError` design
-- `02-15*.md`: protocol-specific expectations (HTTP, gRPC, GraphQL, SQL
-  variants, MongoDB, Redis, Deno KV, SQS, RabbitMQ)
+- `02-16*.md`: protocol-specific expectations (HTTP, ConnectRPC, gRPC, GraphQL,
+  SQL variants, MongoDB, Redis, Deno KV, SQS, RabbitMQ)
 - `99-examples.md`: usage patterns

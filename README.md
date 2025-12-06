@@ -6,7 +6,7 @@ and expectation helpers so scenario code stays consistent.
 
 ## Highlights
 
-- Multi-protocol coverage: HTTP, gRPC, GraphQL, SQL
+- Multi-protocol coverage: HTTP, ConnectRPC/gRPC/gRPC-Web, GraphQL, SQL
   (Postgres/MySQL/SQLite/DuckDB), MongoDB, Redis, RabbitMQ, SQS, and Deno KV
 - Shared `ClientError` hierarchy with per-client literal `kind` values for safe
   narrowing
@@ -22,7 +22,8 @@ and expectation helpers so scenario code stays consistent.
 | ------------------------------- | ---------------------------------------------------------------------------- |
 | `@probitas/client`              | Core options and error base types shared by all clients                      |
 | `@probitas/client-http`         | HTTP client with buffered responses, cookie support, and expectation helpers |
-| `@probitas/client-grpc`         | gRPC client with reflection/FileDescriptorSet support and rich error details |
+| `@probitas/client-connectrpc`   | ConnectRPC client supporting Connect, gRPC, and gRPC-Web protocols           |
+| `@probitas/client-grpc`         | gRPC client (thin wrapper over client-connectrpc with protocol="grpc")       |
 | `@probitas/client-graphql`      | GraphQL client with data/error helpers and expectations                      |
 | `@probitas/client-sql`          | Shared SQL result/transaction types and expectations                         |
 | `@probitas/client-sql-postgres` | PostgreSQL client built on the shared SQL types                              |
@@ -68,18 +69,20 @@ export default scenario("example http request")
   .build();
 ```
 
-Refer to `docs/clients.md` for package-specific usage notes and to the Probitas
-framework in `../probitas` for scenario authoring.
+Refer to `docs/clients.md` for package-specific usage notes and to the
+[Probitas framework](https://github.com/jsr-probitas/probitas) for scenario
+authoring.
 
 ## Development
 
 - Tooling: Deno 2.x. A Nix flake is provided (`nix develop`) for consistent
-  tooling, matching the sibling `../probitas` repository.
+  tooling.
 - Tasks: `deno task verify` runs fmt, lint, type-check, and tests. See
   `deno.jsonc` for the full task list.
 - Integration services: `compose.yaml` starts local dependencies
-  (HTTP/gRPC/GraphQL echo servers, Postgres/MySQL, Redis, MongoDB, RabbitMQ,
-  LocalStack, Deno KV). Docker images are maintained in `../dockerfiles`.
+  (HTTP/ConnectRPC/gRPC/GraphQL echo servers, Postgres/MySQL, Redis, MongoDB,
+  RabbitMQ, LocalStack, Deno KV). Echo server images are published to
+  `ghcr.io/jsr-probitas/`.
 - Specs: Detailed protocol expectations are tracked in
   [`docs/specs/00-overview.md`](docs/specs/00-overview.md).
 
