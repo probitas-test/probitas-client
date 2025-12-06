@@ -1,6 +1,8 @@
 import { containsSubset } from "@probitas/client";
 import type {
+  RabbitMqAckResult,
   RabbitMqConsumeResult,
+  RabbitMqExchangeResult,
   RabbitMqMessageProperties,
   RabbitMqPublishResult,
   RabbitMqQueueResult,
@@ -54,6 +56,19 @@ export interface RabbitMqConsumeResultExpectation {
   /** Assert that duration is less than threshold (ms) */
   durationLessThan(ms: number): this;
 }
+
+/**
+ * Fluent API for RabbitMQ exchange result validation.
+ * Same interface as publish result (ok, duration only).
+ */
+export type RabbitMqExchangeResultExpectation =
+  RabbitMqPublishResultExpectation;
+
+/**
+ * Fluent API for RabbitMQ ack result validation.
+ * Same interface as publish result (ok, duration only).
+ */
+export type RabbitMqAckResultExpectation = RabbitMqPublishResultExpectation;
 
 /**
  * Fluent API for RabbitMQ queue result validation.
@@ -316,4 +331,22 @@ export function expectRabbitMqQueueResult(
   result: RabbitMqQueueResult,
 ): RabbitMqQueueResultExpectation {
   return new RabbitMqQueueResultExpectationImpl(result);
+}
+
+/**
+ * Create a fluent expectation chain for RabbitMQ exchange result validation.
+ */
+export function expectRabbitMqExchangeResult(
+  result: RabbitMqExchangeResult,
+): RabbitMqExchangeResultExpectation {
+  return new RabbitMqPublishResultExpectationImpl(result);
+}
+
+/**
+ * Create a fluent expectation chain for RabbitMQ ack result validation.
+ */
+export function expectRabbitMqAckResult(
+  result: RabbitMqAckResult,
+): RabbitMqAckResultExpectation {
+  return new RabbitMqPublishResultExpectationImpl(result);
 }

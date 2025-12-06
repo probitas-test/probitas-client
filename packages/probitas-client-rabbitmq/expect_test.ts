@@ -1,12 +1,16 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import type {
+  RabbitMqAckResult,
   RabbitMqConsumeResult,
+  RabbitMqExchangeResult,
   RabbitMqMessage,
   RabbitMqPublishResult,
   RabbitMqQueueResult,
 } from "./types.ts";
 import {
+  expectRabbitMqAckResult,
   expectRabbitMqConsumeResult,
+  expectRabbitMqExchangeResult,
   expectRabbitMqPublishResult,
   expectRabbitMqQueueResult,
 } from "./expect.ts";
@@ -357,5 +361,47 @@ Deno.test("expectRabbitMqQueueResult", async (t) => {
       .messageCountAtLeast(5)
       .consumerCount(2)
       .durationLessThan(100);
+  });
+});
+
+Deno.test("expectRabbitMqExchangeResult", async (t) => {
+  const successResult: RabbitMqExchangeResult = { ok: true, duration: 10 };
+  const failedResult: RabbitMqExchangeResult = { ok: false, duration: 10 };
+
+  await t.step("ok() passes when ok is true", () => {
+    expectRabbitMqExchangeResult(successResult).ok();
+  });
+
+  await t.step("ok() throws when ok is false", () => {
+    assertThrows(
+      () => expectRabbitMqExchangeResult(failedResult).ok(),
+      Error,
+      "Expected ok result",
+    );
+  });
+
+  await t.step("durationLessThan() passes when duration is less", () => {
+    expectRabbitMqExchangeResult(successResult).durationLessThan(100);
+  });
+});
+
+Deno.test("expectRabbitMqAckResult", async (t) => {
+  const successResult: RabbitMqAckResult = { ok: true, duration: 10 };
+  const failedResult: RabbitMqAckResult = { ok: false, duration: 10 };
+
+  await t.step("ok() passes when ok is true", () => {
+    expectRabbitMqAckResult(successResult).ok();
+  });
+
+  await t.step("ok() throws when ok is false", () => {
+    assertThrows(
+      () => expectRabbitMqAckResult(failedResult).ok(),
+      Error,
+      "Expected ok result",
+    );
+  });
+
+  await t.step("durationLessThan() passes when duration is less", () => {
+    expectRabbitMqAckResult(successResult).durationLessThan(100);
   });
 });
