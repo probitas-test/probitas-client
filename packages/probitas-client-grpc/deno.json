@@ -1,9 +1,14 @@
 {
   "name": "@probitas/client-grpc",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "exports": "./mod.ts",
   "publish": {
-    "exclude": ["**/*_test.ts", "**/*_bench.ts", "testdata/**", "proto/**"]
+    "exclude": [
+      "**/*_test.ts",
+      "**/*_bench.ts",
+      "testdata/**",
+      "proto/**"
+    ]
   },
   "imports": {
     "@probitas/client-connectrpc": "jsr:@probitas/client-connectrpc@^0"
