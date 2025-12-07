@@ -709,29 +709,6 @@ Deno.test("expectMongoResult with MongoCountResult", async (t) => {
     );
   });
 
-  await t.step("countBetween() passes when count is within range", () => {
-    const result = createCountResult(7);
-    expectMongoResult(result).countBetween(5, 10);
-  });
-
-  await t.step("countBetween() throws when count is below range", () => {
-    const result = createCountResult(2);
-    assertThrows(
-      () => expectMongoResult(result).countBetween(5, 10),
-      Error,
-      "Expected count between 5 and 10, got 2",
-    );
-  });
-
-  await t.step("countBetween() throws when count exceeds range", () => {
-    const result = createCountResult(15);
-    assertThrows(
-      () => expectMongoResult(result).countBetween(5, 10),
-      Error,
-      "Expected count between 5 and 10, got 15",
-    );
-  });
-
   await t.step("durationLessThan() passes when duration is less", () => {
     const result = createCountResult(10, true, 50);
     expectMongoResult(result).durationLessThan(100);
@@ -753,7 +730,6 @@ Deno.test("expectMongoResult with MongoCountResult", async (t) => {
       .count(25)
       .countAtLeast(10)
       .countAtMost(50)
-      .countBetween(20, 30)
       .durationLessThan(100);
   });
 });
