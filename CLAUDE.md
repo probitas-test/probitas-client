@@ -195,12 +195,12 @@ version management.
 
 ### Version Bump Rules
 
-| Commit Type                                              | Version Bump  | Example                                     |
-| -------------------------------------------------------- | ------------- | ------------------------------------------- |
-| `feat:`                                                  | minor (0.x.0) | `feat(client-http): add retry option`       |
-| `fix:`, `perf:`, `docs:`, `refactor:`, `test:`, `chore:` | patch (0.0.x) | `fix(client-redis): handle timeout errors`  |
-| `BREAKING:` or `!` suffix                                | major (x.0.0) | `feat(client-sql)!: change API signature`   |
-| Any type with `/unstable` scope                          | patch (0.0.x) | `feat(client-http/unstable): experimental`  |
+| Commit Type                                              | Version Bump  | Example                                    |
+| -------------------------------------------------------- | ------------- | ------------------------------------------ |
+| `feat:`                                                  | minor (0.x.0) | `feat(client-http): add retry option`      |
+| `fix:`, `perf:`, `docs:`, `refactor:`, `test:`, `chore:` | patch (0.0.x) | `fix(client-redis): handle timeout errors` |
+| `BREAKING:` or `!` suffix                                | major (x.0.0) | `feat(client-sql)!: change API signature`  |
+| Any type with `/unstable` scope                          | patch (0.0.x) | `feat(client-http/unstable): experimental` |
 
 ### Scope Convention
 
