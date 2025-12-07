@@ -95,27 +95,74 @@ async function withOptions<T>(
 }
 
 /**
- * Create a Redis client.
+ * Create a new Redis client instance.
  *
- * @example
- * ```typescript
- * // Using URL
+ * The client provides comprehensive Redis data structure support including strings,
+ * hashes, lists, sets, sorted sets, pub/sub, and transactions.
+ *
+ * @param config - Redis client configuration
+ * @returns A promise resolving to a new Redis client instance
+ *
+ * @example Using URL
+ * ```ts
  * const client = await createRedisClient({
  *   url: "redis://localhost:6379/0",
  * });
  *
- * // Using host/port
+ * await client.set("key", "value");
+ * const result = await client.get("key");
+ * console.log(result.value);  // "value"
+ *
+ * await client.close();
+ * ```
+ *
+ * @example Using host/port configuration
+ * ```ts
  * const client = await createRedisClient({
  *   host: "localhost",
  *   port: 6379,
+ *   password: "secret",
  *   db: 0,
  * });
+ * ```
  *
- * await client.set("key", "value", { ex: 3600 });
- * const result = await client.get("key");
- * console.log(result.value); // "value"
+ * @example Set with expiration
+ * ```ts
+ * // Set key with 1 hour TTL
+ * await client.set("session", sessionData, { ex: 3600 });
  *
- * await client.close();
+ * // Set key with 5 second TTL in milliseconds
+ * await client.set("temp", data, { px: 5000 });
+ * ```
+ *
+ * @example Hash operations
+ * ```ts
+ * await client.hset("user:123", "name", "Alice");
+ * await client.hset("user:123", "email", "alice@example.com");
+ *
+ * const user = await client.hgetall("user:123");
+ * console.log(user.value);  // { name: "Alice", email: "alice@example.com" }
+ * ```
+ *
+ * @example Pub/Sub
+ * ```ts
+ * // Subscribe to channel
+ * for await (const message of client.subscribe("events")) {
+ *   console.log("Received:", message.message);
+ * }
+ *
+ * // In another session
+ * await client.publish("events", JSON.stringify({ type: "user.created" }));
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using client = await createRedisClient({
+ *   url: "redis://localhost:6379",
+ * });
+ *
+ * await client.set("test", "value");
+ * // Client automatically closed when scope exits
  * ```
  */
 export async function createRedisClient(

@@ -380,7 +380,63 @@ class DenoKvClientImpl implements DenoKvClient {
 }
 
 /**
- * Create a new Deno KV client.
+ * Create a new Deno KV client instance.
+ *
+ * The client provides key-value operations with support for atomic transactions,
+ * time-to-live (TTL), and prefix-based listing.
+ *
+ * @param config - Deno KV client configuration (optional)
+ * @returns A promise resolving to a new Deno KV client instance
+ *
+ * @example Basic usage with in-memory database
+ * ```ts
+ * const kv = await createDenoKvClient();
+ *
+ * await kv.set(["users", "123"], { name: "Alice", email: "alice@example.com" });
+ *
+ * const result = await kv.get<User>(["users", "123"]);
+ * console.log(result.value);  // { name: "Alice", email: "alice@example.com" }
+ *
+ * await kv.close();
+ * ```
+ *
+ * @example Using persistent storage
+ * ```ts
+ * const kv = await createDenoKvClient({
+ *   path: "./data.kv",
+ * });
+ * ```
+ *
+ * @example Set with expiration (TTL)
+ * ```ts
+ * await kv.set(["sessions", sessionId], sessionData, {
+ *   expireIn: 3600_000,  // Expire in 1 hour
+ * });
+ * ```
+ *
+ * @example List entries by prefix
+ * ```ts
+ * const result = await kv.list<User>({ prefix: ["users"] });
+ * for (const entry of result.entries) {
+ *   console.log(entry.key, entry.value);
+ * }
+ * ```
+ *
+ * @example Atomic transactions
+ * ```ts
+ * const atomicResult = await kv.atomic()
+ *   .check({ key: ["counter"], versionstamp: null })
+ *   .set(["counter"], 1)
+ *   .commit();
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using kv = await createDenoKvClient();
+ *
+ * await kv.set(["test"], "value");
+ * // Client automatically closed when scope exits
+ * ```
  */
 export async function createDenoKvClient(
   config?: DenoKvClientConfig,

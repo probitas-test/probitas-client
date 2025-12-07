@@ -706,20 +706,71 @@ export type SqsExpectation<R extends SqsResult> = R extends SqsSendResult
  *
  * This unified function accepts any SQS result type and returns
  * the appropriate expectation interface based on the result's type discriminator.
+ * Supports send, sendBatch, receive, delete, deleteBatch, ensureQueue, and deleteQueue results.
  *
- * @example
+ * @param result - The SQS result to create expectations for
+ * @returns A typed expectation object matching the result type
+ *
+ * @example Send result validation
  * ```ts
- * // For send result - returns SqsSendResultExpectation
- * const sendResult = await client.send("message");
- * expectSqsResult(sendResult).ok().hasMessageId();
+ * const sendResult = await sqs.send(JSON.stringify({ orderId: "123" }));
+ * expectSqsResult(sendResult)
+ *   .ok()
+ *   .hasMessageId()
+ *   .durationLessThan(1000);
+ * ```
  *
- * // For receive result - returns SqsReceiveResultExpectation
- * const receiveResult = await client.receive();
- * expectSqsResult(receiveResult).ok().hasContent().count(3);
+ * @example Receive result validation
+ * ```ts
+ * const receiveResult = await sqs.receive({ maxMessages: 10 });
+ * expectSqsResult(receiveResult)
+ *   .ok()
+ *   .hasContent()
+ *   .countAtLeast(1)
+ *   .messageContains({ body: "orderId" });
+ * ```
  *
- * // For delete result - returns SqsDeleteResultExpectation
- * const deleteResult = await client.delete(receiptHandle);
+ * @example Batch operations
+ * ```ts
+ * // Send batch
+ * const batchResult = await sqs.sendBatch([
+ *   { id: "1", body: "msg1" },
+ *   { id: "2", body: "msg2" },
+ * ]);
+ * expectSqsResult(batchResult)
+ *   .ok()
+ *   .allSuccessful()
+ *   .noFailures();
+ *
+ * // Delete batch
+ * const deleteResult = await sqs.deleteBatch(receiptHandles);
+ * expectSqsResult(deleteResult)
+ *   .ok()
+ *   .successfulCount(2);
+ * ```
+ *
+ * @example Queue management
+ * ```ts
+ * // Ensure queue exists
+ * const ensureResult = await sqs.ensureQueue("test-queue");
+ * expectSqsResult(ensureResult)
+ *   .ok()
+ *   .hasQueueUrl()
+ *   .queueUrlContains("test-queue");
+ *
+ * // Delete queue
+ * const deleteResult = await sqs.deleteQueue(queueUrl);
  * expectSqsResult(deleteResult).ok();
+ * ```
+ *
+ * @example Individual message validation
+ * ```ts
+ * const receiveResult = await sqs.receive();
+ * for (const msg of receiveResult.messages) {
+ *   expectSqsMessage(msg)
+ *     .bodyJsonContains({ type: "ORDER" })
+ *     .hasAttribute("correlationId");
+ * }
  * ```
  */
 export function expectSqsResult<R extends SqsResult>(

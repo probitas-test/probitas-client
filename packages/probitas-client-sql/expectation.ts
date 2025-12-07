@@ -232,7 +232,53 @@ class SqlQueryResultExpectationImpl<T> implements SqlQueryResultExpectation<T> {
 }
 
 /**
- * Create an expectation for a SQL query result.
+ * Create a fluent expectation chain for SQL query result validation.
+ *
+ * Returns an expectation object with chainable assertion methods.
+ * Each assertion throws an Error if it fails, making it ideal for testing.
+ *
+ * @param result - The SQL query result to validate
+ * @returns A fluent expectation chain
+ *
+ * @example Basic assertions
+ * ```ts
+ * const result = await client.query("SELECT * FROM users WHERE active = true");
+ *
+ * expectSqlQueryResult(result)
+ *   .ok()
+ *   .rowsAtLeast(1)
+ *   .rowContains({ name: "Alice" });
+ * ```
+ *
+ * @example Insert/Update assertions
+ * ```ts
+ * const result = await client.query(
+ *   "INSERT INTO users (name, email) VALUES ($1, $2)",
+ *   ["Bob", "bob@example.com"]
+ * );
+ *
+ * expectSqlQueryResult(result)
+ *   .ok()
+ *   .rowCount(1)
+ *   .hasLastInsertId();
+ * ```
+ *
+ * @example Custom matcher with mapped data
+ * ```ts
+ * expectSqlQueryResult(result)
+ *   .ok()
+ *   .mapMatch(
+ *     (row) => row.name.toUpperCase(),
+ *     (names) => assertEquals(names, ["ALICE", "BOB"])
+ *   );
+ * ```
+ *
+ * @example Performance assertions
+ * ```ts
+ * expectSqlQueryResult(result)
+ *   .ok()
+ *   .durationLessThan(100);  // Must complete within 100ms
+ * ```
  */
 // deno-lint-ignore no-explicit-any
 export function expectSqlQueryResult<T = Record<string, any>>(

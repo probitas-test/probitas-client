@@ -134,13 +134,16 @@ export interface GrpcClientConfig
   extends Omit<ConnectRpcClientConfig, "protocol"> {}
 
 /**
- * Create a gRPC client.
+ * Create a new gRPC client instance.
  *
  * This is a thin wrapper around `createConnectRpcClient` with `protocol: "grpc"` fixed.
+ * The client provides Server Reflection support for runtime service discovery.
  *
- * @example
- * ```typescript
- * // Create client with reflection (default)
+ * @param config - Client configuration including server address
+ * @returns A new gRPC client instance
+ *
+ * @example Basic usage with reflection
+ * ```ts
  * const client = createGrpcClient({
  *   address: "localhost:50051",
  * });
@@ -151,10 +154,51 @@ export interface GrpcClientConfig
  *   "echo",
  *   { message: "Hello!" }
  * );
- *
  * console.log(response.data());
  *
  * await client.close();
+ * ```
+ *
+ * @example Service discovery with reflection
+ * ```ts
+ * const client = createGrpcClient({
+ *   address: "localhost:50051",
+ * });
+ *
+ * // Discover available services
+ * const services = await client.reflection.listServices();
+ * console.log("Available services:", services);
+ *
+ * // Get method information
+ * const info = await client.reflection.getServiceInfo("echo.EchoService");
+ * console.log("Methods:", info.methods);
+ *
+ * await client.close();
+ * ```
+ *
+ * @example Testing error responses
+ * ```ts
+ * const response = await client.call(
+ *   "user.UserService",
+ *   "getUser",
+ *   { id: "non-existent" },
+ *   { throwOnError: false }
+ * );
+ *
+ * expectGrpcResponse(response)
+ *   .notOk()
+ *   .code(5);  // NOT_FOUND
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using client = createGrpcClient({
+ *   address: "localhost:50051",
+ * });
+ *
+ * const res = await client.call("echo.EchoService", "echo", { message: "test" });
+ * expectGrpcResponse(res).ok();
+ * // Client automatically closed when scope exits
  * ```
  */
 export function createGrpcClient(config: GrpcClientConfig): ConnectRpcClient {

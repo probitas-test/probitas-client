@@ -216,34 +216,109 @@ function validateMessageSize(body: string): void {
 }
 
 /**
- * Create an SQS client.
+ * Create a new Amazon SQS client instance.
  *
- * @example
- * ```typescript
+ * The client provides queue management, message publishing and consumption,
+ * batch operations, and supports both standard and FIFO queues via AWS SDK.
+ *
+ * @param config - SQS client configuration
+ * @returns A promise resolving to a new SQS client instance
+ *
+ * @example Basic usage with existing queue
+ * ```ts
  * const sqs = await createSqsClient({
  *   region: "ap-northeast-1",
  *   queueUrl: "https://sqs.ap-northeast-1.amazonaws.com/123456789/my-queue",
- *   endpoint: "http://localhost:4566",  // LocalStack
  * });
  *
- * // Send
- * const sendResult = await sqs.send(JSON.stringify({ type: "ORDER", orderId: "123" }));
+ * // Send a message
+ * const sendResult = await sqs.send(JSON.stringify({
+ *   type: "ORDER",
+ *   orderId: "123",
+ * }));
  * expectSqsSendResult(sendResult).ok().hasMessageId();
  *
- * // Receive (Long polling)
+ * await sqs.close();
+ * ```
+ *
+ * @example Using LocalStack for local development
+ * ```ts
+ * const sqs = await createSqsClient({
+ *   region: "us-east-1",
+ *   endpoint: "http://localhost:4566",
+ *   credentials: {
+ *     accessKeyId: "test",
+ *     secretAccessKey: "test",
+ *   },
+ * });
+ *
+ * // Create queue dynamically (also sets queueUrl)
+ * const result = await sqs.ensureQueue("test-queue");
+ * console.log(result.queueUrl);  // http://localhost:4566/000000000000/test-queue
+ * ```
+ *
+ * @example Receiving messages with long polling
+ * ```ts
+ * // Long polling waits up to 20 seconds for messages
  * const receiveResult = await sqs.receive({
  *   maxMessages: 10,
  *   waitTimeSeconds: 20,
+ *   visibilityTimeout: 30,
  * });
- * expectSqsReceiveResult(receiveResult).ok().hasContent();
  *
- * // Process and delete
+ * expectSqsReceiveResult(receiveResult).ok();
+ *
+ * // Process and acknowledge messages
  * for (const msg of receiveResult.messages) {
- *   console.log(JSON.parse(msg.body));
+ *   const data = JSON.parse(msg.body);
+ *   console.log("Processing:", data);
+ *
+ *   // Delete after successful processing
  *   await sqs.delete(msg.receiptHandle);
  * }
+ * ```
  *
- * await sqs.close();
+ * @example Batch operations for high throughput
+ * ```ts
+ * // Send multiple messages in a single API call
+ * const batchResult = await sqs.sendBatch([
+ *   { id: "1", body: JSON.stringify({ event: "user.created", userId: "a1" }) },
+ *   { id: "2", body: JSON.stringify({ event: "user.created", userId: "a2" }) },
+ *   { id: "3", body: JSON.stringify({ event: "user.updated", userId: "a3" }) },
+ * ]);
+ *
+ * console.log(`Sent: ${batchResult.successful.length}`);
+ * console.log(`Failed: ${batchResult.failed.length}`);
+ *
+ * // Batch delete processed messages
+ * const handles = receiveResult.messages.map(m => m.receiptHandle);
+ * await sqs.deleteBatch(handles);
+ * ```
+ *
+ * @example FIFO queue with deduplication
+ * ```ts
+ * const sqs = await createSqsClient({
+ *   region: "ap-northeast-1",
+ *   queueUrl: "https://sqs.ap-northeast-1.amazonaws.com/123456789/orders.fifo",
+ * });
+ *
+ * // FIFO queues require MessageGroupId and optionally MessageDeduplicationId
+ * await sqs.send(JSON.stringify({ orderId: "order-123" }), {
+ *   messageGroupId: "orders",
+ *   messageDeduplicationId: "order-123-v1",
+ * });
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using sqs = await createSqsClient({
+ *   region: "us-east-1",
+ *   endpoint: "http://localhost:4566",
+ * });
+ *
+ * await sqs.ensureQueue("test-queue");
+ * await sqs.send("Hello, SQS!");
+ * // Client automatically closed when scope exits
  * ```
  */
 export function createSqsClient(

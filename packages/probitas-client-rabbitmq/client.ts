@@ -206,10 +206,16 @@ function sanitizeUrl(url: string): string {
 }
 
 /**
- * Create a RabbitMQ client.
+ * Create a new RabbitMQ client instance.
  *
- * @example
- * ```typescript
+ * The client provides queue and exchange management, message publishing
+ * and consumption, and acknowledgment handling via AMQP protocol.
+ *
+ * @param config - RabbitMQ client configuration
+ * @returns A promise resolving to a new RabbitMQ client instance
+ *
+ * @example Basic usage
+ * ```ts
  * const rabbit = await createRabbitMqClient({
  *   url: "amqp://guest:guest@localhost:5672",
  * });
@@ -222,6 +228,43 @@ function sanitizeUrl(url: string): string {
  *
  * await channel.close();
  * await rabbit.close();
+ * ```
+ *
+ * @example Exchange and binding
+ * ```ts
+ * // Create exchange and queue
+ * await channel.assertExchange("events", "topic", { durable: true });
+ * await channel.assertQueue("user-events");
+ * await channel.bindQueue("user-events", "events", "user.*");
+ *
+ * // Publish to exchange
+ * await channel.publish("events", "user.created", content);
+ * ```
+ *
+ * @example Consuming messages
+ * ```ts
+ * for await (const message of channel.consume("my-queue")) {
+ *   console.log("Received:", new TextDecoder().decode(message.content));
+ *   await channel.ack(message);
+ * }
+ * ```
+ *
+ * @example Get single message (polling)
+ * ```ts
+ * const result = await channel.get("my-queue");
+ * if (result.message) {
+ *   await channel.ack(result.message);
+ * }
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using rabbit = await createRabbitMqClient({
+ *   url: "amqp://localhost:5672",
+ * });
+ *
+ * const channel = await rabbit.channel();
+ * // Client automatically closed when scope exits
  * ```
  */
 export async function createRabbitMqClient(

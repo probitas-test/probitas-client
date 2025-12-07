@@ -223,18 +223,19 @@ function toMethodInfo(
 }
 
 /**
- * Create a ConnectRPC client.
+ * Create a new ConnectRPC client instance.
  *
- * @example
- * ```typescript
- * // Create client (uses reflection by default)
+ * The client supports multiple protocols (Connect, gRPC, gRPC-Web) and provides
+ * Server Reflection for runtime service discovery without compile-time code generation.
+ *
+ * @param config - Client configuration including server address and protocol options
+ * @returns A new ConnectRPC client instance
+ *
+ * @example Basic usage with reflection
+ * ```ts
  * const client = createConnectRpcClient({
  *   address: "localhost:50051",
  * });
- *
- * // Discover services
- * const services = await client.reflection.listServices();
- * console.log("Available services:", services);
  *
  * // Call a method
  * const response = await client.call(
@@ -245,6 +246,54 @@ function toMethodInfo(
  * console.log(response.data());
  *
  * await client.close();
+ * ```
+ *
+ * @example Service discovery with reflection
+ * ```ts
+ * const client = createConnectRpcClient({
+ *   address: "localhost:50051",
+ * });
+ *
+ * // Discover available services
+ * const services = await client.reflection.listServices();
+ * console.log("Services:", services);
+ *
+ * // Get method information
+ * const info = await client.reflection.getServiceInfo("echo.EchoService");
+ * console.log("Methods:", info.methods);
+ *
+ * await client.close();
+ * ```
+ *
+ * @example Using different protocols
+ * ```ts
+ * // Connect protocol (HTTP/1.1 or HTTP/2)
+ * const connectClient = createConnectRpcClient({
+ *   address: "localhost:8080",
+ *   protocol: "connect",
+ * });
+ *
+ * // gRPC protocol (HTTP/2 with binary protobuf)
+ * const grpcClient = createConnectRpcClient({
+ *   address: "localhost:50051",
+ *   protocol: "grpc",
+ * });
+ *
+ * // gRPC-Web protocol (for browser compatibility)
+ * const grpcWebClient = createConnectRpcClient({
+ *   address: "localhost:8080",
+ *   protocol: "grpc-web",
+ * });
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using client = createConnectRpcClient({
+ *   address: "localhost:50051",
+ * });
+ *
+ * const res = await client.call("echo.EchoService", "echo", { message: "test" });
+ * // Client automatically closed when scope exits
  * ```
  */
 export function createConnectRpcClient(

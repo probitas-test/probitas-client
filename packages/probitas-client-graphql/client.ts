@@ -486,7 +486,51 @@ class GraphqlClientImpl implements GraphqlClient {
 }
 
 /**
- * Create a new GraphQL client.
+ * Create a new GraphQL client instance.
+ *
+ * The client provides methods for executing GraphQL queries, mutations,
+ * and subscriptions with automatic error handling and response parsing.
+ *
+ * @param config - Client configuration including endpoint URL and default options
+ * @returns A new GraphQL client instance
+ *
+ * @example Basic query
+ * ```ts
+ * const client = createGraphqlClient({
+ *   endpoint: "http://localhost:4000/graphql",
+ * });
+ *
+ * const response = await client.query(`
+ *   query GetUser($id: ID!) {
+ *     user(id: $id) { id name email }
+ *   }
+ * `, { id: "123" });
+ *
+ * console.log(response.data());
+ * await client.close();
+ * ```
+ *
+ * @example Mutation with error handling
+ * ```ts
+ * const response = await client.mutation(`
+ *   mutation CreateUser($input: CreateUserInput!) {
+ *     createUser(input: $input) { id }
+ *   }
+ * `, { input: { name: "Alice", email: "alice@example.com" } });
+ *
+ * if (response.ok) {
+ *   console.log("Created user:", response.data().createUser.id);
+ * }
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using client = createGraphqlClient({
+ *   endpoint: "http://localhost:4000/graphql",
+ * });
+ * const response = await client.query(`{ __typename }`);
+ * // Client automatically closed when scope exits
+ * ```
  */
 export function createGraphqlClient(
   config: GraphqlClientConfig,

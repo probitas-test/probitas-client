@@ -227,6 +227,59 @@ class GraphqlResponseExpectationImpl implements GraphqlResponseExpectation {
 
 /**
  * Create a fluent expectation chain for GraphQL response validation.
+ *
+ * Returns an expectation object with chainable assertion methods.
+ * Each assertion throws an Error if it fails, making it ideal for testing.
+ *
+ * @param response - The GraphQL response to validate
+ * @returns A fluent expectation chain
+ *
+ * @example Basic assertions
+ * ```ts
+ * const response = await client.query(`
+ *   query GetUser($id: ID!) {
+ *     user(id: $id) { id name }
+ *   }
+ * `, { id: "123" });
+ *
+ * expectGraphqlResponse(response)
+ *   .ok()
+ *   .hasData()
+ *   .dataContains({ user: { name: "Alice" } });
+ * ```
+ *
+ * @example Error assertions
+ * ```ts
+ * const response = await client.query(`
+ *   query { invalidField }
+ * `, undefined, { throwOnError: false });
+ *
+ * expectGraphqlResponse(response)
+ *   .hasErrors()
+ *   .errorContains("Cannot query field");
+ * ```
+ *
+ * @example Mutation with custom matcher
+ * ```ts
+ * const response = await client.mutation(`
+ *   mutation CreateUser($input: CreateUserInput!) {
+ *     createUser(input: $input) { id name }
+ *   }
+ * `, { input: { name: "Bob" } });
+ *
+ * expectGraphqlResponse(response)
+ *   .ok()
+ *   .dataMatch((data) => {
+ *     assertEquals(data.createUser.name, "Bob");
+ *   });
+ * ```
+ *
+ * @example Performance assertions
+ * ```ts
+ * expectGraphqlResponse(response)
+ *   .ok()
+ *   .durationLessThan(500);  // Must respond within 500ms
+ * ```
  */
 export function expectGraphqlResponse(
   response: GraphqlResponse,

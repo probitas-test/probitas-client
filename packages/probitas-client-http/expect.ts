@@ -222,6 +222,38 @@ class HttpResponseExpectationImpl implements HttpResponseExpectation {
 
 /**
  * Create a fluent expectation chain for HTTP response validation.
+ *
+ * Returns an expectation object with chainable assertion methods.
+ * Each assertion throws an Error if it fails, making it ideal for testing.
+ *
+ * @param response - The HTTP response to validate
+ * @returns A fluent expectation chain
+ *
+ * @example Basic assertions
+ * ```ts
+ * const response = await http.get("/users/123");
+ *
+ * expectHttpResponse(response)
+ *   .ok()
+ *   .contentType("application/json")
+ *   .jsonContains({ id: 123, name: "Alice" });
+ * ```
+ *
+ * @example Error response assertions
+ * ```ts
+ * const response = await http.get("/not-found", { throwOnError: false });
+ *
+ * expectHttpResponse(response)
+ *   .notOk()
+ *   .status(404);
+ * ```
+ *
+ * @example Performance assertions
+ * ```ts
+ * expectHttpResponse(response)
+ *   .ok()
+ *   .durationLessThan(1000);  // Must respond within 1 second
+ * ```
  */
 export function expectHttpResponse(
   response: HttpResponse,

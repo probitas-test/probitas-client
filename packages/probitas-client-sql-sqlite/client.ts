@@ -98,40 +98,57 @@ export interface SqliteClient extends AsyncDisposable {
 }
 
 /**
- * Create a SQLite client.
+ * Create a new SQLite client instance.
  *
- * @example
- * ```typescript
- * // Using file-based database
+ * The client provides parameterized queries, transaction support,
+ * WAL mode for better concurrency, and SQLite-specific features like backup and vacuum.
+ *
+ * @param config - SQLite client configuration
+ * @returns A promise resolving to a new SQLite client instance
+ *
+ * @example Using file-based database
+ * ```ts
  * const client = await createSqliteClient({
  *   path: "./data.db",
- * });
- *
- * // Using in-memory database
- * const client = await createSqliteClient({
- *   path: ":memory:",
- * });
- *
- * // With WAL mode enabled
- * const client = await createSqliteClient({
- *   path: "./data.db",
- *   wal: true,
- * });
- *
- * // Read-only mode
- * const client = await createSqliteClient({
- *   path: "./data.db",
- *   readonly: true,
  * });
  *
  * const result = await client.query<{ id: number; name: string }>(
  *   "SELECT * FROM users WHERE id = ?",
  *   [1],
  * );
- *
- * console.log(result.rows.first()); // { id: 1, name: "Alice" }
+ * console.log(result.rows.first());
  *
  * await client.close();
+ * ```
+ *
+ * @example Using in-memory database
+ * ```ts
+ * const client = await createSqliteClient({
+ *   path: ":memory:",
+ * });
+ * ```
+ *
+ * @example Transaction with auto-commit/rollback
+ * ```ts
+ * const user = await client.transaction(async (tx) => {
+ *   await tx.query("INSERT INTO users (name) VALUES (?)", ["Alice"]);
+ *   const result = await tx.query("SELECT last_insert_rowid() as id");
+ *   return result.rows.first();
+ * });
+ * ```
+ *
+ * @example Database backup
+ * ```ts
+ * // Create a backup of the database
+ * await client.backup("./backup.db");
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using client = await createSqliteClient({ path: "./data.db" });
+ *
+ * const result = await client.query("SELECT 1");
+ * // Client automatically closed when scope exits
  * ```
  */
 export function createSqliteClient(

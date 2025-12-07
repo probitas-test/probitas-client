@@ -100,16 +100,31 @@ function parseConnectionUrl(url: string): MySqlConnectionConfig {
 }
 
 /**
- * Create a MySQL client with connection pooling.
+ * Create a new MySQL client instance with connection pooling.
  *
- * @example
- * ```typescript
- * // Using connection URL
+ * The client provides connection pooling, parameterized queries, transaction support,
+ * and automatic result type mapping.
+ *
+ * @param config - MySQL client configuration
+ * @returns A promise resolving to a new MySQL client instance
+ *
+ * @example Using connection URL
+ * ```ts
  * const client = await createMySqlClient({
  *   connection: "mysql://user:password@localhost:3306/testdb",
  * });
  *
- * // Using connection config object
+ * const result = await client.query<{ id: number; name: string }>(
+ *   "SELECT * FROM users WHERE id = ?",
+ *   [1],
+ * );
+ * console.log(result.rows.first());  // { id: 1, name: "Alice" }
+ *
+ * await client.close();
+ * ```
+ *
+ * @example Using connection config object
+ * ```ts
  * const client = await createMySqlClient({
  *   connection: {
  *     host: "localhost",
@@ -118,16 +133,26 @@ function parseConnectionUrl(url: string): MySqlConnectionConfig {
  *     password: "password",
  *     database: "testdb",
  *   },
+ *   pool: { connectionLimit: 20 },
+ * });
+ * ```
+ *
+ * @example Transaction with auto-commit/rollback
+ * ```ts
+ * const user = await client.transaction(async (tx) => {
+ *   await tx.query("INSERT INTO users (name) VALUES (?)", ["Alice"]);
+ *   return await tx.queryOne("SELECT LAST_INSERT_ID() as id");
+ * });
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using client = await createMySqlClient({
+ *   connection: "mysql://localhost:3306/testdb",
  * });
  *
- * const result = await client.query<{ id: number; name: string }>(
- *   "SELECT * FROM users WHERE id = ?",
- *   [1],
- * );
- *
- * console.log(result.rows.first()); // { id: 1, name: "Alice" }
- *
- * await client.close();
+ * const result = await client.query("SELECT 1");
+ * // Client automatically closed when scope exits
  * ```
  */
 export async function createMySqlClient(

@@ -235,7 +235,57 @@ class ConnectRpcResponseExpectationImpl
 }
 
 /**
- * Create a fluent assertion for a ConnectRpcResponse.
+ * Create a fluent assertion chain for ConnectRPC response validation.
+ *
+ * Returns an expectation object with chainable assertion methods.
+ * Each assertion throws an Error if it fails, making it ideal for testing.
+ *
+ * @param response - The ConnectRPC response to validate
+ * @returns A fluent expectation chain
+ *
+ * @example Basic assertions
+ * ```ts
+ * const response = await client.call(
+ *   "echo.EchoService",
+ *   "echo",
+ *   { message: "Hello!" }
+ * );
+ *
+ * expectConnectRpcResponse(response)
+ *   .ok()
+ *   .hasContent()
+ *   .dataContains({ message: "Hello!" });
+ * ```
+ *
+ * @example Error status assertions
+ * ```ts
+ * const response = await client.call(
+ *   "user.UserService",
+ *   "getUser",
+ *   { id: "non-existent" },
+ *   { throwOnError: false }
+ * );
+ *
+ * expectConnectRpcResponse(response)
+ *   .notOk()
+ *   .code(5)  // NOT_FOUND
+ *   .messageContains("not found");
+ * ```
+ *
+ * @example Header and trailer assertions
+ * ```ts
+ * expectConnectRpcResponse(response)
+ *   .ok()
+ *   .headersExist("x-request-id")
+ *   .trailersExist("grpc-status");
+ * ```
+ *
+ * @example Performance assertions
+ * ```ts
+ * expectConnectRpcResponse(response)
+ *   .ok()
+ *   .durationLessThan(500);  // Must respond within 500ms
+ * ```
  */
 export function expectConnectRpcResponse(
   response: ConnectRpcResponse,

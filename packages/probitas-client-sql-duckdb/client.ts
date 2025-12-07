@@ -102,37 +102,60 @@ export interface DuckDbClient extends AsyncDisposable {
 }
 
 /**
- * Create a DuckDB client.
+ * Create a new DuckDB client instance.
  *
- * @example
- * ```typescript
- * // Using in-memory database (default)
+ * The client provides parameterized queries, transaction support,
+ * and DuckDB-specific features like direct Parquet and CSV file querying.
+ *
+ * @param config - DuckDB client configuration
+ * @returns A promise resolving to a new DuckDB client instance
+ *
+ * @example Using in-memory database (default)
+ * ```ts
  * const client = await createDuckDbClient({});
  *
- * // Using file-based database
- * const client = await createDuckDbClient({
- *   path: "./data.duckdb",
- * });
- *
- * // Read-only mode
- * const client = await createDuckDbClient({
- *   path: "./data.duckdb",
- *   readonly: true,
- * });
- *
- * const result = await client.query<{ id: number; name: string }>(
- *   "SELECT * FROM users WHERE id = ?",
- *   [1],
- * );
- *
- * console.log(result.rows.first()); // { id: 1, name: "Alice" }
- *
- * // Query Parquet file directly
- * const parquetResult = await client.queryParquet<{ id: number; value: string }>(
- *   "./data/events.parquet"
- * );
+ * const result = await client.query("SELECT 42 as answer");
+ * console.log(result.rows.first());  // { answer: 42 }
  *
  * await client.close();
+ * ```
+ *
+ * @example Using file-based database
+ * ```ts
+ * const client = await createDuckDbClient({
+ *   path: "./data.duckdb",
+ * });
+ * ```
+ *
+ * @example Query Parquet files directly
+ * ```ts
+ * // No need to import - query directly from Parquet
+ * const result = await client.queryParquet<{ id: number; value: string }>(
+ *   "./data/events.parquet"
+ * );
+ * ```
+ *
+ * @example Query CSV files directly
+ * ```ts
+ * const result = await client.queryCsv<{ name: string; age: number }>(
+ *   "./data/users.csv"
+ * );
+ * ```
+ *
+ * @example Transaction with auto-commit/rollback
+ * ```ts
+ * await client.transaction(async (tx) => {
+ *   await tx.query("INSERT INTO users VALUES ($1, $2)", [1, "Alice"]);
+ *   await tx.query("INSERT INTO users VALUES ($1, $2)", [2, "Bob"]);
+ * });
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using client = await createDuckDbClient({});
+ *
+ * const result = await client.query("SELECT 1");
+ * // Client automatically closed when scope exits
  * ```
  */
 export async function createDuckDbClient(

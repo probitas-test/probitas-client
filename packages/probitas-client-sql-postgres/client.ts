@@ -540,16 +540,28 @@ class PostgresClientImpl implements PostgresClient {
 }
 
 /**
- * Creates a new PostgreSQL client.
+ * Create a new PostgreSQL client instance.
  *
- * @example
- * ```typescript
- * // Using connection string
+ * The client provides connection pooling, parameterized queries, transaction support,
+ * and PostgreSQL-specific features like COPY and LISTEN/NOTIFY.
+ *
+ * @param config - PostgreSQL client configuration
+ * @returns A promise resolving to a new PostgreSQL client instance
+ *
+ * @example Using connection string
+ * ```ts
  * const client = await createPostgresClient({
  *   connection: "postgres://user:pass@localhost:5432/mydb",
  * });
  *
- * // Using connection config object
+ * const result = await client.query("SELECT * FROM users WHERE id = $1", [1]);
+ * console.log(result.rows.first());
+ *
+ * await client.close();
+ * ```
+ *
+ * @example Using connection config object
+ * ```ts
  * const client = await createPostgresClient({
  *   connection: {
  *     host: "localhost",
@@ -561,24 +573,36 @@ class PostgresClientImpl implements PostgresClient {
  *   pool: { max: 10 },
  *   applicationName: "my-app",
  * });
+ * ```
  *
- * const result = await client.query("SELECT * FROM users WHERE id = $1", [1]);
- * console.log(result.rows.first());
- *
- * // Transaction with auto-commit/rollback
+ * @example Transaction with auto-commit/rollback
+ * ```ts
  * const user = await client.transaction(async (tx) => {
  *   await tx.query("INSERT INTO users (name) VALUES ($1)", ["John"]);
  *   return await tx.queryOne("SELECT * FROM users WHERE name = $1", ["John"]);
  * });
- *
- * await client.close();
  * ```
  *
- * @requires --allow-net Permission to connect to the database
- * @requires --allow-env Permission to read environment variables (if using env-based config)
+ * @example LISTEN/NOTIFY for real-time events
+ * ```ts
+ * // Listen for notifications
+ * for await (const notification of client.listen("user_events")) {
+ *   console.log("Received:", notification.payload);
+ * }
  *
- * @param config - PostgreSQL client configuration
- * @returns PostgreSQL client instance
+ * // In another session
+ * await client.notify("user_events", JSON.stringify({ userId: 123 }));
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using client = await createPostgresClient({
+ *   connection: "postgres://localhost:5432/mydb",
+ * });
+ *
+ * const result = await client.query("SELECT 1");
+ * // Client automatically closed when scope exits
+ * ```
  */
 export async function createPostgresClient(
   config: PostgresClientConfig,

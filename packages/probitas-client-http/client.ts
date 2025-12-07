@@ -372,7 +372,41 @@ class HttpClientImpl implements HttpClient {
 }
 
 /**
- * Create a new HTTP client.
+ * Create a new HTTP client instance.
+ *
+ * The client provides methods for making HTTP requests with automatic
+ * cookie handling, response body pre-loading, and error handling.
+ *
+ * @param config - Client configuration including base URL and default options
+ * @returns A new HTTP client instance
+ *
+ * @example Basic usage
+ * ```ts
+ * const http = createHttpClient({ baseUrl: "http://localhost:3000" });
+ *
+ * const response = await http.get("/users/123");
+ * console.log(response.json());
+ *
+ * await http.close();
+ * ```
+ *
+ * @example With default headers
+ * ```ts
+ * const http = createHttpClient({
+ *   baseUrl: "http://localhost:3000",
+ *   headers: {
+ *     "Authorization": "Bearer token123",
+ *     "Accept": "application/json",
+ *   },
+ * });
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using http = createHttpClient({ baseUrl: "http://localhost:3000" });
+ * const response = await http.get("/health");
+ * // Client automatically closed when scope exits
+ * ```
  */
 export function createHttpClient(config: HttpClientConfig): HttpClient {
   return new HttpClientImpl(config);

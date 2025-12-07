@@ -182,10 +182,16 @@ function convertMongoError(
 }
 
 /**
- * Create a MongoDB client.
+ * Create a new MongoDB client instance.
  *
- * @example
- * ```typescript
+ * The client provides typed collection access, aggregation pipelines,
+ * transaction support, and comprehensive CRUD operations.
+ *
+ * @param config - MongoDB client configuration
+ * @returns A promise resolving to a new MongoDB client instance
+ *
+ * @example Basic usage
+ * ```ts
  * const mongo = await createMongoClient({
  *   uri: "mongodb://localhost:27017",
  *   database: "testdb",
@@ -196,6 +202,50 @@ function convertMongoError(
  * console.log(result.docs.first());
  *
  * await mongo.close();
+ * ```
+ *
+ * @example Insert and query documents
+ * ```ts
+ * const users = mongo.collection<User>("users");
+ *
+ * // Insert a document
+ * const insertResult = await users.insertOne({ name: "Alice", age: 30 });
+ * expectMongoResult(insertResult).ok().hasInsertedId();
+ *
+ * // Find documents with projection and sorting
+ * const findResult = await users.find(
+ *   { age: { $gte: 25 } },
+ *   { sort: { name: 1 }, limit: 10 }
+ * );
+ * expectMongoResult(findResult).ok().hasContent();
+ * ```
+ *
+ * @example Transaction with auto-commit/rollback
+ * ```ts
+ * await mongo.transaction(async (session) => {
+ *   const users = session.collection<User>("users");
+ *   await users.insertOne({ name: "Bob", age: 25 });
+ *   await users.updateOne({ name: "Alice" }, { $inc: { age: 1 } });
+ * });
+ * ```
+ *
+ * @example Aggregation pipeline
+ * ```ts
+ * const result = await users.aggregate<{ _id: string; avgAge: number }>([
+ *   { $group: { _id: "$department", avgAge: { $avg: "$age" } } },
+ *   { $sort: { avgAge: -1 } },
+ * ]);
+ * ```
+ *
+ * @example Using `await using` for automatic cleanup
+ * ```ts
+ * await using mongo = await createMongoClient({
+ *   uri: "mongodb://localhost:27017",
+ *   database: "testdb",
+ * });
+ *
+ * const result = await mongo.collection("users").find({});
+ * // Client automatically closed when scope exits
  * ```
  */
 export async function createMongoClient(
