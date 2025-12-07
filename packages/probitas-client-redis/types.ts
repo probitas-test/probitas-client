@@ -1,9 +1,10 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
 
 /**
- * Redis operation result (internal base - not exported directly)
+ * Base interface for Redis operation results.
+ * All Redis result types extend this interface.
  */
-interface RedisResultBase<T = unknown> {
+export interface RedisResultBase<T = unknown> {
   readonly type: string;
   readonly ok: boolean;
   readonly value: T;
