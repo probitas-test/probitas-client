@@ -1,5 +1,11 @@
 ### 2025.12.07
 
+#### @probitas/client-redis 0.1.1 (patch)
+
+- fix(client-redis): export RedisResultBase for public API completeness
+
+### 2025.12.07
+
 #### @probitas/client 0.1.0 (minor)
 
 - BREAKING(*): unify expect method names across all clients
