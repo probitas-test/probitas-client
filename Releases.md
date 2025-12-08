@@ -1,3 +1,65 @@
+### 2025.12.08
+
+#### @probitas/client 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-connectrpc 0.2.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-deno-kv 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-graphql 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-grpc 0.2.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-http 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-mongodb 0.2.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-rabbitmq 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-redis 0.1.2 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-sql 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-sql-duckdb 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-sql-mysql 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-sql-postgres 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-sql-sqlite 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
+#### @probitas/client-sqs 0.1.1 (patch)
+
+- refactor(*): remove logger.warn/error for cleaner Probitas output
+
 ### 2025.12.07
 
 #### @probitas/client-connectrpc 0.2.0 (minor)
