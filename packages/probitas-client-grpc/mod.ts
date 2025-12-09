@@ -10,9 +10,8 @@
  *
  * - **Native gRPC**: Uses gRPC protocol (HTTP/2 with binary protobuf)
  * - **Server Reflection**: Auto-discover services and methods at runtime
- * - **Fluent Assertions**: Chain assertions like `.ok()`, `.dataContains()`, `.code()`
  * - **TLS Support**: Configure secure connections with custom certificates
- * - **Duration Tracking**: Built-in timing for performance assertions
+ * - **Duration Tracking**: Built-in timing for performance monitoring
  * - **Error Handling**: Test error responses without throwing exceptions
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
@@ -25,24 +24,20 @@
  * ## Quick Start
  *
  * ```ts
- * import { createGrpcClient, expectGrpcResponse } from "@probitas/client-grpc";
+ * import { createGrpcClient } from "@probitas/client-grpc";
  *
  * // Create client (uses reflection by default)
  * const client = createGrpcClient({
  *   url: "http://localhost:50051",
  * });
  *
- * // Call a method with fluent assertions
+ * // Call a method
  * const response = await client.call(
  *   "echo.EchoService",
  *   "echo",
  *   { message: "Hello!" }
  * );
- *
- * expectGrpcResponse(response)
- *   .ok()
- *   .dataContains({ message: "Hello!" })
- *   .durationLessThan(1000);
+ * console.log(response.data());
  *
  * await client.close();
  * ```
@@ -65,7 +60,7 @@
  * await using client = createGrpcClient({ url: "http://localhost:50051" });
  *
  * const res = await client.call("echo.EchoService", "echo", { message: "test" });
- * expectGrpcResponse(res).ok();
+ * console.log(res.data());
  * // Client automatically closed when block exits
  * ```
  *
@@ -104,8 +99,6 @@ export {
   ConnectRpcResourceExhaustedError as GrpcResourceExhaustedError,
   // Response
   type ConnectRpcResponse as GrpcResponse,
-  // Expect
-  type ConnectRpcResponseExpectation as GrpcResponseExpectation,
   ConnectRpcStatus as GrpcStatus,
   // Status codes
   type ConnectRpcStatusCode as GrpcStatusCode,
@@ -113,7 +106,6 @@ export {
   ConnectRpcUnavailableError as GrpcUnavailableError,
   // Errors
   type ErrorDetail,
-  expectConnectRpcResponse as expectGrpcResponse,
   type FileDescriptorSet,
   getStatusName as getGrpcStatusName,
   isConnectRpcStatusCode as isGrpcStatusCode,
@@ -185,9 +177,9 @@ export interface GrpcClientConfig
  *   { throwOnError: false }
  * );
  *
- * expectGrpcResponse(response)
- *   .notOk()
- *   .code(5);  // NOT_FOUND
+ * if (!response.ok) {
+ *   console.log("Error code:", response.code);  // NOT_FOUND = 5
+ * }
  * ```
  *
  * @example Using `await using` for automatic cleanup
@@ -197,7 +189,7 @@ export interface GrpcClientConfig
  * });
  *
  * const res = await client.call("echo.EchoService", "echo", { message: "test" });
- * expectGrpcResponse(res).ok();
+ * console.log(res.data());
  * // Client automatically closed when scope exits
  * ```
  */

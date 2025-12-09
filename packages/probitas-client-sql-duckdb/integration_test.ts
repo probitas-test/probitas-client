@@ -27,7 +27,6 @@ Deno.test({
     // Dynamic import to avoid module load errors when DuckDB is not available
     const {
       createDuckDbClient,
-      expectSqlQueryResult,
       QuerySyntaxError,
       ConstraintError,
     } = await import("./mod.ts");
@@ -265,36 +264,38 @@ Deno.test({
     });
 
     await t.step(
-      "expectSqlQueryResult works with DuckDB results",
+      "standard assertions work with DuckDB results",
       async () => {
         const client = await createDuckDbClient({});
 
         try {
           await client.query(`
-            CREATE TABLE expect_test (
+            CREATE TABLE sample_test (
               id INTEGER PRIMARY KEY,
               name VARCHAR
             )
           `);
 
           await client.query(
-            "INSERT INTO expect_test (id, name) VALUES ($1, $2)",
+            "INSERT INTO sample_test (id, name) VALUES ($1, $2)",
             [1, "Alice"],
           );
           await client.query(
-            "INSERT INTO expect_test (id, name) VALUES ($1, $2)",
+            "INSERT INTO sample_test (id, name) VALUES ($1, $2)",
             [2, "Bob"],
           );
 
           const result = await client.query<{ id: number; name: string }>(
-            "SELECT * FROM expect_test ORDER BY id",
+            "SELECT * FROM sample_test ORDER BY id",
           );
 
-          expectSqlQueryResult(result)
-            .ok()
-            .hasContent()
-            .count(2)
-            .dataContains({ name: "Alice" });
+          assertEquals(result.ok, true);
+          assertEquals(result.rows.length > 0, true);
+          assertEquals(result.rows.length, 2);
+          assertEquals(
+            result.rows.some((r) => r.name === "Alice"),
+            true,
+          );
         } finally {
           await client.close();
         }

@@ -265,14 +265,14 @@ function convertMongoError(
  *
  * // Insert a document
  * const insertResult = await users.insertOne({ name: "Alice", age: 30 });
- * expectMongoResult(insertResult).ok().hasInsertedId();
+ * console.log("Inserted ID:", insertResult.insertedId);
  *
  * // Find documents with projection and sorting
  * const findResult = await users.find(
  *   { age: { $gte: 25 } },
  *   { sort: { name: 1 }, limit: 10 }
  * );
- * expectMongoResult(findResult).ok().hasContent();
+ * console.log("Found:", findResult.documents.length);
  * ```
  *
  * @example Transaction with auto-commit/rollback

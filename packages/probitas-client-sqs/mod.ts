@@ -1,15 +1,13 @@
 /**
  * AWS SQS client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
  *
- * This package provides an AWS SQS client with fluent assertion APIs, designed for
- * integration testing of message-driven applications using Amazon Simple Queue Service.
+ * This package provides an AWS SQS client designed for integration testing of message-driven applications using Amazon Simple Queue Service.
  *
  * ## Features
  *
  * - **Queue Management**: Create, delete, and purge queues
  * - **Message Operations**: Send, receive, and delete messages (single and batch)
  * - **Message Attributes**: Support for custom message attributes
- * - **Fluent Assertions**: `expectSqsResult()` for testing SQS operations
  * - **LocalStack Compatible**: Works with LocalStack for local development
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
@@ -22,7 +20,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createSqsClient, expectSqsResult } from "@probitas/client-sqs";
+ * import { createSqsClient } from "@probitas/client-sqs";
  *
  * const client = await createSqsClient({
  *   region: "us-east-1",
@@ -35,7 +33,6 @@
  *
  * // Ensure queue exists
  * const queueResult = await client.ensureQueue("test-queue");
- * expectSqsResult(queueResult).ok();
  * const queueUrl = queueResult.queueUrl;
  *
  * // Send a message
@@ -44,14 +41,14 @@
  *     type: { dataType: "String", stringValue: "greeting" },
  *   },
  * });
- * expectSqsResult(sendResult).ok().hasMessageId();
+ * console.log("Message ID:", sendResult.messageId);
  *
  * // Receive messages
  * const receiveResult = await client.receive(queueUrl, {
  *   maxMessages: 10,
  *   waitTimeSeconds: 5,
  * });
- * expectSqsResult(receiveResult).ok().countAtLeast(1);
+ * console.log("Received:", receiveResult.messages.length);
  *
  * // Delete message after processing
  * for (const msg of receiveResult.messages) {
@@ -65,20 +62,18 @@
  *
  * ```ts
  * // Send batch messages
- * const batchSend = await client.sendBatch(queueUrl, [
+ * await client.sendBatch(queueUrl, [
  *   { body: "Message 1", id: "msg-1" },
  *   { body: "Message 2", id: "msg-2" },
  *   { body: "Message 3", id: "msg-3" },
  * ]);
- * expectSqsResult(batchSend).ok();
  *
  * // Delete batch messages
  * const messages = await client.receive(queueUrl, { maxMessages: 10 });
- * const batchDelete = await client.deleteBatch(
+ * await client.deleteBatch(
  *   queueUrl,
  *   messages.messages.map((m, i) => ({ id: `del-${i}`, receiptHandle: m.receiptHandle }))
  * );
- * expectSqsResult(batchDelete).ok();
  * ```
  *
  * ## Using with `using` Statement
@@ -114,4 +109,3 @@ export type * from "./types.ts";
 export * from "./errors.ts";
 export * from "./client.ts";
 export * from "./messages.ts";
-export * from "./expect.ts";

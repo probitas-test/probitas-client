@@ -7,9 +7,14 @@
  *   docker compose down
  */
 
-import { assertEquals, assertRejects } from "@std/assert";
+import {
+  assertEquals,
+  assertExists,
+  assertGreaterOrEqual,
+  assertLess,
+  assertRejects,
+} from "@std/assert";
 import { createMySqlClient, type MySqlClient } from "./client.ts";
-import { expectSqlQueryResult } from "@probitas/client-sql";
 import type { MySqlConnectionConfig } from "./types.ts";
 
 const MYSQL_HOST = Deno.env.get("MYSQL_HOST") ?? "localhost";
@@ -55,9 +60,8 @@ Deno.test({
           "SELECT 1 as result",
         );
 
-        expectSqlQueryResult(result)
-          .ok()
-          .count(1);
+        assertEquals(result.ok, true);
+        assertEquals(result.rows.length, 1);
 
         assertEquals(result.rows.first()?.result, 1);
       } finally {
@@ -79,9 +83,8 @@ Deno.test({
         "SELECT 1 as result",
       );
 
-      expectSqlQueryResult(result)
-        .ok()
-        .count(1);
+      assertEquals(result.ok, true);
+      assertEquals(result.rows.length, 1);
     });
 
     await t.step("using with statement (AsyncDisposable)", async () => {
@@ -89,9 +92,8 @@ Deno.test({
 
       const result = await client.query<{ now: Date }>("SELECT NOW() as now");
 
-      expectSqlQueryResult(result)
-        .ok()
-        .count(1);
+      assertEquals(result.ok, true);
+      assertEquals(result.rows.length, 1);
     });
 
     await t.step("parameterized query", async () => {
@@ -102,9 +104,8 @@ Deno.test({
         [10, 20],
       );
 
-      expectSqlQueryResult(result)
-        .ok()
-        .count(1);
+      assertEquals(result.ok, true);
+      assertEquals(result.rows.length, 1);
 
       assertEquals(result.rows.first()?.sum, 30);
     });
@@ -148,10 +149,9 @@ Deno.test({
           ["Alice", "alice@example.com"],
         );
 
-        expectSqlQueryResult(insertResult)
-          .ok()
-          .rowCount(1)
-          .hasLastInsertId();
+        assertEquals(insertResult.ok, true);
+        assertEquals(insertResult.rowCount, 1);
+        assertExists(insertResult.metadata.lastInsertId);
 
         // Select
         const selectResult = await client.query<{
@@ -163,9 +163,8 @@ Deno.test({
           ["Alice"],
         );
 
-        expectSqlQueryResult(selectResult)
-          .ok()
-          .count(1);
+        assertEquals(selectResult.ok, true);
+        assertEquals(selectResult.rows.length, 1);
 
         assertEquals(selectResult.rows.first()?.name, "Alice");
         assertEquals(selectResult.rows.first()?.email, "alice@example.com");
@@ -201,9 +200,8 @@ Deno.test({
           [lastInsertId],
         );
 
-        expectSqlQueryResult(result)
-          .ok()
-          .count(1);
+        assertEquals(result.ok, true);
+        assertEquals(result.rows.length, 1);
 
         assertEquals(result.rows.first()?.value, "auto-committed");
       } finally {
@@ -240,9 +238,8 @@ Deno.test({
           ["will-rollback"],
         );
 
-        expectSqlQueryResult(result)
-          .ok()
-          .count(0);
+        assertEquals(result.ok, true);
+        assertEquals(result.rows.length, 0);
       } finally {
         await client.query("DROP TABLE IF EXISTS test_tx_error");
       }
@@ -276,10 +273,9 @@ Deno.test({
           ["test"],
         );
 
-        expectSqlQueryResult(result)
-          .ok()
-          .rowCount(1)
-          .hasLastInsertId();
+        assertEquals(result.ok, true);
+        assertEquals(result.rowCount, 1);
+        assertExists(result.metadata.lastInsertId);
 
         assertEquals(typeof result.metadata.lastInsertId, "bigint");
       } finally {
@@ -304,12 +300,11 @@ Deno.test({
 
       const result = await client.query("SELECT SLEEP(0.1)");
 
-      expectSqlQueryResult(result)
-        .ok()
-        .durationLessThan(1000);
+      assertEquals(result.ok, true);
+      assertLess(result.duration, 1000);
 
       // Should take at least 100ms due to SLEEP
-      assertEquals(result.duration >= 100, true);
+      assertGreaterOrEqual(result.duration, 100);
     });
   },
 });

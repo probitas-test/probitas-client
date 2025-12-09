@@ -8,7 +8,6 @@
  *
  * - **Common Options**: Shared configuration types like `CommonOptions` and `RetryOptions`
  * - **Error Hierarchy**: Base error classes (`ClientError`, `ConnectionError`, `TimeoutError`, `AbortError`)
- * - **Utilities**: Helper functions used internally by client packages
  *
  * ## Installation
  *
@@ -46,7 +45,7 @@
  *
  * | Package | Description |
  * |---------|-------------|
- * | [`@probitas/client-http`](https://jsr.io/@probitas/client-http) | HTTP client with fluent assertions |
+ * | [`@probitas/client-http`](https://jsr.io/@probitas/client-http) | HTTP client |
  * | [`@probitas/client-graphql`](https://jsr.io/@probitas/client-graphql) | GraphQL client |
  * | [`@probitas/client-grpc`](https://jsr.io/@probitas/client-grpc) | gRPC client |
  * | [`@probitas/client-connectrpc`](https://jsr.io/@probitas/client-connectrpc) | ConnectRPC client |
@@ -70,4 +69,3 @@
 
 export type * from "./types.ts";
 export * from "./errors.ts";
-export * from "./utils.ts";

@@ -7,12 +7,13 @@
  *   docker compose down
  */
 
-import { assertEquals, assertGreater } from "@std/assert";
 import {
-  createDenoKvClient,
-  type DenoKvClient,
-  expectDenoKvResult,
-} from "./mod.ts";
+  assertEquals,
+  assertExists,
+  assertGreater,
+  assertLess,
+} from "@std/assert";
+import { createDenoKvClient, type DenoKvClient } from "./mod.ts";
 
 const DENOKV_URL = Deno.env.get("DENOKV_URL") ?? "http://localhost:4512";
 
@@ -55,9 +56,8 @@ Deno.test({
       try {
         const result = await kv.get(["integration", "nonexistent"]);
 
-        expectDenoKvResult(result)
-          .ok()
-          .noContent();
+        assertEquals(result.ok, true);
+        assertEquals(result.value, null);
 
         assertEquals(result.key, ["integration", "nonexistent"]);
         assertEquals(result.versionstamp, null);
@@ -79,18 +79,16 @@ Deno.test({
 
         const setResult = await kv.set(testKey, testValue);
 
-        expectDenoKvResult(setResult)
-          .ok()
-          .hasVersionstamp()
-          .durationLessThan(5000);
+        assertEquals(setResult.ok, true);
+        assertExists(setResult.versionstamp);
+        assertLess(setResult.duration, 5000);
 
         const getResult = await kv.get<typeof testValue>(testKey);
 
-        expectDenoKvResult(getResult)
-          .ok()
-          .hasContent()
-          .value(testValue)
-          .hasVersionstamp();
+        assertEquals(getResult.ok, true);
+        assertExists(getResult.value);
+        assertEquals(getResult.value, testValue);
+        assertExists(getResult.versionstamp);
 
         // Clean up
         await kv.delete(testKey);
@@ -111,12 +109,11 @@ Deno.test({
         await kv.set(testKey, "to-be-deleted");
         const deleteResult = await kv.delete(testKey);
 
-        expectDenoKvResult(deleteResult)
-          .ok()
-          .durationLessThan(5000);
+        assertEquals(deleteResult.ok, true);
+        assertLess(deleteResult.duration, 5000);
 
         const getResult = await kv.get(testKey);
-        expectDenoKvResult(getResult).noContent();
+        assertEquals(getResult.value, null);
       } finally {
         await kv.close();
       }
@@ -163,10 +160,9 @@ Deno.test({
 
         const result = await kv.list<{ order: number }>({ prefix });
 
-        expectDenoKvResult(result)
-          .ok()
-          .hasContent()
-          .count(3);
+        assertEquals(result.ok, true);
+        assertGreater(result.entries.length, 0);
+        assertEquals(result.entries.length, 3);
 
         assertEquals(result.entries.first()?.value.order, 1);
         assertEquals(result.entries.last()?.value.order, 3);
@@ -191,9 +187,8 @@ Deno.test({
 
         const result = await kv.list<number>({ prefix }, { limit: 2 });
 
-        expectDenoKvResult(result)
-          .ok()
-          .count(2);
+        assertEquals(result.ok, true);
+        assertEquals(result.entries.length, 2);
 
         // Clean up - list all to get keys for deletion
         const allEntries = await kv.list<number>({ prefix });
@@ -216,9 +211,8 @@ Deno.test({
 
         const result = await kv.list<string>({ prefix }, { reverse: true });
 
-        expectDenoKvResult(result)
-          .ok()
-          .count(3);
+        assertEquals(result.ok, true);
+        assertEquals(result.entries.length, 3);
 
         assertEquals(result.entries.first()?.value, "third");
         assertEquals(result.entries.last()?.value, "first");
@@ -244,9 +238,8 @@ Deno.test({
           .set(key2, { created: true })
           .commit();
 
-        expectDenoKvResult(result)
-          .ok()
-          .hasVersionstamp();
+        assertEquals(result.ok, true);
+        assertExists(result.versionstamp);
 
         const get1 = await kv.get<number>(key1);
         const get2 = await kv.get<{ created: boolean }>(key2);
@@ -275,9 +268,8 @@ Deno.test({
           .set(key, "updated")
           .commit();
 
-        expectDenoKvResult(result)
-          .ok()
-          .hasVersionstamp();
+        assertEquals(result.ok, true);
+        assertExists(result.versionstamp);
 
         const updated = await kv.get<string>(key);
         assertEquals(updated.value, "updated");
@@ -339,10 +331,10 @@ Deno.test({
           .delete(key)
           .commit();
 
-        expectDenoKvResult(result).ok();
+        assertEquals(result.ok, true);
 
         const getResult = await kv.get(key);
-        expectDenoKvResult(getResult).noContent();
+        assertEquals(getResult.value, null);
       } finally {
         await kv.close();
       }
@@ -396,7 +388,7 @@ Deno.test({
       assertEquals(clientRef !== null, true);
     });
 
-    await t.step("expectation chaining", async () => {
+    await t.step("standard assertions with result", async () => {
       const kv = await createDenoKvClient({ path: DENOKV_URL });
       try {
         const key: Deno.KvKey = [
@@ -408,13 +400,12 @@ Deno.test({
         await kv.set(key, { name: "Bob", age: 25 });
         const result = await kv.get<{ name: string; age: number }>(key);
 
-        // Demonstrate fluent chaining
-        expectDenoKvResult(result)
-          .ok()
-          .hasContent()
-          .dataContains({ name: "Bob" })
-          .hasVersionstamp()
-          .durationLessThan(5000);
+        // Standard assertions
+        assertEquals(result.ok, true);
+        assertExists(result.value);
+        assertEquals(result.value?.name, "Bob");
+        assertExists(result.versionstamp);
+        assertLess(result.duration, 5000);
 
         // Clean up
         await kv.delete(key);

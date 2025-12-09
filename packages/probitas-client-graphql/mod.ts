@@ -1,16 +1,14 @@
 /**
  * GraphQL client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
  *
- * This package provides a GraphQL client with fluent assertion APIs, designed for
- * integration testing of GraphQL APIs.
+ * This package provides a GraphQL client designed for integration testing of GraphQL APIs.
  *
  * ## Features
  *
  * - **Query & Mutation**: Full support for GraphQL operations
- * - **Fluent Assertions**: Chain assertions like `.ok()`, `.dataContains()`, `.hasNoErrors()`
  * - **Variables Support**: Pass typed variables to queries and mutations
- * - **Duration Tracking**: Built-in timing for performance assertions
- * - **Error Inspection**: Assert on GraphQL errors and their structure
+ * - **Duration Tracking**: Built-in timing for performance monitoring
+ * - **Error Inspection**: Inspect GraphQL errors and their structure
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  * - **Template Literals**: Re-exports `outdent` for clean multi-line queries
  *
@@ -23,11 +21,7 @@
  * ## Quick Start
  *
  * ```ts
- * import {
- *   createGraphqlClient,
- *   expectGraphqlResponse,
- *   outdent,
- * } from "@probitas/client-graphql";
+ * import { createGraphqlClient, outdent } from "@probitas/client-graphql";
  *
  * const client = createGraphqlClient({ url: "http://localhost:4000/graphql" });
  *
@@ -37,12 +31,7 @@
  *     user(id: $id) { id name email }
  *   }
  * `, { id: "123" });
- *
- * expectGraphqlResponse(res)
- *   .ok()
- *   .hasNoErrors()
- *   .dataContains({ user: { id: "123" } })
- *   .durationLessThan(1000);
+ * console.log("User:", res.data());
  *
  * // Mutation
  * const created = await client.mutation(outdent`
@@ -50,8 +39,7 @@
  *     createUser(input: $input) { id name }
  *   }
  * `, { input: { name: "Jane", email: "jane@example.com" } });
- *
- * expectGraphqlResponse(created).ok();
+ * console.log("Created:", created.data());
  *
  * await client.close();
  * ```
@@ -62,7 +50,7 @@
  * await using client = createGraphqlClient({ url: "http://localhost:4000/graphql" });
  *
  * const res = await client.query(`{ __typename }`);
- * expectGraphqlResponse(res).ok();
+ * console.log(res.data());
  * // Client automatically closed when block exits
  * ```
  *
@@ -85,5 +73,4 @@ export type * from "./types.ts";
 export * from "./errors.ts";
 export { createGraphqlClient } from "./client.ts";
 export * from "./response.ts";
-export * from "./expect.ts";
 export { outdent } from "@cspotcode/outdent";

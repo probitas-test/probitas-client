@@ -1,15 +1,14 @@
 /**
  * Common SQL types and utilities for [Probitas](https://github.com/jsr-probitas/probitas) SQL client packages.
  *
- * This package provides shared types, result classes, errors, and expectations
- * used across all SQL-related client packages.
+ * This package provides shared types, result classes, and errors used across
+ * all SQL-related client packages.
  *
  * ## Features
  *
  * - **Query Results**: `SqlQueryResult` class with row iteration and metadata
  * - **Transactions**: Common transaction interface with isolation levels
  * - **Error Hierarchy**: SQL-specific errors (`SqlError`, `QuerySyntaxError`, `ConstraintError`, `DeadlockError`)
- * - **Fluent Assertions**: `expectSqlQueryResult()` for testing query results
  *
  * ## Installation
  *
@@ -27,14 +26,8 @@
  *   SqlQueryResult,
  *   SqlError,
  *   ConstraintError,
- *   expectSqlQueryResult,
  * } from "@probitas/client-sql";
  * import type { SqlTransaction, SqlIsolationLevel } from "@probitas/client-sql";
- *
- * // Assert on query results
- * expectSqlQueryResult(result)
- *   .hasRowCount(3)
- *   .rowsContain({ name: "Alice" });
  *
  * // Handle SQL errors
  * try {
@@ -69,5 +62,3 @@ export * from "./result.ts";
 export type * from "./transaction.ts";
 export type * from "./errors.ts";
 export * from "./errors.ts";
-export type * from "./expectation.ts";
-export * from "./expectation.ts";

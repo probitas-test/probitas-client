@@ -8,9 +8,8 @@
  *
  * - **Protocol Support**: Connect, gRPC, and gRPC-Web protocols
  * - **Server Reflection**: Auto-discover services and methods at runtime
- * - **Fluent Assertions**: Chain assertions like `.ok()`, `.dataContains()`, `.code()`
  * - **TLS Support**: Configure secure connections with custom certificates
- * - **Duration Tracking**: Built-in timing for performance assertions
+ * - **Duration Tracking**: Built-in timing for performance monitoring
  * - **Error Handling**: Test error responses without throwing exceptions
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
@@ -23,7 +22,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createConnectRpcClient, expectConnectRpcResponse } from "@probitas/client-connectrpc";
+ * import { createConnectRpcClient } from "@probitas/client-connectrpc";
  *
  * // Create client (uses reflection by default)
  * const client = createConnectRpcClient({
@@ -38,17 +37,13 @@
  * const info = await client.reflection.getServiceInfo("echo.EchoService");
  * console.log("Methods:", info.methods);
  *
- * // Call a method with fluent assertions
+ * // Call a method
  * const response = await client.call(
  *   "echo.EchoService",
  *   "echo",
  *   { message: "Hello!" }
  * );
- *
- * expectConnectRpcResponse(response)
- *   .ok()
- *   .dataContains({ message: "Hello!" })
- *   .durationLessThan(1000);
+ * console.log(response.data());
  *
  * await client.close();
  * ```
@@ -64,10 +59,9 @@
  *   { throwOnError: false }
  * );
  *
- * expectConnectRpcResponse(errorResponse)
- *   .notOk()
- *   .code(3)  // INVALID_ARGUMENT
- *   .errorContains("invalid");
+ * if (!errorResponse.ok) {
+ *   console.log("Error code:", errorResponse.code);  // INVALID_ARGUMENT = 3
+ * }
  * ```
  *
  * ## Using with `using` Statement
@@ -76,7 +70,7 @@
  * await using client = createConnectRpcClient({ url: "http://localhost:50051" });
  *
  * const res = await client.call("echo.EchoService", "echo", { message: "test" });
- * expectConnectRpcResponse(res).ok();
+ * console.log(res.data());
  * // Client automatically closed when block exits
  * ```
  *
@@ -107,9 +101,6 @@ export * from "./types.ts";
 
 export type * from "./response.ts";
 export * from "./response.ts";
-
-export type * from "./expect.ts";
-export * from "./expect.ts";
 
 export type * from "./client.ts";
 export * from "./client.ts";

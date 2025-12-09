@@ -1,16 +1,14 @@
 /**
  * HTTP client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
  *
- * This package provides an HTTP client with fluent assertion APIs, designed for
- * integration testing of HTTP APIs.
+ * This package provides an HTTP client designed for integration testing of HTTP APIs.
  *
  * ## Features
  *
- * - **Fluent Assertions**: Chain assertions like `.ok()`, `.contentType()`, `.dataContains()`
  * - **All HTTP Methods**: Support for GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
  * - **Request Building**: Headers, query parameters, body (JSON, form, multipart)
  * - **Response Inspection**: Status codes, headers, cookies, body parsing
- * - **Duration Tracking**: Built-in timing for performance assertions
+ * - **Duration Tracking**: Built-in timing for performance monitoring
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
  * ## Installation
@@ -22,16 +20,13 @@
  * ## Quick Start
  *
  * ```ts
- * import { createHttpClient, expectHttpResponse } from "@probitas/client-http";
+ * import { createHttpClient } from "@probitas/client-http";
  *
  * const http = createHttpClient({ url: "http://localhost:3000" });
  *
- * // GET request with assertions
+ * // GET request
  * const res = await http.get("/users/123");
- * expectHttpResponse(res)
- *   .ok()
- *   .contentType("application/json")
- *   .dataContains({ name: "John" });
+ * console.log("Status:", res.status);
  *
  * // Extract typed data
  * const user = res.json<User>();
@@ -41,7 +36,7 @@
  *   headers: { "Content-Type": "application/json" },
  *   body: JSON.stringify({ name: "Jane" }),
  * });
- * expectHttpResponse(created).status(201);
+ * console.log("Created:", created.status);
  *
  * await http.close();
  * ```
@@ -52,7 +47,7 @@
  * await using http = createHttpClient({ url: "http://localhost:3000" });
  *
  * const res = await http.get("/health");
- * expectHttpResponse(res).ok();
+ * console.log("Health:", res.ok);
  * // Client automatically closed when block exits
  * ```
  *
@@ -75,4 +70,3 @@ export type * from "./types.ts";
 export * from "./errors.ts";
 export * from "./client.ts";
 export * from "./response.ts";
-export * from "./expect.ts";

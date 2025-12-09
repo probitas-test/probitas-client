@@ -10,8 +10,13 @@
  *   docker compose down
  */
 
-import { assertEquals, assertExists, assertRejects } from "@std/assert";
-import { createGrpcClient, expectGrpcResponse, GrpcError } from "./mod.ts";
+import {
+  assertEquals,
+  assertExists,
+  assertLess,
+  assertRejects,
+} from "@std/assert";
+import { createGrpcClient, GrpcError } from "./mod.ts";
 
 // Suppress HTTP/2 cleanup errors from Deno's node:http2 compatibility layer.
 // This is a known Deno bug where async stream handlers fire after session destruction.
@@ -183,29 +188,28 @@ Deno.test({
         { message: "Hello gRPC!" },
       );
 
-      expectGrpcResponse(response)
-        .ok()
-        .code(0)
-        .hasContent();
+      assertEquals(response.ok, true);
+      assertEquals(response.code, 0);
+      assertExists(response.data());
 
       const data = response.data<{ message: string }>();
       assertExists(data);
       assertEquals(data.message, "Hello gRPC!");
     });
 
-    await t.step("fluent expectations work", async () => {
+    await t.step("standard assertions work", async () => {
       const response = await client.call(
         "echo.v1.Echo",
         "echo",
         { message: "Test message" },
       );
 
-      expectGrpcResponse(response)
-        .ok()
-        .code(0)
-        .hasContent()
-        .dataContains({ message: "Test message" })
-        .durationLessThan(5000);
+      assertEquals(response.ok, true);
+      assertEquals(response.code, 0);
+      assertExists(response.data());
+      const data = response.data<{ message: string }>();
+      assertEquals(data?.message, "Test message");
+      assertLess(response.duration, 5000);
     });
 
     await t.step("response includes duration", async () => {
@@ -309,7 +313,7 @@ Deno.test({
         { message: "with metadata" },
       );
 
-      expectGrpcResponse(response).ok();
+      assertEquals(response.ok, true);
       assertExists(response.headers);
     });
 
@@ -328,7 +332,7 @@ Deno.test({
         { metadata: { "x-header": "from-request" } },
       );
 
-      expectGrpcResponse(response).ok();
+      assertEquals(response.ok, true);
     });
   },
 });
@@ -347,7 +351,7 @@ Deno.test({
       { message: "disposable test" },
     );
 
-    expectGrpcResponse(response).ok();
+    assertEquals(response.ok, true);
   },
 });
 
@@ -368,7 +372,7 @@ Deno.test({
         { message: "stream test", count: 3 },
       )
     ) {
-      expectGrpcResponse(response).ok();
+      assertEquals(response.ok, true);
       messages.push(response.data());
     }
 
