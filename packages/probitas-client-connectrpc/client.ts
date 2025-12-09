@@ -21,6 +21,7 @@ import {
 import {
   CachedServerReflectionClient,
   DynamicDispatchClient,
+  ServerReflectionClient,
 } from "@lambdalisue/connectrpc-grpcreflect/client";
 import { getLogger } from "@probitas/logger";
 import { ConnectionError } from "@probitas/client";
@@ -393,7 +394,9 @@ export function createConnectRpcClient(
 
   if (schema === "reflection") {
     // Use server reflection to discover services dynamically
-    reflectionClient = new CachedServerReflectionClient(transport);
+    reflectionClient = new CachedServerReflectionClient(
+      new ServerReflectionClient(transport),
+    );
   } else if (typeof schema === "string") {
     // Load FileDescriptorSet from file path
     logger.debug("Loading FileDescriptorSet from file", { path: schema });

@@ -28,7 +28,7 @@
     "npm:@connectrpc/connect-node@^2.1.1": "2.1.1_@bufbuild+protobuf@2.10.1_@connectrpc+connect@2.1.1__@bufbuild+protobuf@2.10.1",
     "npm:@connectrpc/connect@^2.1.1": "2.1.1_@bufbuild+protobuf@2.10.1",
     "npm:@duckdb/node-api@1.4.2-r.1": "1.4.2-r.1",
-    "npm:@lambdalisue/connectrpc-grpcreflect@0.4": "0.4.0_@bufbuild+protobuf@2.10.1",
+    "npm:@lambdalisue/connectrpc-grpcreflect@0.5": "0.5.0_@bufbuild+protobuf@2.10.1",
     "npm:@types/node@*": "24.0.7",
     "npm:@types/node@24.0.7": "24.0.7",
     "npm:amqplib@~0.10.5": "0.10.9",
@@ -604,8 +604,8 @@
     "@ioredis/commands@1.4.0": {
       "integrity": "sha512-aFT2yemJJo+TZCmieA7qnYGQooOS7QfNmYrzGtsYd3g9j5iDP8AimYYAesf79ohjbLG12XxC4nG5DyEnC88AsQ=="
     },
-    "@lambdalisue/connectrpc-grpcreflect@0.4.0_@bufbuild+protobuf@2.10.1": {
-      "integrity": "sha512-leoOLYlwseKUqUZRvphzfeLK2NEJAXoWuU9MN8I8FTiZnKJFZdPycmUWxZjsAkfRGKfDisCSsxR8Nr+oMAv4gw==",
+    "@lambdalisue/connectrpc-grpcreflect@0.5.0_@bufbuild+protobuf@2.10.1": {
+      "integrity": "sha512-OisIo84Kmv4sTIFSC8v6sFxlj7H22g8uvRScqFz8ZIWEhNdg7rJK60G05EdQo5juNSK0KzG+x31TieikgQotog==",
       "dependencies": [
         "@bufbuild/protobuf",
         "@connectrpc/connect"
@@ -1212,7 +1212,7 @@
           "npm:@bufbuild/protobuf@^2.7.0",
           "npm:@connectrpc/connect-node@^2.1.1",
           "npm:@connectrpc/connect@^2.1.1",
-          "npm:@lambdalisue/connectrpc-grpcreflect@0.4"
+          "npm:@lambdalisue/connectrpc-grpcreflect@0.5"
         ]
       },
       "packages/probitas-client-deno-kv": {
