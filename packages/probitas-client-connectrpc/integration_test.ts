@@ -7,12 +7,8 @@
  *   docker compose down
  */
 
-import { assertEquals, assertExists } from "@std/assert";
-import {
-  ConnectRpcError,
-  createConnectRpcClient,
-  expectConnectRpcResponse,
-} from "./mod.ts";
+import { assertEquals, assertExists, assertLess } from "@std/assert";
+import { ConnectRpcError, createConnectRpcClient } from "./mod.ts";
 
 // Suppress HTTP/2 cleanup errors from Deno's node:http2 compatibility layer.
 // This is a known Deno bug where async stream handlers fire after session destruction.
@@ -185,29 +181,28 @@ Deno.test({
         { message: "Hello Reflection!" },
       );
 
-      expectConnectRpcResponse(response)
-        .ok()
-        .code(0)
-        .hasContent();
+      assertEquals(response.ok, true);
+      assertEquals(response.code, 0);
+      assertExists(response.data());
 
       const data = response.data<{ message: string }>();
       assertExists(data);
       assertEquals(data.message, "Hello Reflection!");
     });
 
-    await t.step("fluent expectations work", async () => {
+    await t.step("standard assertions work", async () => {
       const response = await client.call(
         "echo.v1.Echo",
         "echo",
         { message: "Test message" },
       );
 
-      expectConnectRpcResponse(response)
-        .ok()
-        .code(0)
-        .hasContent()
-        .dataContains({ message: "Test message" })
-        .durationLessThan(5000);
+      assertEquals(response.ok, true);
+      assertEquals(response.code, 0);
+      assertExists(response.data());
+      const data = response.data<{ message: string }>();
+      assertEquals(data?.message, "Test message");
+      assertLess(response.duration, 5000);
     });
 
     await t.step("response includes duration", async () => {
@@ -315,7 +310,7 @@ Deno.test({
         { message: "with metadata" },
       );
 
-      expectConnectRpcResponse(response).ok();
+      assertEquals(response.ok, true);
       assertExists(response.headers);
     });
 
@@ -334,7 +329,7 @@ Deno.test({
         { metadata: { "x-header": "from-request" } },
       );
 
-      expectConnectRpcResponse(response).ok();
+      assertEquals(response.ok, true);
     });
   },
 });
@@ -353,7 +348,7 @@ Deno.test({
       { message: "disposable test" },
     );
 
-    expectConnectRpcResponse(response).ok();
+    assertEquals(response.ok, true);
   },
 });
 
@@ -375,7 +370,7 @@ Deno.test({
         { message: "stream test", count: 3 },
       )
     ) {
-      expectConnectRpcResponse(response).ok();
+      assertEquals(response.ok, true);
       messages.push(response.data());
     }
 
@@ -423,7 +418,7 @@ Deno.test({
       { message: "protocol: connect" },
     );
 
-    expectConnectRpcResponse(response).ok();
+    assertEquals(response.ok, true);
   },
 });
 
@@ -442,7 +437,7 @@ Deno.test({
       { message: "protocol: grpc" },
     );
 
-    expectConnectRpcResponse(response).ok();
+    assertEquals(response.ok, true);
   },
 });
 
@@ -461,7 +456,7 @@ Deno.test({
       { message: "protocol: grpc-web" },
     );
 
-    expectConnectRpcResponse(response).ok();
+    assertEquals(response.ok, true);
   },
 });
 

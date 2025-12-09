@@ -11,7 +11,6 @@
  * - **File Formats**: Native support for Parquet, CSV, and JSON files
  * - **In-Memory Databases**: Perfect for isolated test scenarios
  * - **Analytical Queries**: Optimized for OLAP workloads
- * - **Fluent Assertions**: `expectSqlQueryResult()` for testing query results
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
  * ## Installation
@@ -23,7 +22,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createDuckDbClient, expectSqlQueryResult } from "@probitas/client-sql-duckdb";
+ * import { createDuckDbClient } from "@probitas/client-sql-duckdb";
  *
  * // In-memory database for testing
  * const client = await createDuckDbClient({
@@ -35,10 +34,7 @@
  *   "SELECT id, name FROM read_parquet('data/*.parquet') WHERE active = ?",
  *   [true]
  * );
- *
- * expectSqlQueryResult(result)
- *   .hasRowCount(3)
- *   .rowsContain({ name: "Alice" });
+ * console.log(result.rows);
  *
  * // Analytical queries
  * const stats = await client.query(`

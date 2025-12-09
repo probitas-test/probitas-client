@@ -1,15 +1,13 @@
 /**
  * MongoDB client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
  *
- * This package provides a MongoDB client with fluent assertion APIs, designed for
- * integration testing of applications using MongoDB.
+ * This package provides a MongoDB client designed for integration testing of applications using MongoDB.
  *
  * ## Features
  *
  * - **CRUD Operations**: find, findOne, insertOne, insertMany, updateOne, updateMany, deleteOne, deleteMany
  * - **Aggregations**: Full aggregation pipeline support
  * - **Sessions**: Transaction support with sessions
- * - **Fluent Assertions**: `expectMongoResult()` for testing MongoDB operations
  * - **Type Safety**: Generic type parameters for document types
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
@@ -22,7 +20,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createMongoClient, expectMongoResult } from "@probitas/client-mongodb";
+ * import { createMongoClient } from "@probitas/client-mongodb";
  *
  * const client = await createMongoClient({
  *   url: "mongodb://localhost:27017",
@@ -34,15 +32,15 @@
  *
  * // Insert a document
  * const insertResult = await users.insertOne({ name: "Alice", email: "alice@example.com" });
- * expectMongoResult(insertResult).ok().hasInsertedId();
+ * console.log("Inserted ID:", insertResult.insertedId);
  *
  * // Find documents
  * const findResult = await users.find({ name: "Alice" });
- * expectMongoResult(findResult).ok().countAtLeast(1);
+ * console.log("Found:", findResult.documents);
  *
  * // Find one document
  * const user = await users.findOne({ name: "Alice" });
- * expectMongoResult(user).ok().dataContains({ email: "alice@example.com" });
+ * console.log("User:", user?.document);
  *
  * await client.close();
  * ```
@@ -103,4 +101,3 @@ export type * from "./types.ts";
 export * from "./errors.ts";
 export * from "./results.ts";
 export * from "./client.ts";
-export * from "./expect.ts";

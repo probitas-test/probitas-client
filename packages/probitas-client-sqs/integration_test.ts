@@ -1,4 +1,9 @@
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import {
+  assertEquals,
+  assertExists,
+  assertInstanceOf,
+  assertRejects,
+} from "@std/assert";
 import {
   CreateQueueCommand,
   DeleteQueueCommand,
@@ -6,7 +11,6 @@ import {
 } from "@aws-sdk/client-sqs";
 import { AbortError } from "@probitas/client";
 import { createSqsClient } from "./client.ts";
-import { expectSqsMessage, expectSqsResult } from "./expect.ts";
 import { SqsCommandError } from "./errors.ts";
 
 const SQS_ENDPOINT = Deno.env.get("SQS_ENDPOINT") ?? "http://localhost:4566";
@@ -85,7 +89,8 @@ Deno.test({
           const result = await client.send(
             JSON.stringify({ type: "TEST", value: 42 }),
           );
-          expectSqsResult(result).ok().hasMessageId();
+          assertEquals(result.ok, true);
+          assertExists(result.messageId);
         });
 
         await t.step("receive retrieves messages", async () => {
@@ -93,12 +98,13 @@ Deno.test({
             maxMessages: 10,
             waitTimeSeconds: 1,
           });
-          expectSqsResult(result).ok().hasContent();
+          assertEquals(result.ok, true);
+          assertEquals(result.messages.length > 0, true);
 
           const msg = result.messages.first()!;
-          expectSqsMessage(msg)
-            .bodyContains("TEST")
-            .bodyJsonContains({ type: "TEST" });
+          assertEquals(msg.body.includes("TEST"), true);
+          const parsedBody = JSON.parse(msg.body);
+          assertEquals(parsedBody.type, "TEST");
 
           const body = JSON.parse(msg.body);
           assertEquals(body.type, "TEST");
@@ -114,7 +120,7 @@ Deno.test({
           if (receiveResult.messages.length > 0) {
             const msg = receiveResult.messages.firstOrThrow();
             const deleteResult = await client.delete(msg.receiptHandle);
-            expectSqsResult(deleteResult).ok();
+            assertEquals(deleteResult.ok, true);
           }
         });
 
@@ -128,7 +134,8 @@ Deno.test({
               maxMessages: 1,
               waitTimeSeconds: 0,
             });
-            expectSqsResult(result).ok().noContent();
+            assertEquals(result.ok, true);
+            assertEquals(result.messages.length, 0);
           },
         );
       });
@@ -140,9 +147,9 @@ Deno.test({
             { id: "1", body: "batch-msg-2" },
             { id: "2", body: "batch-msg-3" },
           ]);
-          expectSqsResult(result).ok().allSuccessful().successfulCount(
-            3,
-          );
+          assertEquals(result.ok, true);
+          assertEquals(result.failed.length, 0);
+          assertEquals(result.successful.length, 3);
         });
 
         await t.step("deleteBatch removes multiple messages", async () => {
@@ -174,7 +181,7 @@ Deno.test({
               },
             },
           );
-          expectSqsResult(result).ok();
+          assertEquals(result.ok, true);
         });
 
         await t.step("receive retrieves message attributes", async () => {
@@ -183,7 +190,8 @@ Deno.test({
             waitTimeSeconds: 1,
             messageAttributeNames: ["All"],
           });
-          expectSqsResult(result).ok().hasContent();
+          assertEquals(result.ok, true);
+          assertEquals(result.messages.length > 0, true);
 
           const msg = result.messages.firstOrThrow();
           assertEquals(msg.messageAttributes?.priority?.stringValue, "high");
@@ -201,13 +209,14 @@ Deno.test({
           const result = await client.send("delayed message", {
             delaySeconds: 1,
           });
-          expectSqsResult(result).ok();
+          assertEquals(result.ok, true);
 
           const immediateResult = await client.receive({
             maxMessages: 1,
             waitTimeSeconds: 0,
           });
-          expectSqsResult(immediateResult).ok().noContent();
+          assertEquals(immediateResult.ok, true);
+          assertEquals(immediateResult.messages.length, 0);
 
           await new Promise((r) => setTimeout(r, 1500));
 
@@ -215,9 +224,11 @@ Deno.test({
             maxMessages: 1,
             waitTimeSeconds: 1,
           });
-          expectSqsResult(delayedResult).ok().hasContent();
-          expectSqsMessage(delayedResult.messages.firstOrThrow()).bodyContains(
-            "delayed",
+          assertEquals(delayedResult.ok, true);
+          assertEquals(delayedResult.messages.length > 0, true);
+          assertEquals(
+            delayedResult.messages.firstOrThrow().body.includes("delayed"),
+            true,
           );
 
           await client.delete(
@@ -278,7 +289,7 @@ Deno.test({
             signal: controller.signal,
             waitTimeSeconds: 0,
           });
-          expectSqsResult(result).ok();
+          assertEquals(result.ok, true);
         });
 
         await t.step(

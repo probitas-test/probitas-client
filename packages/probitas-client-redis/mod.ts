@@ -1,15 +1,13 @@
 /**
  * Redis client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
  *
- * This package provides a Redis client with fluent assertion APIs, designed for
- * integration testing of applications using Redis.
+ * This package provides a Redis client designed for integration testing of applications using Redis.
  *
  * ## Features
  *
  * - **Data Structures**: Strings, Hashes, Lists, Sets, Sorted Sets
  * - **Pub/Sub**: Publish and subscribe to channels
  * - **Transactions**: Atomic operations with MULTI/EXEC
- * - **Fluent Assertions**: `expectRedisResult()` for testing Redis operations
  * - **Raw Commands**: Execute any Redis command via `command()`
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
@@ -22,7 +20,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createRedisClient, expectRedisResult } from "@probitas/client-redis";
+ * import { createRedisClient } from "@probitas/client-redis";
  *
  * const client = await createRedisClient({
  *   url: "redis://localhost:6379/0",
@@ -31,17 +29,17 @@
  * // String operations
  * await client.set("user:1:name", "Alice", { ex: 3600 });
  * const result = await client.get("user:1:name");
- * expectRedisResult(result).ok().valueEquals("Alice");
+ * console.log("Name:", result.value);
  *
  * // Hash operations
  * await client.hset("user:1", "email", "alice@example.com");
  * const email = await client.hget("user:1", "email");
- * expectRedisResult(email).ok();
+ * console.log("Email:", email.value);
  *
  * // List operations
  * await client.rpush("queue", "job1", "job2", "job3");
  * const job = await client.lpop("queue");
- * expectRedisResult(job).ok().valueEquals("job1");
+ * console.log("Job:", job.value);
  *
  * await client.close();
  * ```
@@ -53,8 +51,7 @@
  * const tx = client.multi();
  * tx.incr("counter");
  * tx.get("counter");
- * const result = await tx.exec();
- * expectRedisResult(result).ok();
+ * await tx.exec();
  * ```
  *
  * ## Pub/Sub
@@ -93,7 +90,7 @@
  *
  * await client.set("test", "value");
  * const result = await client.get("test");
- * expectRedisResult(result).ok();
+ * console.log(result.value);
  * // Client automatically closed when block exits
  * ```
  *
@@ -116,4 +113,3 @@
 export type * from "./types.ts";
 export * from "./errors.ts";
 export * from "./client.ts";
-export * from "./expect.ts";

@@ -282,7 +282,6 @@ export interface RabbitMqClient extends AsyncDisposable {
 
 /**
  * Union of all RabbitMQ result types.
- * Used by expectRabbitMqResult to determine the appropriate expectation type.
  */
 export type RabbitMqResult =
   | RabbitMqPublishResult

@@ -5,8 +5,8 @@
 [![codecov](https://codecov.io/gh/jsr-probitas/probitas-client/graph/badge.svg)](https://codecov.io/gh/jsr-probitas/probitas-client)
 
 Client library collection for exercising Probitas scenarios against real
-services. Each protocol-specific client shares the same ergonomics, error model,
-and expectation helpers so scenario code stays consistent.
+services. Each protocol-specific client shares the same ergonomics and error
+model so scenario code stays consistent.
 
 ## Highlights
 
@@ -14,31 +14,29 @@ and expectation helpers so scenario code stays consistent.
   (Postgres/MySQL/SQLite/DuckDB), MongoDB, Redis, RabbitMQ, SQS, and Deno KV
 - Shared `ClientError` hierarchy with per-client literal `kind` values for safe
   narrowing
-- Response/expectation helpers (`expectHttpResponse`, `expectSqlQueryResult`,
-  etc.) tailored for test assertions
 - AsyncDisposable-aware clients for predictable resource cleanup in Probitas
   scenarios
 - Built for Deno 2.x and published on JSR under the `@probitas/*` namespace
 
 ## Packages
 
-| Package                         | JSR                                                                                                         | Description                                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `@probitas/client`              | [![JSR](https://jsr.io/badges/@probitas/client)](https://jsr.io/@probitas/client)                           | Core options and error base types shared by all clients                      |
-| `@probitas/client-http`         | [![JSR](https://jsr.io/badges/@probitas/client-http)](https://jsr.io/@probitas/client-http)                 | HTTP client with buffered responses, cookie support, and expectation helpers |
-| `@probitas/client-connectrpc`   | [![JSR](https://jsr.io/badges/@probitas/client-connectrpc)](https://jsr.io/@probitas/client-connectrpc)     | ConnectRPC client supporting Connect, gRPC, and gRPC-Web protocols           |
-| `@probitas/client-grpc`         | [![JSR](https://jsr.io/badges/@probitas/client-grpc)](https://jsr.io/@probitas/client-grpc)                 | gRPC client (thin wrapper over client-connectrpc with protocol="grpc")       |
-| `@probitas/client-graphql`      | [![JSR](https://jsr.io/badges/@probitas/client-graphql)](https://jsr.io/@probitas/client-graphql)           | GraphQL client with data/error helpers and expectations                      |
-| `@probitas/client-sql`          | [![JSR](https://jsr.io/badges/@probitas/client-sql)](https://jsr.io/@probitas/client-sql)                   | Shared SQL result/transaction types and expectations                         |
-| `@probitas/client-sql-postgres` | [![JSR](https://jsr.io/badges/@probitas/client-sql-postgres)](https://jsr.io/@probitas/client-sql-postgres) | PostgreSQL client built on the shared SQL types                              |
-| `@probitas/client-sql-mysql`    | [![JSR](https://jsr.io/badges/@probitas/client-sql-mysql)](https://jsr.io/@probitas/client-sql-mysql)       | MySQL client built on the shared SQL types                                   |
-| `@probitas/client-sql-sqlite`   | [![JSR](https://jsr.io/badges/@probitas/client-sql-sqlite)](https://jsr.io/@probitas/client-sql-sqlite)     | SQLite client built on the shared SQL types                                  |
-| `@probitas/client-sql-duckdb`   | [![JSR](https://jsr.io/badges/@probitas/client-sql-duckdb)](https://jsr.io/@probitas/client-sql-duckdb)     | DuckDB client built on the shared SQL types                                  |
-| `@probitas/client-mongodb`      | [![JSR](https://jsr.io/badges/@probitas/client-mongodb)](https://jsr.io/@probitas/client-mongodb)           | MongoDB client with session/transaction helpers                              |
-| `@probitas/client-redis`        | [![JSR](https://jsr.io/badges/@probitas/client-redis)](https://jsr.io/@probitas/client-redis)               | Redis client with expectation helpers for command results                    |
-| `@probitas/client-deno-kv`      | [![JSR](https://jsr.io/badges/@probitas/client-deno-kv)](https://jsr.io/@probitas/client-deno-kv)           | Deno KV client with bucket helpers and expectations                          |
-| `@probitas/client-sqs`          | [![JSR](https://jsr.io/badges/@probitas/client-sqs)](https://jsr.io/@probitas/client-sqs)                   | SQS client targeting LocalStack for integration testing                      |
-| `@probitas/client-rabbitmq`     | [![JSR](https://jsr.io/badges/@probitas/client-rabbitmq)](https://jsr.io/@probitas/client-rabbitmq)         | RabbitMQ client with channel lifecycle management                            |
+| Package                         | JSR                                                                                                         | Description                                                            |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `@probitas/client`              | [![JSR](https://jsr.io/badges/@probitas/client)](https://jsr.io/@probitas/client)                           | Core options and error base types shared by all clients                |
+| `@probitas/client-http`         | [![JSR](https://jsr.io/badges/@probitas/client-http)](https://jsr.io/@probitas/client-http)                 | HTTP client with buffered responses and cookie support                 |
+| `@probitas/client-connectrpc`   | [![JSR](https://jsr.io/badges/@probitas/client-connectrpc)](https://jsr.io/@probitas/client-connectrpc)     | ConnectRPC client supporting Connect, gRPC, and gRPC-Web protocols     |
+| `@probitas/client-grpc`         | [![JSR](https://jsr.io/badges/@probitas/client-grpc)](https://jsr.io/@probitas/client-grpc)                 | gRPC client (thin wrapper over client-connectrpc with protocol="grpc") |
+| `@probitas/client-graphql`      | [![JSR](https://jsr.io/badges/@probitas/client-graphql)](https://jsr.io/@probitas/client-graphql)           | GraphQL client with data/error helpers                                 |
+| `@probitas/client-sql`          | [![JSR](https://jsr.io/badges/@probitas/client-sql)](https://jsr.io/@probitas/client-sql)                   | Shared SQL result/transaction types                                    |
+| `@probitas/client-sql-postgres` | [![JSR](https://jsr.io/badges/@probitas/client-sql-postgres)](https://jsr.io/@probitas/client-sql-postgres) | PostgreSQL client built on the shared SQL types                        |
+| `@probitas/client-sql-mysql`    | [![JSR](https://jsr.io/badges/@probitas/client-sql-mysql)](https://jsr.io/@probitas/client-sql-mysql)       | MySQL client built on the shared SQL types                             |
+| `@probitas/client-sql-sqlite`   | [![JSR](https://jsr.io/badges/@probitas/client-sql-sqlite)](https://jsr.io/@probitas/client-sql-sqlite)     | SQLite client built on the shared SQL types                            |
+| `@probitas/client-sql-duckdb`   | [![JSR](https://jsr.io/badges/@probitas/client-sql-duckdb)](https://jsr.io/@probitas/client-sql-duckdb)     | DuckDB client built on the shared SQL types                            |
+| `@probitas/client-mongodb`      | [![JSR](https://jsr.io/badges/@probitas/client-mongodb)](https://jsr.io/@probitas/client-mongodb)           | MongoDB client with session/transaction helpers                        |
+| `@probitas/client-redis`        | [![JSR](https://jsr.io/badges/@probitas/client-redis)](https://jsr.io/@probitas/client-redis)               | Redis client for command execution                                     |
+| `@probitas/client-deno-kv`      | [![JSR](https://jsr.io/badges/@probitas/client-deno-kv)](https://jsr.io/@probitas/client-deno-kv)           | Deno KV client for key-value storage                                   |
+| `@probitas/client-sqs`          | [![JSR](https://jsr.io/badges/@probitas/client-sqs)](https://jsr.io/@probitas/client-sqs)                   | SQS client targeting LocalStack for integration testing                |
+| `@probitas/client-rabbitmq`     | [![JSR](https://jsr.io/badges/@probitas/client-rabbitmq)](https://jsr.io/@probitas/client-rabbitmq)         | RabbitMQ client with channel lifecycle management                      |
 
 ## Quick Start
 
@@ -57,7 +55,8 @@ Use them inside Probitas scenarios with resource-managed clients:
 
 ```typescript
 import { scenario } from "probitas";
-import { createHttpClient, expectHttpResponse } from "@probitas/client-http";
+import { createHttpClient } from "@probitas/client-http";
+import { assertEquals } from "@std/assert";
 
 export default scenario("example http request")
   .resource(
@@ -66,9 +65,9 @@ export default scenario("example http request")
   )
   .step("call API", (ctx) => ctx.resources.http.get("/get?hello=world"))
   .step("assert response", (ctx) => {
-    expectHttpResponse(ctx.previous)
-      .ok()
-      .dataContains({ args: { hello: "world" } });
+    const response = ctx.previous;
+    assertEquals(response.status, 200);
+    assertEquals(response.data().args.hello, "world");
   })
   .build();
 ```

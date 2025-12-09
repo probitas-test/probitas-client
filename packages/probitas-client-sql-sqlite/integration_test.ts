@@ -1,8 +1,7 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertExists, assertRejects } from "@std/assert";
 import {
   ConstraintError,
   createSqliteClient,
-  expectSqlQueryResult,
   QuerySyntaxError,
   type SqliteClient,
 } from "./mod.ts";
@@ -287,37 +286,39 @@ Deno.test({
       }
     });
 
-    await t.step("expectSqlQueryResult works with SQLite results", async () => {
+    await t.step("standard assertions work with SQLite results", async () => {
       const client = await createSqliteClient({
         path: ":memory:",
       });
 
       try {
         await client.query(`
-          CREATE TABLE expect_test (
+          CREATE TABLE sample_test (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT
           )
         `);
 
         await client.query(
-          "INSERT INTO expect_test (name) VALUES (?)",
+          "INSERT INTO sample_test (name) VALUES (?)",
           ["Alice"],
         );
         await client.query(
-          "INSERT INTO expect_test (name) VALUES (?)",
+          "INSERT INTO sample_test (name) VALUES (?)",
           ["Bob"],
         );
 
         const result = await client.query<{ id: number; name: string }>(
-          "SELECT * FROM expect_test ORDER BY id",
+          "SELECT * FROM sample_test ORDER BY id",
         );
 
-        expectSqlQueryResult(result)
-          .ok()
-          .hasContent()
-          .count(2)
-          .dataContains({ name: "Alice" });
+        assertEquals(result.ok, true);
+        assertExists(result.rows.length);
+        assertEquals(result.rows.length, 2);
+        assertEquals(
+          result.rows.some((r) => r.name === "Alice"),
+          true,
+        );
       } finally {
         await client.close();
       }

@@ -1,7 +1,11 @@
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import {
+  assertEquals,
+  assertExists,
+  assertInstanceOf,
+  assertRejects,
+} from "@std/assert";
 import { AbortError } from "@probitas/client";
 import { createRabbitMqClient } from "./client.ts";
-import { expectRabbitMqResult } from "./expect.ts";
 import { RabbitMqChannelError } from "./errors.ts";
 
 const RABBITMQ_URL = Deno.env.get("RABBITMQ_URL") ??
@@ -43,18 +47,19 @@ Deno.test({
               durable: false,
               autoDelete: true,
             });
-            expectRabbitMqResult(result).ok().messageCount(0);
+            assertEquals(result.ok, true);
+            assertEquals(result.messageCount, 0);
             assertEquals(result.queue, testQueue);
           });
 
           await t.step("purgeQueue clears the queue", async () => {
             const result = await channel.purgeQueue(testQueue);
-            expectRabbitMqResult(result).ok();
+            assertEquals(result.ok, true);
           });
 
           await t.step("deleteQueue removes the queue", async () => {
             const result = await channel.deleteQueue(testQueue);
-            expectRabbitMqResult(result).ok();
+            assertEquals(result.ok, true);
           });
         } finally {
           await channel.close();
@@ -75,12 +80,12 @@ Deno.test({
                 autoDelete: true,
               },
             );
-            expectRabbitMqResult(result).ok();
+            assertEquals(result.ok, true);
           });
 
           await t.step("deleteExchange removes the exchange", async () => {
             const result = await channel.deleteExchange(testExchange);
-            expectRabbitMqResult(result).ok();
+            assertEquals(result.ok, true);
           });
         } finally {
           await channel.close();
@@ -105,16 +110,18 @@ Deno.test({
               contentType: "application/json",
               persistent: false,
             });
-            expectRabbitMqResult(result).ok();
+            assertEquals(result.ok, true);
           });
 
           await t.step("get retrieves a message", async () => {
             const result = await channel.get(testQueue);
-            expectRabbitMqResult(result)
-              .ok()
-              .hasContent()
-              .routingKey(testQueue)
-              .propertyContains({ contentType: "application/json" });
+            assertEquals(result.ok, true);
+            assertExists(result.message);
+            assertEquals(result.message.fields.routingKey, testQueue);
+            assertEquals(
+              result.message.properties.contentType,
+              "application/json",
+            );
 
             if (result.message) {
               const body = JSON.parse(
@@ -129,7 +136,8 @@ Deno.test({
 
           await t.step("get returns null for empty queue", async () => {
             const result = await channel.get(testQueue);
-            expectRabbitMqResult(result).ok().noContent();
+            assertEquals(result.ok, true);
+            assertEquals(result.message, null);
           });
 
           await channel.deleteQueue(testQueue);
@@ -160,7 +168,7 @@ Deno.test({
               testExchange,
               routingKey,
             );
-            expectRabbitMqResult(result).ok();
+            assertEquals(result.ok, true);
           });
 
           await t.step(
@@ -170,11 +178,10 @@ Deno.test({
               await channel.publish(testExchange, routingKey, content);
 
               const result = await channel.get(testQueue);
-              expectRabbitMqResult(result)
-                .ok()
-                .hasContent()
-                .exchange(testExchange)
-                .routingKey(routingKey);
+              assertEquals(result.ok, true);
+              assertExists(result.message);
+              assertEquals(result.message.fields.exchange, testExchange);
+              assertEquals(result.message.fields.routingKey, routingKey);
 
               if (result.message) {
                 await channel.ack(result.message);
@@ -188,7 +195,7 @@ Deno.test({
               testExchange,
               routingKey,
             );
-            expectRabbitMqResult(result).ok();
+            assertEquals(result.ok, true);
           });
 
           await channel.deleteQueue(testQueue);
@@ -215,14 +222,16 @@ Deno.test({
               await channel.sendToQueue(testQueue, content);
 
               const result1 = await channel.get(testQueue);
-              expectRabbitMqResult(result1).ok().hasContent();
+              assertEquals(result1.ok, true);
+              assertExists(result1.message);
 
               if (result1.message) {
                 await channel.nack(result1.message, { requeue: true });
               }
 
               const result2 = await channel.get(testQueue);
-              expectRabbitMqResult(result2).ok().hasContent();
+              assertEquals(result2.ok, true);
+              assertExists(result2.message);
 
               if (result2.message) {
                 assertEquals(result2.message.fields.redelivered, true);
@@ -236,14 +245,16 @@ Deno.test({
             await channel.sendToQueue(testQueue, content);
 
             const result = await channel.get(testQueue);
-            expectRabbitMqResult(result).ok().hasContent();
+            assertEquals(result.ok, true);
+            assertExists(result.message);
 
             if (result.message) {
               await channel.reject(result.message, false);
             }
 
             const result2 = await channel.get(testQueue);
-            expectRabbitMqResult(result2).ok().noContent();
+            assertEquals(result2.ok, true);
+            assertEquals(result2.message, null);
           });
 
           await channel.deleteQueue(testQueue);
@@ -292,7 +303,7 @@ Deno.test({
             const result = await channel.get(testQueue, {
               signal: controller.signal,
             });
-            expectRabbitMqResult(result).ok();
+            assertEquals(result.ok, true);
           });
 
           await t.step(

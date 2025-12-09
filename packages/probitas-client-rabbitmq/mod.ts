@@ -1,8 +1,7 @@
 /**
  * RabbitMQ client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
  *
- * This package provides a RabbitMQ client with fluent assertion APIs, designed for
- * integration testing of message-driven applications.
+ * This package provides a RabbitMQ client designed for integration testing of message-driven applications.
  *
  * ## Features
  *
@@ -10,7 +9,6 @@
  * - **Exchange Operations**: Declare and delete exchanges (direct, topic, fanout, headers)
  * - **Publishing**: Publish messages with routing keys and headers
  * - **Consuming**: Consume messages with acknowledgment support
- * - **Fluent Assertions**: `expectRabbitMqResult()` for testing message operations
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
  * ## Installation
@@ -22,7 +20,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createRabbitMqClient, expectRabbitMqResult } from "@probitas/client-rabbitmq";
+ * import { createRabbitMqClient } from "@probitas/client-rabbitmq";
  *
  * // Using string URL
  * const client = await createRabbitMqClient({
@@ -44,15 +42,13 @@
  * const channel = await client.channel();
  *
  * // Declare a queue
- * const queueResult = await channel.assertQueue("test-queue", { durable: true });
- * expectRabbitMqResult(queueResult).ok();
+ * await channel.assertQueue("test-queue", { durable: true });
  *
  * // Publish a message
  * const content = new TextEncoder().encode("Hello, World!");
- * const publishResult = await channel.sendToQueue("test-queue", content, {
+ * await channel.sendToQueue("test-queue", content, {
  *   contentType: "text/plain",
  * });
- * expectRabbitMqResult(publishResult).ok();
  *
  * // Consume messages
  * for await (const msg of channel.consume("test-queue")) {
@@ -110,4 +106,3 @@
 export type * from "./types.ts";
 export * from "./errors.ts";
 export * from "./client.ts";
-export * from "./expect.ts";

@@ -256,7 +256,7 @@ function resolveEndpointUrl(
  *   type: "ORDER",
  *   orderId: "123",
  * }));
- * expectSqsSendResult(sendResult).ok().hasMessageId();
+ * console.log("Message ID:", sendResult.messageId);
  *
  * await sqs.close();
  * ```
@@ -286,7 +286,7 @@ function resolveEndpointUrl(
  *   visibilityTimeout: 30,
  * });
  *
- * expectSqsReceiveResult(receiveResult).ok();
+ * console.log("Received:", receiveResult.messages.length);
  *
  * // Process and acknowledge messages
  * for (const msg of receiveResult.messages) {

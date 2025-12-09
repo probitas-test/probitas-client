@@ -1,15 +1,13 @@
 /**
  * Deno KV client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
  *
- * This package provides a Deno KV client with fluent assertion APIs, designed for
- * integration testing of applications using Deno KV storage.
+ * This package provides a Deno KV client designed for integration testing of applications using Deno KV storage.
  *
  * ## Features
  *
  * - **Key-Value Operations**: get, set, delete with structured keys
  * - **Listing**: Iterate over keys by prefix, start, end
  * - **Atomic Transactions**: Atomic operations with version checking
- * - **Fluent Assertions**: `expectDenoKvResult()` for testing KV operations
  * - **Type Safety**: Generic type parameters for stored values
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
@@ -22,24 +20,21 @@
  * ## Quick Start
  *
  * ```ts
- * import {
- *   createDenoKvClient,
- *   expectDenoKvResult,
- * } from "@probitas/client-deno-kv";
+ * import { createDenoKvClient } from "@probitas/client-deno-kv";
  *
  * const kv = await createDenoKvClient();
  *
  * // Set a value
  * const setResult = await kv.set(["users", "1"], { name: "Alice", age: 30 });
- * expectDenoKvResult(setResult).ok().hasVersionstamp();
+ * console.log("Versionstamp:", setResult.versionstamp);
  *
  * // Get a value with type
  * const getResult = await kv.get<{ name: string; age: number }>(["users", "1"]);
- * expectDenoKvResult(getResult).ok().hasContent().dataContains({ name: "Alice" });
+ * console.log("User:", getResult.value);
  *
  * // List entries by prefix
  * const listResult = await kv.list<{ name: string }>({ prefix: ["users"] });
- * expectDenoKvResult(listResult).ok().countAtLeast(1);
+ * console.log("Entries:", listResult.entries);
  *
  * await kv.close();
  * ```
@@ -51,8 +46,7 @@
  * const atomic = kv.atomic();
  * atomic.check({ key: ["counter"], versionstamp: null }); // Only if key doesn't exist
  * atomic.set(["counter"], 1n);
- * const atomicResult = await atomic.commit();
- * expectDenoKvResult(atomicResult).ok();
+ * await atomic.commit();
  *
  * // Atomic increment
  * const current = await kv.get<bigint>(["counter"]);
@@ -69,7 +63,7 @@
  *
  * await kv.set(["test"], "value");
  * const result = await kv.get(["test"]);
- * expectDenoKvResult(result).ok();
+ * console.log(result.value);
  * // Client automatically closed when block exits
  * ```
  *
@@ -94,4 +88,3 @@ export * from "./errors.ts";
 export * from "./results.ts";
 export type * from "./atomic.ts";
 export * from "./client.ts";
-export * from "./expect.ts";

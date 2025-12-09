@@ -10,7 +10,6 @@
  * - **Transactions**: Full transaction support with isolation levels
  * - **LISTEN/NOTIFY**: Real-time notifications for async testing
  * - **COPY Protocol**: High-performance bulk data loading
- * - **Fluent Assertions**: `expectSqlQueryResult()` for testing query results
  * - **Connection Pooling**: Configurable pool with idle timeout
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
@@ -23,7 +22,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createPostgresClient, expectSqlQueryResult } from "@probitas/client-sql-postgres";
+ * import { createPostgresClient } from "@probitas/client-sql-postgres";
  *
  * const client = await createPostgresClient({
  *   url: "postgres://user:pass@localhost:5432/mydb",
@@ -34,10 +33,7 @@
  *   "SELECT id, name FROM users WHERE active = $1",
  *   [true]
  * );
- *
- * expectSqlQueryResult(result)
- *   .hasRowCount(3)
- *   .rowsContain({ name: "Alice" });
+ * console.log(result.rows);
  *
  * // Get first row
  * const user = await client.queryOne<{ id: number; name: string }>(
@@ -128,7 +124,3 @@ export {
   SqlError,
 } from "@probitas/client-sql";
 export type { SqlErrorKind, SqlErrorOptions } from "@probitas/client-sql";
-
-// Re-export expectation for convenience
-export { expectSqlQueryResult } from "@probitas/client-sql";
-export type { SqlQueryResultExpectation } from "@probitas/client-sql";

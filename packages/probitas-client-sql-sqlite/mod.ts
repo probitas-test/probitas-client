@@ -10,7 +10,6 @@
  * - **Transactions**: Full transaction support with isolation levels
  * - **In-Memory Databases**: Perfect for isolated test scenarios
  * - **File-Based Databases**: Persist data for stateful testing
- * - **Fluent Assertions**: `expectSqlQueryResult()` for testing query results
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
  * ## Installation
@@ -22,7 +21,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createSqliteClient, expectSqlQueryResult } from "@probitas/client-sql-sqlite";
+ * import { createSqliteClient } from "@probitas/client-sql-sqlite";
  *
  * // In-memory database for testing
  * const client = await createSqliteClient({
@@ -45,10 +44,7 @@
  *   "SELECT id, name FROM users WHERE active = ?",
  *   [1]
  * );
- *
- * expectSqlQueryResult(result)
- *   .hasRowCount(1)
- *   .rowsContain({ name: "Alice" });
+ * console.log(result.rows);
  *
  * await client.close();
  * ```

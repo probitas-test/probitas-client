@@ -7,12 +7,8 @@
  *   docker compose down
  */
 
-import { assertEquals, assertInstanceOf } from "@std/assert";
-import {
-  createHttpClient,
-  expectHttpResponse,
-  HttpNotFoundError,
-} from "./mod.ts";
+import { assert, assertEquals, assertInstanceOf } from "@std/assert";
+import { createHttpClient, HttpNotFoundError } from "./mod.ts";
 
 const ECHO_HTTP_URL = Deno.env.get("ECHO_HTTP_URL") ?? "http://localhost:18080";
 
@@ -40,10 +36,9 @@ Deno.test({
         headers: { "X-Custom-Header": "test-value" },
       });
 
-      expectHttpResponse(res)
-        .ok()
-        .status(200)
-        .contentType(/^application\/json/);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
+      assert(res.headers.get("content-type")?.match(/^application\/json/));
 
       const data = res.data<{
         args: Record<string, string>;
@@ -60,10 +55,9 @@ Deno.test({
       const payload = { name: "John", email: "john@example.com" };
       const res = await client.post("/post", payload);
 
-      expectHttpResponse(res)
-        .ok()
-        .status(200)
-        .contentType(/^application\/json/);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
+      assert(res.headers.get("content-type")?.match(/^application\/json/));
 
       const data = res.data<{
         json: typeof payload;
@@ -81,7 +75,8 @@ Deno.test({
       });
       const res = await client.post("/post", params);
 
-      expectHttpResponse(res).ok().status(200);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
 
       const data = res.data<{ form: Record<string, string> }>();
       assertEquals(data?.form.username, "alice");
@@ -91,7 +86,8 @@ Deno.test({
     await t.step("PUT /put", async () => {
       const res = await client.put("/put", { updated: true });
 
-      expectHttpResponse(res).ok().status(200);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
 
       const data = res.data<{ json: { updated: boolean } }>();
       assertEquals(data?.json.updated, true);
@@ -100,7 +96,8 @@ Deno.test({
     await t.step("PATCH /patch", async () => {
       const res = await client.patch("/patch", { patched: "value" });
 
-      expectHttpResponse(res).ok().status(200);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
 
       const data = res.data<{ json: { patched: string } }>();
       assertEquals(data?.json.patched, "value");
@@ -109,13 +106,15 @@ Deno.test({
     await t.step("DELETE /delete", async () => {
       const res = await client.delete("/delete");
 
-      expectHttpResponse(res).ok().status(200);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
     });
 
     await t.step("GET /status/201 returns custom status", async () => {
       const res = await client.request("GET", "/status/201");
 
-      expectHttpResponse(res).ok().status(201);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 201);
     });
 
     await t.step("GET /status/404 throws HttpNotFoundError", async () => {
@@ -135,7 +134,7 @@ Deno.test({
         },
       });
 
-      expectHttpResponse(res).ok();
+      assertEquals(res.ok, true);
 
       const data = res.data<{ headers: Record<string, string> }>();
       // Verify Accept header was sent (echo-http echoes back headers)
@@ -145,7 +144,7 @@ Deno.test({
     await t.step("GET /delay/1 measures duration", async () => {
       const res = await client.get("/delay/1");
 
-      expectHttpResponse(res).ok();
+      assertEquals(res.ok, true);
       // Should take at least 1 second
       assertEquals(
         res.duration >= 1000,
@@ -208,7 +207,8 @@ Deno.test({
     await t.step("redirect: follow (default) follows redirects", async () => {
       const res = await client.get("/redirect/3");
 
-      expectHttpResponse(res).ok().status(200);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
 
       const data = res.data<{ redirected: boolean }>();
       assertEquals(data?.redirected, true);
@@ -261,7 +261,8 @@ Deno.test({
 
       // Override manual with follow
       const res = await clientManual.get("/redirect/1", { redirect: "follow" });
-      expectHttpResponse(res).ok().status(200);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
 
       await clientManual.close();
     });
@@ -282,7 +283,7 @@ Deno.test({
 
       const res = await client.get("/cookies");
 
-      expectHttpResponse(res).ok();
+      assertEquals(res.ok, true);
       const data = res.data<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.session, "test123");
       assertEquals(data?.cookies.user, "alice");

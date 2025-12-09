@@ -126,7 +126,6 @@ export interface DenoKvAtomicResult {
 
 /**
  * Union of all Deno KV result types.
- * Used by expectDenoKvResult to determine the appropriate expectation type.
  */
 export type DenoKvResult<T = unknown> =
   | DenoKvGetResult<T>

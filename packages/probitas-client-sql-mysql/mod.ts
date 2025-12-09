@@ -9,7 +9,6 @@
  * - **Query Execution**: Parameterized queries with type-safe results
  * - **Transactions**: Full transaction support with isolation levels
  * - **Prepared Statements**: Automatic parameter escaping and type conversion
- * - **Fluent Assertions**: `expectSqlQueryResult()` for testing query results
  * - **Connection Pooling**: Configurable pool with idle timeout
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
  *
@@ -22,7 +21,7 @@
  * ## Quick Start
  *
  * ```ts
- * import { createMySqlClient, expectSqlQueryResult } from "@probitas/client-sql-mysql";
+ * import { createMySqlClient } from "@probitas/client-sql-mysql";
  *
  * const client = await createMySqlClient({
  *   url: {
@@ -39,10 +38,7 @@
  *   "SELECT id, name FROM users WHERE active = ?",
  *   [true]
  * );
- *
- * expectSqlQueryResult(result)
- *   .hasRowCount(3)
- *   .rowsContain({ name: "Alice" });
+ * console.log(result.rows);
  *
  * // Get first row
  * const user = await client.queryOne<{ id: number; name: string }>(

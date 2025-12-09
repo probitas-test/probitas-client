@@ -7,13 +7,13 @@
  *   docker compose down
  */
 
-import { assertEquals, assertInstanceOf } from "@std/assert";
 import {
-  createGraphqlClient,
-  expectGraphqlResponse,
-  GraphqlNetworkError,
-  outdent,
-} from "./mod.ts";
+  assertEquals,
+  assertExists,
+  assertInstanceOf,
+  assertLess,
+} from "@std/assert";
+import { createGraphqlClient, GraphqlNetworkError, outdent } from "./mod.ts";
 
 const GRAPHQL_URL = Deno.env.get("GRAPHQL_URL") ??
   "http://localhost:14000/graphql";
@@ -44,10 +44,9 @@ Deno.test({
         "{ __typename }",
       );
 
-      expectGraphqlResponse(res)
-        .ok()
-        .status(200)
-        .hasContent();
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
+      assertExists(res.data());
 
       assertEquals(res.data()?.__typename, "Query");
     });
@@ -57,7 +56,8 @@ Deno.test({
         __schema: { queryType: { name: string } };
       }>("{ __schema { queryType { name } } }");
 
-      expectGraphqlResponse(res).ok().hasContent();
+      assertEquals(res.ok, true);
+      assertExists(res.data());
 
       assertEquals(res.data()?.__schema.queryType.name, "Query");
     });
@@ -72,7 +72,8 @@ Deno.test({
         { message: "Hello, Probitas!" },
       );
 
-      expectGraphqlResponse(res).ok().hasContent();
+      assertEquals(res.ok, true);
+      assertExists(res.data());
       assertEquals(res.data()?.echo, "Hello, Probitas!");
     });
 
@@ -88,7 +89,8 @@ Deno.test({
       );
       const elapsed = Date.now() - start;
 
-      expectGraphqlResponse(res).ok().hasContent();
+      assertEquals(res.ok, true);
+      assertExists(res.data());
       assertEquals(res.data()?.echoWithDelay, "Delayed message");
 
       // Should have taken at least 500ms
@@ -114,7 +116,7 @@ Deno.test({
         { message: "This should fail" },
       );
 
-      expectGraphqlResponse(res).notOk();
+      assertEquals(res.ok, false);
 
       await clientNoThrow.close();
     });
@@ -145,7 +147,8 @@ Deno.test({
           { messages: ["success", "error", "also success"] },
         );
 
-        expectGraphqlResponse(res).ok().hasContent();
+        assertEquals(res.ok, true);
+        assertExists(res.data());
         const results = res.data()?.echoPartialError;
         // First and third should succeed, second should have error
         assertEquals(results?.[0]?.message, "success");
@@ -169,7 +172,7 @@ Deno.test({
         { operationName: "FirstQuery" },
       );
 
-      expectGraphqlResponse(res).ok();
+      assertEquals(res.ok, true);
     });
 
     await t.step("includes duration in response", async () => {
@@ -195,7 +198,7 @@ Deno.test({
       await using c = createGraphqlClient({ url: GRAPHQL_URL });
 
       const res = await c.query("{ __typename }");
-      expectGraphqlResponse(res).ok();
+      assertEquals(res.ok, true);
     });
 
     await t.step("default headers from config", async () => {
@@ -208,7 +211,7 @@ Deno.test({
       });
 
       const res = await clientWithHeaders.query("{ __typename }");
-      expectGraphqlResponse(res).ok();
+      assertEquals(res.ok, true);
 
       await clientWithHeaders.close();
     });
@@ -225,7 +228,7 @@ Deno.test({
         { headers: { "X-Header": "from-request" } },
       );
 
-      expectGraphqlResponse(res).ok();
+      assertEquals(res.ok, true);
 
       await clientWithHeaders.close();
     });
@@ -261,7 +264,7 @@ Deno.test({
           { message: "This triggers an error" },
         );
 
-        expectGraphqlResponse(res).notOk();
+        assertEquals(res.ok, false);
 
         await clientNoThrow.close();
       },
@@ -270,7 +273,7 @@ Deno.test({
     await t.step("execute() works for queries", async () => {
       const res = await client.execute("query { __typename }");
 
-      expectGraphqlResponse(res).ok();
+      assertEquals(res.ok, true);
     });
 
     await t.step("mutation - createMessage", async () => {
@@ -289,7 +292,8 @@ Deno.test({
         { text: "Hello from integration test" },
       );
 
-      expectGraphqlResponse(res).ok().hasContent();
+      assertEquals(res.ok, true);
+      assertExists(res.data());
 
       const message = res.data()?.createMessage;
       assertEquals(message?.text, "Hello from integration test");
@@ -297,15 +301,14 @@ Deno.test({
       assertEquals(typeof message?.createdAt, "string");
     });
 
-    await t.step("fluent expectation chaining", async () => {
+    await t.step("standard assertion chaining", async () => {
       const res = await client.query<{ __typename: string }>("{ __typename }");
 
-      expectGraphqlResponse(res)
-        .ok()
-        .status(200)
-        .hasContent()
-        .dataContains({ __typename: "Query" })
-        .durationLessThan(5000);
+      assertEquals(res.ok, true);
+      assertEquals(res.status, 200);
+      assertExists(res.data());
+      assertEquals(res.data()?.__typename, "Query");
+      assertLess(res.duration, 5000);
     });
 
     await t.step(
@@ -322,7 +325,8 @@ Deno.test({
           { message: "Hello" },
         );
 
-        expectGraphqlResponse(res).ok().hasContent();
+        assertEquals(res.ok, true);
+        assertExists(res.data());
         assertEquals(res.data()?.echoWithExtensions, "Hello");
         // Server includes timing and tracing extensions
         assertEquals(typeof res.extensions?.timing, "object");
@@ -363,7 +367,8 @@ Deno.test({
         { id: messageId, text: "Updated text" },
       );
 
-      expectGraphqlResponse(updateRes).ok().hasContent();
+      assertEquals(updateRes.ok, true);
+      assertExists(updateRes.data());
       assertEquals(updateRes.data()?.updateMessage.id, messageId);
       assertEquals(updateRes.data()?.updateMessage.text, "Updated text");
     });
@@ -397,7 +402,8 @@ Deno.test({
         { id: messageId },
       );
 
-      expectGraphqlResponse(deleteRes).ok().hasContent();
+      assertEquals(deleteRes.ok, true);
+      assertExists(deleteRes.data());
       assertEquals(deleteRes.data()?.deleteMessage, true);
     });
 
@@ -419,7 +425,8 @@ Deno.test({
             { from: 3 },
           )
         ) {
-          expectGraphqlResponse(res).ok().hasContent();
+          assertEquals(res.ok, true);
+          assertExists(res.data());
           numbers.push(res.data()?.countdown ?? -1);
         }
 
@@ -459,7 +466,8 @@ Deno.test({
           { headers: { "X-Request-Id": "req-789" } },
         );
 
-        expectGraphqlResponse(res).ok().hasContent();
+        assertEquals(res.ok, true);
+        assertExists(res.data());
 
         const headers = res.data()?.echoHeaders;
         // Verify config-level headers were sent
