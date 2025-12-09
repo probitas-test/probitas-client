@@ -1,3 +1,65 @@
+### 2025.12.09
+
+#### @probitas/client 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-connectrpc 0.3.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-deno-kv 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-graphql 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-grpc 0.3.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-http 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-mongodb 0.3.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-rabbitmq 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-redis 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-sql 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-sql-duckdb 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-sql-mysql 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-sql-postgres 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-sql-sqlite 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
+#### @probitas/client-sqs 0.2.0 (minor)
+
+- BREAKING(*): remove expect functionality
+
 ### 2025.12.08
 
 #### @probitas/client 0.1.1 (patch)
