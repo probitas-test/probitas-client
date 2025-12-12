@@ -204,24 +204,24 @@ version management.
 
 ### Scope Convention
 
-Use package name (without `@probitas/` prefix) as scope. **Scopes are required**
-for `BREAKING`, `feat`, `fix`, `perf`, and `deprecation`.
+Use full package name (with `@probitas/` prefix) as scope. **Scopes are
+required** for `BREAKING`, `feat`, `fix`, `perf`, and `deprecation`.
 
 ```bash
 # Single package
-feat(client-http): add connection pooling
-fix(client-redis): handle reconnection correctly
+feat(@probitas/client-http): add connection pooling
+fix(@probitas/client-redis): handle reconnection correctly
 
 # Multiple packages (comma-separated)
-fix(client-sql,client-sql-postgres): fix shared type definitions
+fix(@probitas/client-sql,@probitas/client-sql-postgres): fix shared type definitions
 
 # All packages (wildcard)
 docs(*): update API documentation
 refactor(*): apply new linting rules
 
 # Unstable API (always patch, even for BREAKING)
-feat(client-http/unstable): experimental streaming support
-BREAKING(client-http/unstable): change unstable API signature  # Still patch!
+feat(@probitas/client-http/unstable): experimental streaming support
+BREAKING(@probitas/client-http/unstable): change unstable API signature  # Still patch!
 ```
 
 ### Important Notes
