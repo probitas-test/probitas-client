@@ -39,7 +39,7 @@ export interface ConnectRpcErrorOptions extends ErrorOptions {
   /**
    * Headers/metadata from the ConnectRPC response.
    */
-  readonly metadata?: Record<string, string>;
+  readonly metadata?: Headers;
 
   /**
    * Rich error details from google.rpc.Status.
@@ -53,20 +53,20 @@ export interface ConnectRpcErrorOptions extends ErrorOptions {
 export class ConnectRpcError extends ClientError {
   override readonly name: string = "ConnectRpcError";
   override readonly kind = "connectrpc" as const;
-  readonly code: ConnectRpcStatusCode;
-  readonly rawMessage: string;
-  readonly metadata?: Record<string, string>;
+  readonly statusCode: ConnectRpcStatusCode;
+  readonly statusMessage: string;
+  readonly metadata?: Headers;
   readonly details: readonly ErrorDetail[];
 
   constructor(
     message: string,
-    code: ConnectRpcStatusCode,
-    rawMessage: string,
+    statusCode: ConnectRpcStatusCode,
+    statusMessage: string,
     options?: ConnectRpcErrorOptions,
   ) {
     super(message, "ConnectRpcError", options);
-    this.code = code;
-    this.rawMessage = rawMessage;
+    this.statusCode = statusCode;
+    this.statusMessage = statusMessage;
     this.metadata = options?.metadata;
     this.details = options?.details ?? [];
   }
@@ -77,10 +77,10 @@ export class ConnectRpcError extends ClientError {
  */
 export class ConnectRpcUnauthenticatedError extends ConnectRpcError {
   override readonly name = "ConnectRpcUnauthenticatedError" as const;
-  override readonly code = 16 as const;
+  override readonly statusCode = 16 as const;
 
-  constructor(rawMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Unauthenticated: ${rawMessage}`, 16, rawMessage, options);
+  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
+    super(`Unauthenticated: ${statusMessage}`, 16, statusMessage, options);
   }
 }
 
@@ -89,10 +89,10 @@ export class ConnectRpcUnauthenticatedError extends ConnectRpcError {
  */
 export class ConnectRpcPermissionDeniedError extends ConnectRpcError {
   override readonly name = "ConnectRpcPermissionDeniedError" as const;
-  override readonly code = 7 as const;
+  override readonly statusCode = 7 as const;
 
-  constructor(rawMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Permission denied: ${rawMessage}`, 7, rawMessage, options);
+  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
+    super(`Permission denied: ${statusMessage}`, 7, statusMessage, options);
   }
 }
 
@@ -101,10 +101,10 @@ export class ConnectRpcPermissionDeniedError extends ConnectRpcError {
  */
 export class ConnectRpcNotFoundError extends ConnectRpcError {
   override readonly name = "ConnectRpcNotFoundError" as const;
-  override readonly code = 5 as const;
+  override readonly statusCode = 5 as const;
 
-  constructor(rawMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Not found: ${rawMessage}`, 5, rawMessage, options);
+  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
+    super(`Not found: ${statusMessage}`, 5, statusMessage, options);
   }
 }
 
@@ -113,10 +113,10 @@ export class ConnectRpcNotFoundError extends ConnectRpcError {
  */
 export class ConnectRpcResourceExhaustedError extends ConnectRpcError {
   override readonly name = "ConnectRpcResourceExhaustedError" as const;
-  override readonly code = 8 as const;
+  override readonly statusCode = 8 as const;
 
-  constructor(rawMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Resource exhausted: ${rawMessage}`, 8, rawMessage, options);
+  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
+    super(`Resource exhausted: ${statusMessage}`, 8, statusMessage, options);
   }
 }
 
@@ -125,10 +125,10 @@ export class ConnectRpcResourceExhaustedError extends ConnectRpcError {
  */
 export class ConnectRpcInternalError extends ConnectRpcError {
   override readonly name = "ConnectRpcInternalError" as const;
-  override readonly code = 13 as const;
+  override readonly statusCode = 13 as const;
 
-  constructor(rawMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Internal error: ${rawMessage}`, 13, rawMessage, options);
+  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
+    super(`Internal error: ${statusMessage}`, 13, statusMessage, options);
   }
 }
 
@@ -137,10 +137,10 @@ export class ConnectRpcInternalError extends ConnectRpcError {
  */
 export class ConnectRpcUnavailableError extends ConnectRpcError {
   override readonly name = "ConnectRpcUnavailableError" as const;
-  override readonly code = 14 as const;
+  override readonly statusCode = 14 as const;
 
-  constructor(rawMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Unavailable: ${rawMessage}`, 14, rawMessage, options);
+  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
+    super(`Unavailable: ${statusMessage}`, 14, statusMessage, options);
   }
 }
 
@@ -153,10 +153,10 @@ export class ConnectRpcUnavailableError extends ConnectRpcError {
  */
 export function fromConnectError(
   error: ConnectError,
-  metadata?: Record<string, string>,
+  metadata?: Headers,
 ): ConnectRpcError {
-  const code = error.code as Code as ConnectRpcStatusCode;
-  const rawMessage = error.rawMessage || error.message;
+  const statusCode = error.code as Code as ConnectRpcStatusCode;
+  const statusMessage = error.rawMessage || error.message;
 
   // Extract error details.
   // ConnectError.details contains unprocessed detail objects with `desc` and `value` properties.
@@ -177,20 +177,25 @@ export function fromConnectError(
   };
 
   // Return specific error subclass based on code
-  switch (code) {
+  switch (statusCode) {
     case 5:
-      return new ConnectRpcNotFoundError(rawMessage, options);
+      return new ConnectRpcNotFoundError(statusMessage, options);
     case 7:
-      return new ConnectRpcPermissionDeniedError(rawMessage, options);
+      return new ConnectRpcPermissionDeniedError(statusMessage, options);
     case 8:
-      return new ConnectRpcResourceExhaustedError(rawMessage, options);
+      return new ConnectRpcResourceExhaustedError(statusMessage, options);
     case 13:
-      return new ConnectRpcInternalError(rawMessage, options);
+      return new ConnectRpcInternalError(statusMessage, options);
     case 14:
-      return new ConnectRpcUnavailableError(rawMessage, options);
+      return new ConnectRpcUnavailableError(statusMessage, options);
     case 16:
-      return new ConnectRpcUnauthenticatedError(rawMessage, options);
+      return new ConnectRpcUnauthenticatedError(statusMessage, options);
     default:
-      return new ConnectRpcError(error.message, code, rawMessage, options);
+      return new ConnectRpcError(
+        error.message,
+        statusCode,
+        statusMessage,
+        options,
+      );
   }
 }

@@ -4,6 +4,7 @@
  * @module
  */
 
+import type { ConnectError } from "@connectrpc/connect";
 import type { ConnectRpcStatusCode } from "./status.ts";
 
 /**
@@ -13,20 +14,20 @@ export interface ConnectRpcResponse {
   /** Result type identifier */
   readonly type: "connectrpc";
 
-  /** Whether the request was successful (code === 0). */
+  /** Whether the request was successful (statusCode === 0). */
   readonly ok: boolean;
 
   /** ConnectRPC/gRPC status code. */
-  readonly code: ConnectRpcStatusCode;
+  readonly statusCode: ConnectRpcStatusCode;
 
-  /** Status message (empty string for successful responses). */
-  readonly message: string;
+  /** Status message (null for successful responses). */
+  readonly statusMessage: string | null;
 
   /** Response headers */
-  readonly headers: Record<string, string>;
+  readonly headers: Headers;
 
   /** Response trailers (sent at end of RPC) */
-  readonly trailers: Record<string, string>;
+  readonly trailers: Headers;
 
   /** Response time in milliseconds. */
   readonly duration: number;
@@ -40,56 +41,64 @@ export interface ConnectRpcResponse {
   data<T = any>(): T | null;
 
   /**
-   * Get raw response message.
+   * Get raw response or error.
    */
   raw(): unknown;
 }
 
 /**
- * Options for creating a ConnectRpcResponse.
+ * Parameters for creating a ConnectRpcResponse.
  */
-export interface ConnectRpcResponseOptions {
-  readonly code: ConnectRpcStatusCode;
-  readonly message: string;
-  readonly headers: Record<string, string>;
-  readonly trailers: Record<string, string>;
+export interface ConnectRpcResponseParams<T = unknown> {
+  readonly response?: T;
+  readonly error?: ConnectError;
+  readonly headers: Headers;
+  readonly trailers: Headers;
   readonly duration: number;
-  readonly responseMessage: unknown;
 }
 
 /**
  * Implementation of ConnectRpcResponse.
  */
-export class ConnectRpcResponseImpl implements ConnectRpcResponse {
+export class ConnectRpcResponseImpl<T = unknown> implements ConnectRpcResponse {
   readonly type = "connectrpc" as const;
   readonly ok: boolean;
-  readonly code: ConnectRpcStatusCode;
-  readonly message: string;
-  readonly headers: Record<string, string>;
-  readonly trailers: Record<string, string>;
+  readonly statusCode: ConnectRpcStatusCode;
+  readonly statusMessage: string | null;
+  readonly headers: Headers;
+  readonly trailers: Headers;
   readonly duration: number;
 
-  readonly #responseMessage: unknown;
+  readonly #response?: T;
+  readonly #error?: ConnectError;
 
-  constructor(options: ConnectRpcResponseOptions) {
-    this.code = options.code;
-    this.ok = options.code === 0;
-    this.message = options.message;
-    this.headers = options.headers;
-    this.trailers = options.trailers;
-    this.duration = options.duration;
-    this.#responseMessage = options.responseMessage;
+  constructor(params: ConnectRpcResponseParams<T>) {
+    this.headers = params.headers;
+    this.trailers = params.trailers;
+    this.duration = params.duration;
+    this.#response = params.response;
+    this.#error = params.error;
+
+    if (params.error) {
+      this.ok = false;
+      this.statusCode = params.error.code as ConnectRpcStatusCode;
+      this.statusMessage = params.error.rawMessage || params.error.message;
+    } else {
+      this.ok = true;
+      this.statusCode = 0;
+      this.statusMessage = null;
+    }
   }
 
   // deno-lint-ignore no-explicit-any
-  data<T = any>(): T | null {
-    if (this.#responseMessage === null || this.#responseMessage === undefined) {
+  data<U = any>(): U | null {
+    if (this.#response === null || this.#response === undefined) {
       return null;
     }
-    return this.#responseMessage as T;
+    return this.#response as U;
   }
 
-  raw(): unknown {
-    return this.#responseMessage;
+  raw(): T | ConnectError | undefined {
+    return this.#response ?? this.#error;
   }
 }

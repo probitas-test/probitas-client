@@ -39,7 +39,6 @@ import type {
 import { fromConnectError } from "./errors.ts";
 import type { ConnectRpcResponse } from "./response.ts";
 import { ConnectRpcResponseImpl } from "./response.ts";
-import type { ConnectRpcStatusCode } from "./status.ts";
 
 const logger = getLogger("probitas", "client", "connectrpc");
 
@@ -644,22 +643,18 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     });
 
     const dynamicClient = await this.#getDynamicClient();
-    const headers: Record<string, string> = {};
-    const trailers: Record<string, string> = {};
+    let headers = new Headers();
+    let trailers = new Headers();
 
     const callOptions = {
       signal: options?.signal,
       timeoutMs: options?.timeout,
       headers: this.#mergeMetadata(options?.metadata),
       onHeader: (h: Headers) => {
-        h.forEach((value, key) => {
-          headers[key] = value;
-        });
+        headers = h;
       },
       onTrailer: (t: Headers) => {
-        t.forEach((value, key) => {
-          trailers[key] = value;
-        });
+        trailers = t;
       },
     };
 
@@ -674,32 +669,32 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       const duration = performance.now() - startTime;
 
       return new ConnectRpcResponseImpl({
-        code: 0, // OK
-        message: "",
+        response,
         headers,
         trailers,
         duration,
-        responseMessage: response,
       });
     } catch (error) {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
-        const metadata = { ...headers, ...trailers };
         const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
           true;
 
         if (shouldThrow) {
+          // Merge headers and trailers for error metadata
+          const metadata = new Headers(headers);
+          trailers.forEach((value, key) => {
+            metadata.set(key, value);
+          });
           throw fromConnectError(error, metadata);
         }
 
         // Return error as response
         return new ConnectRpcResponseImpl({
-          code: error.code as ConnectRpcStatusCode,
-          message: error.rawMessage || error.message,
+          error,
           headers,
           trailers,
           duration,
-          responseMessage: null,
         });
       }
       throw error;
@@ -718,22 +713,18 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     });
 
     const dynamicClient = await this.#getDynamicClient();
-    const headers: Record<string, string> = {};
-    const trailers: Record<string, string> = {};
+    let headers = new Headers();
+    let trailers = new Headers();
 
     const callOptions = {
       signal: options?.signal,
       timeoutMs: options?.timeout,
       headers: this.#mergeMetadata(options?.metadata),
       onHeader: (h: Headers) => {
-        h.forEach((value, key) => {
-          headers[key] = value;
-        });
+        headers = h;
       },
       onTrailer: (t: Headers) => {
-        t.forEach((value, key) => {
-          trailers[key] = value;
-        });
+        trailers = t;
       },
     };
 
@@ -749,33 +740,32 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       for await (const message of stream) {
         const duration = performance.now() - startTime;
         yield new ConnectRpcResponseImpl({
-          code: 0,
-          message: "",
+          response: message,
           headers,
           trailers,
           duration,
-          responseMessage: message,
         });
       }
     } catch (error) {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
-        const metadata = { ...headers, ...trailers };
         const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
           true;
 
         if (shouldThrow) {
+          const metadata = new Headers(headers);
+          trailers.forEach((value, key) => {
+            metadata.set(key, value);
+          });
           throw fromConnectError(error, metadata);
         }
 
         // Yield error as final response
         yield new ConnectRpcResponseImpl({
-          code: error.code as ConnectRpcStatusCode,
-          message: error.rawMessage || error.message,
+          error,
           headers,
           trailers,
           duration,
-          responseMessage: null,
         });
         return;
       }
@@ -795,22 +785,18 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     });
 
     const dynamicClient = await this.#getDynamicClient();
-    const headers: Record<string, string> = {};
-    const trailers: Record<string, string> = {};
+    let headers = new Headers();
+    let trailers = new Headers();
 
     const callOptions = {
       signal: options?.signal,
       timeoutMs: options?.timeout,
       headers: this.#mergeMetadata(options?.metadata),
       onHeader: (h: Headers) => {
-        h.forEach((value, key) => {
-          headers[key] = value;
-        });
+        headers = h;
       },
       onTrailer: (t: Headers) => {
-        t.forEach((value, key) => {
-          trailers[key] = value;
-        });
+        trailers = t;
       },
     };
 
@@ -825,32 +811,31 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       const duration = performance.now() - startTime;
 
       return new ConnectRpcResponseImpl({
-        code: 0,
-        message: "",
+        response,
         headers,
         trailers,
         duration,
-        responseMessage: response,
       });
     } catch (error) {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
-        const metadata = { ...headers, ...trailers };
         const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
           true;
 
         if (shouldThrow) {
+          const metadata = new Headers(headers);
+          trailers.forEach((value, key) => {
+            metadata.set(key, value);
+          });
           throw fromConnectError(error, metadata);
         }
 
         // Return error as response
         return new ConnectRpcResponseImpl({
-          code: error.code as ConnectRpcStatusCode,
-          message: error.rawMessage || error.message,
+          error,
           headers,
           trailers,
           duration,
-          responseMessage: null,
         });
       }
       throw error;
@@ -869,22 +854,18 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     });
 
     const dynamicClient = await this.#getDynamicClient();
-    const headers: Record<string, string> = {};
-    const trailers: Record<string, string> = {};
+    let headers = new Headers();
+    let trailers = new Headers();
 
     const callOptions = {
       signal: options?.signal,
       timeoutMs: options?.timeout,
       headers: this.#mergeMetadata(options?.metadata),
       onHeader: (h: Headers) => {
-        h.forEach((value, key) => {
-          headers[key] = value;
-        });
+        headers = h;
       },
       onTrailer: (t: Headers) => {
-        t.forEach((value, key) => {
-          trailers[key] = value;
-        });
+        trailers = t;
       },
     };
 
@@ -900,33 +881,32 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       for await (const message of stream) {
         const duration = performance.now() - startTime;
         yield new ConnectRpcResponseImpl({
-          code: 0,
-          message: "",
+          response: message,
           headers,
           trailers,
           duration,
-          responseMessage: message,
         });
       }
     } catch (error) {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
-        const metadata = { ...headers, ...trailers };
         const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
           true;
 
         if (shouldThrow) {
+          const metadata = new Headers(headers);
+          trailers.forEach((value, key) => {
+            metadata.set(key, value);
+          });
           throw fromConnectError(error, metadata);
         }
 
         // Yield error as final response
         yield new ConnectRpcResponseImpl({
-          code: error.code as ConnectRpcStatusCode,
-          message: error.rawMessage || error.message,
+          error,
           headers,
           trailers,
           duration,
-          responseMessage: null,
         });
         return;
       }

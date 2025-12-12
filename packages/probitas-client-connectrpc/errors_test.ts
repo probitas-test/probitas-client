@@ -21,16 +21,17 @@ Deno.test("ConnectRpcError extends ClientError", () => {
 });
 
 Deno.test("ConnectRpcError properties", () => {
+  const metadata = new Headers({ "key": "value" });
   const error = new ConnectRpcError("Test error", 13, "raw message", {
-    metadata: { "key": "value" },
+    metadata,
     details: [{ typeUrl: "type.googleapis.com/test", value: {} }],
   });
 
   assertEquals(error.name, "ConnectRpcError");
   assertEquals(error.kind, "connectrpc");
-  assertEquals(error.code, 13);
-  assertEquals(error.rawMessage, "raw message");
-  assertEquals(error.metadata, { "key": "value" });
+  assertEquals(error.statusCode, 13);
+  assertEquals(error.statusMessage, "raw message");
+  assertEquals(error.metadata?.get("key"), "value");
   assertEquals(error.details.length, 1);
 });
 
@@ -51,7 +52,7 @@ Deno.test("ConnectRpcUnauthenticatedError", () => {
   const error = new ConnectRpcUnauthenticatedError("not authenticated");
 
   assertEquals(error.name, "ConnectRpcUnauthenticatedError");
-  assertEquals(error.code, 16);
+  assertEquals(error.statusCode, 16);
   assertEquals(error.message.includes("Unauthenticated"), true);
 });
 
@@ -59,7 +60,7 @@ Deno.test("ConnectRpcPermissionDeniedError", () => {
   const error = new ConnectRpcPermissionDeniedError("permission denied");
 
   assertEquals(error.name, "ConnectRpcPermissionDeniedError");
-  assertEquals(error.code, 7);
+  assertEquals(error.statusCode, 7);
   assertEquals(error.message.includes("Permission denied"), true);
 });
 
@@ -67,7 +68,7 @@ Deno.test("ConnectRpcNotFoundError", () => {
   const error = new ConnectRpcNotFoundError("not found");
 
   assertEquals(error.name, "ConnectRpcNotFoundError");
-  assertEquals(error.code, 5);
+  assertEquals(error.statusCode, 5);
   assertEquals(error.message.includes("Not found"), true);
 });
 
@@ -75,7 +76,7 @@ Deno.test("ConnectRpcResourceExhaustedError", () => {
   const error = new ConnectRpcResourceExhaustedError("exhausted");
 
   assertEquals(error.name, "ConnectRpcResourceExhaustedError");
-  assertEquals(error.code, 8);
+  assertEquals(error.statusCode, 8);
   assertEquals(error.message.includes("Resource exhausted"), true);
 });
 
@@ -83,7 +84,7 @@ Deno.test("ConnectRpcInternalError", () => {
   const error = new ConnectRpcInternalError("internal");
 
   assertEquals(error.name, "ConnectRpcInternalError");
-  assertEquals(error.code, 13);
+  assertEquals(error.statusCode, 13);
   assertEquals(error.message.includes("Internal error"), true);
 });
 
@@ -91,6 +92,6 @@ Deno.test("ConnectRpcUnavailableError", () => {
   const error = new ConnectRpcUnavailableError("unavailable");
 
   assertEquals(error.name, "ConnectRpcUnavailableError");
-  assertEquals(error.code, 14);
+  assertEquals(error.statusCode, 14);
   assertEquals(error.message.includes("Unavailable"), true);
 });
