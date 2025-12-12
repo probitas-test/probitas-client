@@ -447,7 +447,7 @@ class SqsClientImpl implements SqsClient {
       });
 
       return {
-        type: "sqs:send",
+        kind: "sqs:send",
         ok: true,
         messageId: response.MessageId!,
         md5OfBody: response.MD5OfMessageBody!,
@@ -534,7 +534,7 @@ class SqsClientImpl implements SqsClient {
       });
 
       return {
-        type: "sqs:send-batch",
+        kind: "sqs:send-batch",
         ok: failed.length === 0,
         successful,
         failed,
@@ -618,7 +618,7 @@ class SqsClientImpl implements SqsClient {
       });
 
       return {
-        type: "sqs:receive",
+        kind: "sqs:receive",
         ok: true,
         messages: createSqsMessages(messages),
         duration,
@@ -668,7 +668,7 @@ class SqsClientImpl implements SqsClient {
       });
 
       return {
-        type: "sqs:delete",
+        kind: "sqs:delete",
         ok: true,
         duration,
       };
@@ -731,7 +731,7 @@ class SqsClientImpl implements SqsClient {
       });
 
       return {
-        type: "sqs:delete-batch",
+        kind: "sqs:delete-batch",
         ok: failed.length === 0,
         successful,
         failed,
@@ -779,7 +779,7 @@ class SqsClientImpl implements SqsClient {
       });
 
       return {
-        type: "sqs:delete",
+        kind: "sqs:delete",
         ok: true,
         duration,
       };
@@ -836,7 +836,7 @@ class SqsClientImpl implements SqsClient {
       });
 
       return {
-        type: "sqs:ensure-queue",
+        kind: "sqs:ensure-queue",
         ok: true,
         queueUrl,
         duration,
@@ -885,7 +885,7 @@ class SqsClientImpl implements SqsClient {
       });
 
       return {
-        type: "sqs:delete-queue",
+        kind: "sqs:delete-queue",
         ok: true,
         duration,
       };

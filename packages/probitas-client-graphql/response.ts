@@ -1,12 +1,13 @@
+import type { ClientResult } from "@probitas/client";
 import type { GraphqlErrorItem } from "./types.ts";
 
 /**
  * GraphQL response interface with pre-loaded body.
  */
 // deno-lint-ignore no-explicit-any
-export interface GraphqlResponse<T = any> {
-  /** Result type identifier */
-  readonly type: "graphql";
+export interface GraphqlResponse<T = any> extends ClientResult {
+  /** Result kind identifier */
+  readonly kind: "graphql";
 
   /** Whether the request was successful (no errors) */
   readonly ok: boolean;
@@ -55,7 +56,7 @@ export interface GraphqlResponseOptions<T> {
  * Implementation of GraphqlResponse.
  */
 class GraphqlResponseImpl<T> implements GraphqlResponse<T> {
-  readonly type = "graphql" as const;
+  readonly kind = "graphql" as const;
   readonly ok: boolean;
   readonly errors: readonly GraphqlErrorItem[] | null;
   readonly extensions?: Record<string, unknown>;

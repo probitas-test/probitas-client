@@ -282,7 +282,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
-        type: "redis:get",
+        kind: "redis:get",
         ok: true,
         value,
         duration,
@@ -353,7 +353,7 @@ class RedisClientImpl implements RedisClient {
         result,
       });
       return {
-        type: "redis:set",
+        kind: "redis:set",
         ok: result === "OK",
         value: "OK",
         duration,
@@ -394,7 +394,7 @@ class RedisClientImpl implements RedisClient {
         deletedCount: count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -435,7 +435,7 @@ class RedisClientImpl implements RedisClient {
         value,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value,
         duration,
@@ -476,7 +476,7 @@ class RedisClientImpl implements RedisClient {
         value,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value,
         duration,
@@ -530,7 +530,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
-        type: "redis:get",
+        kind: "redis:get",
         ok: true,
         value,
         duration,
@@ -585,7 +585,7 @@ class RedisClientImpl implements RedisClient {
         count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -634,7 +634,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
-        type: "redis:hash",
+        kind: "redis:hash",
         ok: true,
         value,
         duration,
@@ -678,7 +678,7 @@ class RedisClientImpl implements RedisClient {
         deletedCount: count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -725,7 +725,7 @@ class RedisClientImpl implements RedisClient {
         newLength: count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -770,7 +770,7 @@ class RedisClientImpl implements RedisClient {
         newLength: count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -812,7 +812,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
-        type: "redis:get",
+        kind: "redis:get",
         ok: true,
         value,
         duration,
@@ -853,7 +853,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
-        type: "redis:get",
+        kind: "redis:get",
         ok: true,
         value,
         duration,
@@ -909,7 +909,7 @@ class RedisClientImpl implements RedisClient {
         elements: value.map((v) => formatValue(v)),
       });
       return {
-        type: "redis:array",
+        kind: "redis:array",
         ok: true,
         value,
         duration,
@@ -952,7 +952,7 @@ class RedisClientImpl implements RedisClient {
         length: value,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value,
         duration,
@@ -998,7 +998,7 @@ class RedisClientImpl implements RedisClient {
         addedCount: count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -1043,7 +1043,7 @@ class RedisClientImpl implements RedisClient {
         removedCount: count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -1092,7 +1092,7 @@ class RedisClientImpl implements RedisClient {
         members: value,
       });
       return {
-        type: "redis:array",
+        kind: "redis:array",
         ok: true,
         value,
         duration,
@@ -1139,7 +1139,7 @@ class RedisClientImpl implements RedisClient {
         isMember: result === 1,
       });
       return {
-        type: "redis:common",
+        kind: "redis:common",
         ok: true,
         value: result === 1,
         duration,
@@ -1193,7 +1193,7 @@ class RedisClientImpl implements RedisClient {
         addedCount: count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count as number,
         duration,
@@ -1250,7 +1250,7 @@ class RedisClientImpl implements RedisClient {
         members: value,
       });
       return {
-        type: "redis:array",
+        kind: "redis:array",
         ok: true,
         value,
         duration,
@@ -1299,7 +1299,7 @@ class RedisClientImpl implements RedisClient {
         score: value !== null ? parseFloat(value) : null,
       });
       return {
-        type: "redis:common",
+        kind: "redis:common",
         ok: true,
         value: value !== null ? parseFloat(value) : null,
         duration,
@@ -1347,7 +1347,7 @@ class RedisClientImpl implements RedisClient {
         subscriberCount: count,
       });
       return {
-        type: "redis:count",
+        kind: "redis:count",
         ok: true,
         value: count,
         duration,
@@ -1502,7 +1502,7 @@ class RedisClientImpl implements RedisClient {
         value: formatValue(value),
       });
       return {
-        type: "redis:common",
+        kind: "redis:common",
         ok: true,
         value: value as T,
         duration,
@@ -1702,7 +1702,7 @@ class RedisTransactionImpl implements RedisTransaction {
         duration: `${duration.toFixed(2)}ms`,
       });
       return {
-        type: "redis:array",
+        kind: "redis:array",
         ok: true,
         value: values,
         duration,

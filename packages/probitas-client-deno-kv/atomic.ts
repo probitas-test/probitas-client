@@ -169,7 +169,7 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
 
       if (result.ok) {
         return {
-          type: "deno-kv:atomic",
+          kind: "deno-kv:atomic",
           ok: true,
           versionstamp: result.versionstamp,
           duration,
@@ -177,7 +177,7 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
       }
 
       return {
-        type: "deno-kv:atomic",
+        kind: "deno-kv:atomic",
         ok: false,
         duration,
       };

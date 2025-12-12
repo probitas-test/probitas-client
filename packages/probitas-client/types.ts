@@ -97,3 +97,60 @@ export interface CommonOptions {
    */
   readonly retry?: RetryOptions;
 }
+
+/**
+ * Base interface for all client result types.
+ *
+ * All client operation results (responses, query results, etc.) extend this interface,
+ * providing a consistent structure across all Probitas clients. The `kind` property
+ * serves as a discriminator for type-safe switch statements.
+ *
+ * This mirrors the design of {@link ClientError} where `kind` is used instead of `type`
+ * for consistency across the framework.
+ *
+ * @example
+ * ```ts
+ * function handleResult(result: ClientResult) {
+ *   switch (result.kind) {
+ *     case "http":
+ *       // TypeScript narrows to HttpResponse
+ *       console.log(result.status);
+ *       break;
+ *     case "sql":
+ *       // TypeScript narrows to SqlQueryResult
+ *       console.log(result.rowCount);
+ *       break;
+ *   }
+ *
+ *   if (result.ok) {
+ *     console.log(`Success in ${result.duration}ms`);
+ *   }
+ * }
+ * ```
+ */
+export interface ClientResult {
+  /**
+   * Result kind discriminator.
+   *
+   * The `kind` property is typed as `string` to allow client-specific packages
+   * to define their own result kinds without modifying this core package.
+   * Subinterfaces can narrow the type using literal types with `as const`.
+   */
+  readonly kind: string;
+
+  /**
+   * Whether the operation succeeded.
+   *
+   * For HTTP responses, this corresponds to status 200-299.
+   * For database operations, this indicates successful execution.
+   */
+  readonly ok: boolean;
+
+  /**
+   * Operation duration in milliseconds.
+   *
+   * Measured from operation start to completion, useful for performance analysis
+   * and timeout monitoring.
+   */
+  readonly duration: number;
+}

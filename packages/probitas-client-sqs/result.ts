@@ -1,3 +1,4 @@
+import type { ClientResult } from "@probitas/client";
 import type {
   SqsBatchFailedEntry,
   SqsBatchSuccessEntry,
@@ -7,73 +8,59 @@ import type {
 /**
  * Result of sending a message.
  */
-export interface SqsSendResult {
-  readonly type: "sqs:send";
-  readonly ok: boolean;
+export interface SqsSendResult extends ClientResult {
+  readonly kind: "sqs:send";
   readonly messageId: string;
   readonly md5OfBody: string;
   readonly sequenceNumber?: string;
-  readonly duration: number;
 }
 
 /**
  * Result of batch sending messages.
  */
-export interface SqsSendBatchResult {
-  readonly type: "sqs:send-batch";
-  readonly ok: boolean;
+export interface SqsSendBatchResult extends ClientResult {
+  readonly kind: "sqs:send-batch";
   readonly successful: readonly SqsBatchSuccessEntry[];
   readonly failed: readonly SqsBatchFailedEntry[];
-  readonly duration: number;
 }
 
 /**
  * Result of receiving messages.
  */
-export interface SqsReceiveResult {
-  readonly type: "sqs:receive";
-  readonly ok: boolean;
+export interface SqsReceiveResult extends ClientResult {
+  readonly kind: "sqs:receive";
   readonly messages: SqsMessages;
-  readonly duration: number;
 }
 
 /**
  * Result of deleting a message.
  */
-export interface SqsDeleteResult {
-  readonly type: "sqs:delete";
-  readonly ok: boolean;
-  readonly duration: number;
+export interface SqsDeleteResult extends ClientResult {
+  readonly kind: "sqs:delete";
 }
 
 /**
  * Result of batch deleting messages.
  */
-export interface SqsDeleteBatchResult {
-  readonly type: "sqs:delete-batch";
-  readonly ok: boolean;
+export interface SqsDeleteBatchResult extends ClientResult {
+  readonly kind: "sqs:delete-batch";
   readonly successful: readonly string[];
   readonly failed: readonly SqsBatchFailedEntry[];
-  readonly duration: number;
 }
 
 /**
  * Result of ensuring a queue exists.
  */
-export interface SqsEnsureQueueResult {
-  readonly type: "sqs:ensure-queue";
-  readonly ok: boolean;
+export interface SqsEnsureQueueResult extends ClientResult {
+  readonly kind: "sqs:ensure-queue";
   readonly queueUrl: string;
-  readonly duration: number;
 }
 
 /**
  * Result of deleting a queue.
  */
-export interface SqsDeleteQueueResult {
-  readonly type: "sqs:delete-queue";
-  readonly ok: boolean;
-  readonly duration: number;
+export interface SqsDeleteQueueResult extends ClientResult {
+  readonly kind: "sqs:delete-queue";
 }
 
 /**

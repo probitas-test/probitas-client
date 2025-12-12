@@ -12,7 +12,7 @@ Deno.test("createHttpResponse", async (t) => {
 
     const response = await createHttpResponse(raw, duration);
 
-    assertEquals(response.type, "http");
+    assertEquals(response.kind, "http");
     assertEquals(response.ok, true);
     assertEquals(response.status, 200);
     assertEquals(response.statusText, "OK");

@@ -1,52 +1,43 @@
+import type { ClientResult } from "@probitas/client";
 import type { RabbitMqMessage } from "./types.ts";
 
 /**
  * Publish result.
  */
-export interface RabbitMqPublishResult {
-  readonly type: "rabbitmq:publish";
-  readonly ok: boolean;
-  readonly duration: number;
+export interface RabbitMqPublishResult extends ClientResult {
+  readonly kind: "rabbitmq:publish";
 }
 
 /**
  * Consume result (single message retrieval).
  */
-export interface RabbitMqConsumeResult {
-  readonly type: "rabbitmq:consume";
-  readonly ok: boolean;
+export interface RabbitMqConsumeResult extends ClientResult {
+  readonly kind: "rabbitmq:consume";
   readonly message: RabbitMqMessage | null;
-  readonly duration: number;
 }
 
 /**
  * Ack/Nack result.
  */
-export interface RabbitMqAckResult {
-  readonly type: "rabbitmq:ack";
-  readonly ok: boolean;
-  readonly duration: number;
+export interface RabbitMqAckResult extends ClientResult {
+  readonly kind: "rabbitmq:ack";
 }
 
 /**
  * Queue declaration result.
  */
-export interface RabbitMqQueueResult {
-  readonly type: "rabbitmq:queue";
-  readonly ok: boolean;
+export interface RabbitMqQueueResult extends ClientResult {
+  readonly kind: "rabbitmq:queue";
   readonly queue: string;
   readonly messageCount: number;
   readonly consumerCount: number;
-  readonly duration: number;
 }
 
 /**
  * Exchange declaration result.
  */
-export interface RabbitMqExchangeResult {
-  readonly type: "rabbitmq:exchange";
-  readonly ok: boolean;
-  readonly duration: number;
+export interface RabbitMqExchangeResult extends ClientResult {
+  readonly kind: "rabbitmq:exchange";
 }
 
 /**

@@ -1,32 +1,28 @@
+import type { ClientResult } from "@probitas/client";
+
 /**
  * Result of a get operation.
  */
-export interface DenoKvGetResult<T> {
-  readonly type: "deno-kv:get";
-  readonly ok: boolean;
+export interface DenoKvGetResult<T> extends ClientResult {
+  readonly kind: "deno-kv:get";
   readonly key: Deno.KvKey;
   readonly value: T | null;
   readonly versionstamp: string | null;
-  readonly duration: number;
 }
 
 /**
  * Result of a set operation.
  */
-export interface DenoKvSetResult {
-  readonly type: "deno-kv:set";
-  readonly ok: boolean;
+export interface DenoKvSetResult extends ClientResult {
+  readonly kind: "deno-kv:set";
   readonly versionstamp: string;
-  readonly duration: number;
 }
 
 /**
  * Result of a delete operation.
  */
-export interface DenoKvDeleteResult {
-  readonly type: "deno-kv:delete";
-  readonly ok: boolean;
-  readonly duration: number;
+export interface DenoKvDeleteResult extends ClientResult {
+  readonly kind: "deno-kv:delete";
 }
 
 /**
@@ -107,21 +103,17 @@ export function createDenoKvEntries<T>(
 /**
  * Result of a list operation.
  */
-export interface DenoKvListResult<T> {
-  readonly type: "deno-kv:list";
-  readonly ok: boolean;
+export interface DenoKvListResult<T> extends ClientResult {
+  readonly kind: "deno-kv:list";
   readonly entries: DenoKvEntries<T>;
-  readonly duration: number;
 }
 
 /**
  * Result of an atomic operation.
  */
-export interface DenoKvAtomicResult {
-  readonly type: "deno-kv:atomic";
-  readonly ok: boolean;
+export interface DenoKvAtomicResult extends ClientResult {
+  readonly kind: "deno-kv:atomic";
   readonly versionstamp?: string;
-  readonly duration: number;
 }
 
 /**

@@ -1,77 +1,64 @@
+import type { ClientResult } from "@probitas/client";
 import type { Document, MongoDocs } from "./types.ts";
 import { MongoNotFoundError } from "./errors.ts";
 
 /**
  * Query result (find, aggregate)
  */
-export interface MongoFindResult<T = Document> {
-  readonly type: "mongo:find";
-  readonly ok: boolean;
+export interface MongoFindResult<T = Document> extends ClientResult {
+  readonly kind: "mongo:find";
   readonly docs: MongoDocs<T>;
-  readonly duration: number;
 }
 
 /**
  * Insert one result
  */
-export interface MongoInsertOneResult {
-  readonly type: "mongo:insert-one";
-  readonly ok: boolean;
+export interface MongoInsertOneResult extends ClientResult {
+  readonly kind: "mongo:insert-one";
   readonly insertedId: string;
-  readonly duration: number;
 }
 
 /**
  * Insert many result
  */
-export interface MongoInsertManyResult {
-  readonly type: "mongo:insert-many";
-  readonly ok: boolean;
+export interface MongoInsertManyResult extends ClientResult {
+  readonly kind: "mongo:insert-many";
   readonly insertedIds: readonly string[];
   readonly insertedCount: number;
-  readonly duration: number;
 }
 
 /**
  * Update result
  */
-export interface MongoUpdateResult {
-  readonly type: "mongo:update";
-  readonly ok: boolean;
+export interface MongoUpdateResult extends ClientResult {
+  readonly kind: "mongo:update";
   readonly matchedCount: number;
   readonly modifiedCount: number;
   readonly upsertedId?: string;
-  readonly duration: number;
 }
 
 /**
  * Delete result
  */
-export interface MongoDeleteResult {
-  readonly type: "mongo:delete";
-  readonly ok: boolean;
+export interface MongoDeleteResult extends ClientResult {
+  readonly kind: "mongo:delete";
   readonly deletedCount: number;
-  readonly duration: number;
 }
 
 /**
  * FindOne result
  */
-export interface MongoFindOneResult<T = Document> {
-  readonly type: "mongo:find-one";
-  readonly ok: boolean;
+export interface MongoFindOneResult<T = Document> extends ClientResult {
+  readonly kind: "mongo:find-one";
   readonly doc: T | undefined;
-  readonly duration: number;
 }
 
 /**
  * Count result
  */
-export interface MongoCountResult {
-  readonly type: "mongo:count";
-  readonly ok: boolean;
+export interface MongoCountResult extends ClientResult {
+  readonly kind: "mongo:count";
   readonly count: number;
-  readonly duration: number;
 }
 
 /**

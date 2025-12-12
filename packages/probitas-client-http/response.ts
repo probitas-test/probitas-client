@@ -1,12 +1,14 @@
+import type { ClientResult } from "@probitas/client";
+
 /**
  * HTTP response with pre-loaded body for synchronous access.
  *
  * Wraps Web standard Response, allowing body to be read synchronously
  * and multiple times (unlike the streaming-based standard Response).
  */
-export interface HttpResponse {
-  /** Result type identifier */
-  readonly type: "http";
+export interface HttpResponse extends ClientResult {
+  /** Result kind identifier */
+  readonly kind: "http";
 
   // --- Web standard Response compatible properties ---
 
@@ -59,7 +61,7 @@ export interface HttpResponse {
  * Implementation of HttpResponse with pre-loaded body.
  */
 class HttpResponseImpl implements HttpResponse {
-  readonly type = "http" as const;
+  readonly kind = "http" as const;
   readonly ok: boolean;
   readonly status: number;
   readonly statusText: string;

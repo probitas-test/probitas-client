@@ -5,14 +5,15 @@
  */
 
 import type { ConnectError } from "@connectrpc/connect";
+import type { ClientResult } from "@probitas/client";
 import type { ConnectRpcStatusCode } from "./status.ts";
 
 /**
  * ConnectRPC response interface.
  */
-export interface ConnectRpcResponse {
-  /** Result type identifier */
-  readonly type: "connectrpc";
+export interface ConnectRpcResponse extends ClientResult {
+  /** Result kind identifier */
+  readonly kind: "connectrpc";
 
   /** Whether the request was successful (statusCode === 0). */
   readonly ok: boolean;
@@ -61,7 +62,7 @@ export interface ConnectRpcResponseParams<T = unknown> {
  * Implementation of ConnectRpcResponse.
  */
 export class ConnectRpcResponseImpl<T = unknown> implements ConnectRpcResponse {
-  readonly type = "connectrpc" as const;
+  readonly kind = "connectrpc" as const;
   readonly ok: boolean;
   readonly statusCode: ConnectRpcStatusCode;
   readonly statusMessage: string | null;

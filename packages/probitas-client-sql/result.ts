@@ -1,3 +1,4 @@
+import type { ClientResult } from "@probitas/client";
 import { SqlRows } from "./rows.ts";
 
 /**
@@ -27,8 +28,8 @@ export interface SqlQueryResultInit<T> {
  * SQL query result with rows, metadata, and transformation methods.
  */
 // deno-lint-ignore no-explicit-any
-export class SqlQueryResult<T = Record<string, any>> {
-  readonly type = "sql" as const;
+export class SqlQueryResult<T = Record<string, any>> implements ClientResult {
+  readonly kind = "sql" as const;
   readonly ok: boolean;
   readonly rows: SqlRows<T>;
   readonly rowCount: number;

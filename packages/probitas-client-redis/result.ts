@@ -1,40 +1,40 @@
+import type { ClientResult } from "@probitas/client";
+
 /**
  * Base interface for Redis operation results.
  * All Redis result types extend this interface.
  */
-interface RedisResultBase<T = unknown> {
-  readonly type: string;
-  readonly ok: boolean;
+interface RedisResultBase<T = unknown> extends ClientResult {
+  readonly kind: string;
   readonly value: T;
-  readonly duration: number;
 }
 
 /**
  * Redis operation result (common/generic)
  */
 export interface RedisCommonResult<T = unknown> extends RedisResultBase<T> {
-  readonly type: "redis:common";
+  readonly kind: "redis:common";
 }
 
 /**
  * Redis GET result
  */
 export interface RedisGetResult extends RedisResultBase<string | null> {
-  readonly type: "redis:get";
+  readonly kind: "redis:get";
 }
 
 /**
  * Redis SET result
  */
 export interface RedisSetResult extends RedisResultBase<"OK"> {
-  readonly type: "redis:set";
+  readonly kind: "redis:set";
 }
 
 /**
  * Redis numeric result (DEL, LPUSH, SADD, etc.)
  */
 export interface RedisCountResult extends RedisResultBase<number> {
-  readonly type: "redis:count";
+  readonly kind: "redis:count";
 }
 
 /**
@@ -42,7 +42,7 @@ export interface RedisCountResult extends RedisResultBase<number> {
  */
 export interface RedisArrayResult<T = string>
   extends RedisResultBase<readonly T[]> {
-  readonly type: "redis:array";
+  readonly kind: "redis:array";
 }
 
 /**
@@ -50,7 +50,7 @@ export interface RedisArrayResult<T = string>
  */
 export interface RedisHashResult
   extends RedisResultBase<Record<string, string>> {
-  readonly type: "redis:hash";
+  readonly kind: "redis:hash";
 }
 
 /**
