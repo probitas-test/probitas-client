@@ -1,3 +1,124 @@
+### 2025.12.12
+
+#### @probitas/client 0.3.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-connectrpc 0.4.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- BREAKING(@probitas/client-connectrpc): improve response and error handling
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-deno-kv 0.3.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-graphql 0.3.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- BREAKING(@probitas/client-graphql): change raw property to method for
+  consistency
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-grpc 0.4.0 (minor)
+
+- BREAKING(@probitas/client-grpc): align with connectrpc statusCode property
+  change
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-http 0.3.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- BREAKING(@probitas/client-http): change raw property to method for consistency
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-mongodb 0.4.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- BREAKING(@probitas/client-mongodb): split insert type discriminator and
+  reorganize types
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-rabbitmq 0.3.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+- refactor(@probitas/client-rabbitmq): move result types to dedicated file
+
+#### @probitas/client-redis 0.3.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+- refactor(@probitas/client-redis): move result types to dedicated file
+
+#### @probitas/client-sql 0.3.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- BREAKING(@probitas/client-sql,@probitas/client-sql-duckdb,@probitas/client-sql-mysql,@probitas/client-sql-postgres,@probitas/client-sql-sqlite):
+  flatten metadata into direct properties
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-sql-duckdb 0.3.0 (minor)
+
+- BREAKING(@probitas/client-sql,@probitas/client-sql-duckdb,@probitas/client-sql-mysql,@probitas/client-sql-postgres,@probitas/client-sql-sqlite):
+  flatten metadata into direct properties
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-sql-mysql 0.3.0 (minor)
+
+- BREAKING(@probitas/client-sql,@probitas/client-sql-duckdb,@probitas/client-sql-mysql,@probitas/client-sql-postgres,@probitas/client-sql-sqlite):
+  flatten metadata into direct properties
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-sql-postgres 0.3.0 (minor)
+
+- BREAKING(@probitas/client-sql,@probitas/client-sql-duckdb,@probitas/client-sql-mysql,@probitas/client-sql-postgres,@probitas/client-sql-sqlite):
+  flatten metadata into direct properties
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-sql-sqlite 0.3.0 (minor)
+
+- BREAKING(@probitas/client-sql,@probitas/client-sql-duckdb,@probitas/client-sql-mysql,@probitas/client-sql-postgres,@probitas/client-sql-sqlite):
+  flatten metadata into direct properties
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+
+#### @probitas/client-sqs 0.3.0 (minor)
+
+- BREAKING(@probitas/client,@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  unify result types with ClientResult interface
+- docs(@probitas/client-connectrpc,@probitas/client-deno-kv,@probitas/client-graphql,@probitas/client-http,@probitas/client-mongodb,@probitas/client-rabbitmq,@probitas/client-redis,@probitas/client-sql,@probitas/client-sqs):
+  add comprehensive JSDoc documentation to result types
+- docs(*): require full package name with @probitas/ prefix in commit scopes
+- refactor(@probitas/client-sqs): move result types to dedicated file
+
 ### 2025.12.09
 
 #### @probitas/client 0.2.0 (minor)
