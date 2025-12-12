@@ -1,4 +1,21 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
+import type {
+  RabbitMqAckResult,
+  RabbitMqConsumeResult,
+  RabbitMqExchangeResult,
+  RabbitMqPublishResult,
+  RabbitMqQueueResult,
+  RabbitMqResult,
+} from "./result.ts";
+
+export type {
+  RabbitMqAckResult,
+  RabbitMqConsumeResult,
+  RabbitMqExchangeResult,
+  RabbitMqPublishResult,
+  RabbitMqQueueResult,
+  RabbitMqResult,
+};
 
 /**
  * RabbitMQ message properties.
@@ -37,55 +54,6 @@ export interface RabbitMqMessage {
   readonly content: Uint8Array;
   readonly properties: RabbitMqMessageProperties;
   readonly fields: RabbitMqMessageFields;
-}
-
-/**
- * Publish result.
- */
-export interface RabbitMqPublishResult {
-  readonly type: "rabbitmq:publish";
-  readonly ok: boolean;
-  readonly duration: number;
-}
-
-/**
- * Consume result (single message retrieval).
- */
-export interface RabbitMqConsumeResult {
-  readonly type: "rabbitmq:consume";
-  readonly ok: boolean;
-  readonly message: RabbitMqMessage | null;
-  readonly duration: number;
-}
-
-/**
- * Ack/Nack result.
- */
-export interface RabbitMqAckResult {
-  readonly type: "rabbitmq:ack";
-  readonly ok: boolean;
-  readonly duration: number;
-}
-
-/**
- * Queue declaration result.
- */
-export interface RabbitMqQueueResult {
-  readonly type: "rabbitmq:queue";
-  readonly ok: boolean;
-  readonly queue: string;
-  readonly messageCount: number;
-  readonly consumerCount: number;
-  readonly duration: number;
-}
-
-/**
- * Exchange declaration result.
- */
-export interface RabbitMqExchangeResult {
-  readonly type: "rabbitmq:exchange";
-  readonly ok: boolean;
-  readonly duration: number;
 }
 
 /**
@@ -279,13 +247,3 @@ export interface RabbitMqClient extends AsyncDisposable {
 
   close(): Promise<void>;
 }
-
-/**
- * Union of all RabbitMQ result types.
- */
-export type RabbitMqResult =
-  | RabbitMqPublishResult
-  | RabbitMqConsumeResult
-  | RabbitMqAckResult
-  | RabbitMqQueueResult
-  | RabbitMqExchangeResult;
