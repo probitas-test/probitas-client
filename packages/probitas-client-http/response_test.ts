@@ -136,11 +136,11 @@ Deno.test("createHttpResponse", async (t) => {
     assertEquals(response.blob(), null);
   });
 
-  await t.step("raw property returns original Response", async () => {
+  await t.step("raw() method returns original Response", async () => {
     const original = new Response("test", { status: 200 });
     const response = await createHttpResponse(original, 10);
 
-    assertEquals(response.raw, original);
+    assertEquals(response.raw(), original);
   });
 
   await t.step("url property reflects Response url", async () => {

@@ -1,61 +1,7 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
+import type { HttpResponse } from "./response.ts";
 
-/**
- * HTTP response with pre-loaded body for synchronous access.
- *
- * Wraps Web standard Response, allowing body to be read synchronously
- * and multiple times (unlike the streaming-based standard Response).
- */
-export interface HttpResponse {
-  /** Result type identifier */
-  readonly type: "http";
-
-  // --- Web standard Response compatible properties ---
-
-  /** Whether the response was successful (status 200-299) */
-  readonly ok: boolean;
-
-  /** HTTP status code */
-  readonly status: number;
-
-  /** HTTP status text */
-  readonly statusText: string;
-
-  /** Response headers */
-  readonly headers: Headers;
-
-  /** Request URL */
-  readonly url: string;
-
-  // --- Body access (synchronous, reusable, null if no body) ---
-
-  /** Response body as raw bytes (null if no body) */
-  readonly body: Uint8Array | null;
-
-  /** Get body as ArrayBuffer (null if no body) */
-  arrayBuffer(): ArrayBuffer | null;
-
-  /** Get body as Blob (null if no body) */
-  blob(): Blob | null;
-
-  /** Get body as text (null if no body) */
-  text(): string | null;
-
-  /**
-   * Get body as parsed JSON (null if no body)
-   * @template T - defaults to any for test convenience
-   */
-  // deno-lint-ignore no-explicit-any
-  data<T = any>(): T | null;
-
-  // --- Additional properties ---
-
-  /** Response time in milliseconds */
-  readonly duration: number;
-
-  /** Raw Web standard Response (for streaming or special cases) */
-  readonly raw: globalThis.Response;
-}
+export type { HttpResponse };
 
 /**
  * Query parameter value type.
