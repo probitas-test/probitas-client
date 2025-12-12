@@ -86,7 +86,7 @@ Deno.test("createGraphqlResponse", async (t) => {
       raw: rawResponse,
     });
 
-    assertEquals(response.raw, rawResponse);
+    assertEquals(response.raw(), rawResponse);
   });
 
   await t.step("includes headers from raw response", () => {

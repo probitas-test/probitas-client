@@ -1,4 +1,5 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
+import type { GraphqlResponse } from "./response.ts";
 
 /**
  * GraphQL error item as per GraphQL specification.
@@ -18,41 +19,7 @@ export interface GraphqlErrorItem {
   readonly extensions?: Record<string, unknown>;
 }
 
-/**
- * GraphQL response interface with pre-loaded body.
- */
-// deno-lint-ignore no-explicit-any
-export interface GraphqlResponse<T = any> {
-  /** Result type identifier */
-  readonly type: "graphql";
-
-  /** Whether the request was successful (no errors) */
-  readonly ok: boolean;
-
-  /** GraphQL errors array (null if no errors) */
-  readonly errors: readonly GraphqlErrorItem[] | null;
-
-  /** Response extensions */
-  readonly extensions?: Record<string, unknown>;
-
-  /** Response time in milliseconds */
-  readonly duration: number;
-
-  /** HTTP status code */
-  readonly status: number;
-
-  /** Headers from the HTTP response */
-  readonly headers: Headers;
-
-  /** Raw Web standard Response (for streaming or special cases) */
-  readonly raw: globalThis.Response;
-
-  /**
-   * Get response data (null if no data).
-   * Does not throw even if errors are present.
-   */
-  data<U = T>(): U | null;
-}
+export type { GraphqlResponse };
 
 /**
  * Options for individual GraphQL requests.

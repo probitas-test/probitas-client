@@ -424,7 +424,7 @@ Deno.test("GraphqlClient response", async (t) => {
     const response = await client.query("query { test }");
     await client.close();
 
-    assertInstanceOf(response.raw, Response);
+    assertInstanceOf(response.raw(), Response);
   });
 });
 

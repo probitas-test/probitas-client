@@ -191,7 +191,7 @@ Deno.test({
     await t.step("includes raw response", async () => {
       const res = await client.query("{ __typename }");
 
-      assertInstanceOf(res.raw, Response);
+      assertInstanceOf(res.raw(), Response);
     });
 
     await t.step("using await using (AsyncDisposable)", async () => {
