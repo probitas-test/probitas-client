@@ -591,7 +591,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
-        type: "mongo:insert",
+        type: "mongo:insert-one",
         ok: result.acknowledged,
         insertedId: String(result.insertedId),
         duration,
@@ -635,7 +635,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       });
 
       return {
-        type: "mongo:insert",
+        type: "mongo:insert-many",
         ok: result.acknowledged,
         insertedIds: Object.values(result.insertedIds).map(String),
         insertedCount: result.insertedCount,
