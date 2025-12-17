@@ -241,7 +241,7 @@ class DuckDbClientImpl implements DuckDbClient {
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
 
-    logger.debug("DuckDB query starting", {
+    logger.info("DuckDB query starting", {
       sql: sqlPreview,
       paramCount: params?.length ?? 0,
     });
@@ -309,7 +309,7 @@ class DuckDbClientImpl implements DuckDbClient {
 
       const duration = performance.now() - startTime;
 
-      logger.debug("DuckDB query success", {
+      logger.info("DuckDB query success", {
         duration: `${duration.toFixed(2)}ms`,
         rowCount: rows.length,
       });
@@ -392,7 +392,7 @@ class DuckDbClientImpl implements DuckDbClient {
   queryParquet<T = Record<string, any>>(
     path: string,
   ): Promise<SqlQueryResult<T>> {
-    logger.debug("DuckDB queryParquet starting", {
+    logger.info("DuckDB queryParquet starting", {
       path,
     });
 
@@ -403,7 +403,7 @@ class DuckDbClientImpl implements DuckDbClient {
 
   // deno-lint-ignore no-explicit-any
   queryCsv<T = Record<string, any>>(path: string): Promise<SqlQueryResult<T>> {
-    logger.debug("DuckDB queryCsv starting", {
+    logger.info("DuckDB queryCsv starting", {
       path,
     });
 

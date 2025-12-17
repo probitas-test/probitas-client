@@ -233,7 +233,7 @@ class SqliteClientImpl implements SqliteClient {
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
 
-    logger.debug("SQLite query starting", {
+    logger.info("SQLite query starting", {
       sql: sqlPreview,
       paramCount: params?.length ?? 0,
     });
@@ -263,7 +263,7 @@ class SqliteClientImpl implements SqliteClient {
           ) as T[];
           const duration = performance.now() - startTime;
 
-          logger.debug("SQLite query success", {
+          logger.info("SQLite query success", {
             duration: `${duration.toFixed(2)}ms`,
             rowCount: rows.length,
           });
@@ -301,7 +301,7 @@ class SqliteClientImpl implements SqliteClient {
           const changes = this.#db.changes;
           const lastInsertRowId = this.#db.lastInsertRowId;
 
-          logger.debug("SQLite query success", {
+          logger.info("SQLite query success", {
             duration: `${duration.toFixed(2)}ms`,
             affectedRows: changes,
             lastInsertId: lastInsertRowId > 0 ? lastInsertRowId : undefined,

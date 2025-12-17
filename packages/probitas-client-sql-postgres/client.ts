@@ -282,7 +282,7 @@ class PostgresClientImpl implements PostgresClient {
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
 
-    logger.debug("PostgreSQL query starting", {
+    logger.info("PostgreSQL query starting", {
       sql: sqlPreview,
       paramCount: params?.length ?? 0,
     });
@@ -299,7 +299,7 @@ class PostgresClientImpl implements PostgresClient {
       );
       const duration = performance.now() - startTime;
 
-      logger.debug("PostgreSQL query success", {
+      logger.info("PostgreSQL query success", {
         duration: `${duration.toFixed(2)}ms`,
         rowCount: result.count ?? result.length,
       });
@@ -319,7 +319,7 @@ class PostgresClientImpl implements PostgresClient {
       });
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("PostgreSQL query failed", {
+      logger.debug("PostgreSQL query failed", {
         sql: sqlPreview,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -391,7 +391,7 @@ class PostgresClientImpl implements PostgresClient {
   ): Promise<number> {
     this.#assertNotClosed();
 
-    logger.debug("PostgreSQL COPY FROM starting", {
+    logger.info("PostgreSQL COPY FROM starting", {
       table,
     });
 
@@ -413,7 +413,7 @@ class PostgresClientImpl implements PostgresClient {
       await reserved.unsafe("\\.");
 
       const duration = performance.now() - startTime;
-      logger.debug("PostgreSQL COPY FROM success", {
+      logger.info("PostgreSQL COPY FROM success", {
         table,
         rowCount: count,
         duration: `${duration.toFixed(2)}ms`,
@@ -422,7 +422,7 @@ class PostgresClientImpl implements PostgresClient {
       return count;
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("PostgreSQL COPY FROM failed", {
+      logger.debug("PostgreSQL COPY FROM failed", {
         table,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -440,7 +440,7 @@ class PostgresClientImpl implements PostgresClient {
       ? query.substring(0, 100) + "..."
       : query;
 
-    logger.debug("PostgreSQL COPY TO starting", {
+    logger.info("PostgreSQL COPY TO starting", {
       sql: sqlPreview,
     });
 
@@ -468,13 +468,13 @@ class PostgresClientImpl implements PostgresClient {
       }
 
       const duration = performance.now() - startTime;
-      logger.debug("PostgreSQL COPY TO success", {
+      logger.info("PostgreSQL COPY TO success", {
         rowCount,
         duration: `${duration.toFixed(2)}ms`,
       });
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("PostgreSQL COPY TO failed", {
+      logger.debug("PostgreSQL COPY TO failed", {
         sql: sqlPreview,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -488,7 +488,7 @@ class PostgresClientImpl implements PostgresClient {
   async *listen(channel: string): AsyncIterable<PostgresNotification> {
     this.#assertNotClosed();
 
-    logger.debug("PostgreSQL LISTEN starting", {
+    logger.info("PostgreSQL LISTEN starting", {
       channel,
     });
 
@@ -511,7 +511,7 @@ class PostgresClientImpl implements PostgresClient {
 
     // Wait for listen to be established
     await listenRequest;
-    logger.debug("PostgreSQL LISTEN established", {
+    logger.info("PostgreSQL LISTEN established", {
       channel,
     });
 
@@ -532,7 +532,7 @@ class PostgresClientImpl implements PostgresClient {
       await (listenRequest as unknown as { unlisten: () => Promise<void> })
         .unlisten();
 
-      logger.debug("PostgreSQL LISTEN closed", {
+      logger.info("PostgreSQL LISTEN closed", {
         channel,
         notificationCount,
       });
@@ -542,18 +542,18 @@ class PostgresClientImpl implements PostgresClient {
   async notify(channel: string, payload?: string): Promise<void> {
     this.#assertNotClosed();
 
-    logger.debug("PostgreSQL NOTIFY sending", {
+    logger.info("PostgreSQL NOTIFY sending", {
       channel,
       payloadLength: payload?.length ?? 0,
     });
 
     try {
       await this.#sql.notify(channel, payload ?? "");
-      logger.debug("PostgreSQL NOTIFY sent", {
+      logger.info("PostgreSQL NOTIFY sent", {
         channel,
       });
     } catch (error) {
-      logger.error("PostgreSQL NOTIFY failed", {
+      logger.debug("PostgreSQL NOTIFY failed", {
         channel,
         error: error instanceof Error ? error.message : String(error),
       });

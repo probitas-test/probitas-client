@@ -442,7 +442,7 @@ class SqsClientImpl implements SqsClient {
     const operation = "send";
 
     // Log request start
-    logger.debug("SQS send message starting", {
+    logger.info("SQS send message starting", {
       queueUrl,
       bodySize: new TextEncoder().encode(body).length,
       delaySeconds: options?.delaySeconds,
@@ -472,7 +472,7 @@ class SqsClientImpl implements SqsClient {
       const duration = performance.now() - startTime;
 
       // Log success
-      logger.debug("SQS send message completed", {
+      logger.info("SQS send message completed", {
         messageId: response.MessageId!,
         md5OfBody: response.MD5OfMessageBody!,
         sequenceNumber: response.SequenceNumber,
@@ -494,7 +494,7 @@ class SqsClientImpl implements SqsClient {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQS send message failed", {
+      logger.debug("SQS send message failed", {
         queueUrl,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -517,7 +517,7 @@ class SqsClientImpl implements SqsClient {
     const operation = "sendBatch";
 
     // Log batch send start
-    logger.debug("SQS send batch messages starting", {
+    logger.info("SQS send batch messages starting", {
       queueUrl,
       count: messages.length,
       totalSize: messages.reduce(
@@ -557,7 +557,7 @@ class SqsClientImpl implements SqsClient {
       const duration = performance.now() - startTime;
 
       // Log batch send result
-      logger.debug("SQS send batch messages completed", {
+      logger.info("SQS send batch messages completed", {
         successful: successful.length,
         failed: failed.length,
         duration: `${duration.toFixed(2)}ms`,
@@ -580,7 +580,7 @@ class SqsClientImpl implements SqsClient {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQS send batch messages failed", {
+      logger.debug("SQS send batch messages failed", {
         queueUrl,
         count: messages.length,
         duration: `${duration.toFixed(2)}ms`,
@@ -599,7 +599,7 @@ class SqsClientImpl implements SqsClient {
     const operation = "receive";
 
     // Log receive start
-    logger.debug("SQS receive messages starting", {
+    logger.info("SQS receive messages starting", {
       queueUrl,
       maxMessages: options?.maxMessages,
       visibilityTimeout: options?.visibilityTimeout,
@@ -641,7 +641,7 @@ class SqsClientImpl implements SqsClient {
       const duration = performance.now() - startTime;
 
       // Log receive result
-      logger.debug("SQS receive messages completed", {
+      logger.info("SQS receive messages completed", {
         count: messages.length,
         visibilityTimeout: options?.visibilityTimeout,
         duration: `${duration.toFixed(2)}ms`,
@@ -663,7 +663,7 @@ class SqsClientImpl implements SqsClient {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQS receive messages failed", {
+      logger.debug("SQS receive messages failed", {
         queueUrl,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -682,7 +682,7 @@ class SqsClientImpl implements SqsClient {
     const operation = "delete";
 
     // Log delete start
-    logger.debug("SQS delete message starting", {
+    logger.info("SQS delete message starting", {
       queueUrl,
     });
 
@@ -701,7 +701,7 @@ class SqsClientImpl implements SqsClient {
       const duration = performance.now() - startTime;
 
       // Log delete result
-      logger.debug("SQS delete message completed", {
+      logger.info("SQS delete message completed", {
         duration: `${duration.toFixed(2)}ms`,
       });
 
@@ -712,7 +712,7 @@ class SqsClientImpl implements SqsClient {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQS delete message failed", {
+      logger.debug("SQS delete message failed", {
         queueUrl,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -731,7 +731,7 @@ class SqsClientImpl implements SqsClient {
     const operation = "deleteBatch";
 
     // Log batch delete start
-    logger.debug("SQS delete batch messages starting", {
+    logger.info("SQS delete batch messages starting", {
       queueUrl,
       count: receiptHandles.length,
     });
@@ -762,7 +762,7 @@ class SqsClientImpl implements SqsClient {
       const duration = performance.now() - startTime;
 
       // Log batch delete result
-      logger.debug("SQS delete batch messages completed", {
+      logger.info("SQS delete batch messages completed", {
         successful: successful.length,
         failed: failed.length,
         duration: `${duration.toFixed(2)}ms`,
@@ -777,7 +777,7 @@ class SqsClientImpl implements SqsClient {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQS delete batch messages failed", {
+      logger.debug("SQS delete batch messages failed", {
         queueUrl,
         count: receiptHandles.length,
         duration: `${duration.toFixed(2)}ms`,
@@ -794,7 +794,7 @@ class SqsClientImpl implements SqsClient {
     const operation = "purge";
 
     // Log purge start
-    logger.debug("SQS purge queue starting", {
+    logger.info("SQS purge queue starting", {
       queueUrl,
     });
 
@@ -812,7 +812,7 @@ class SqsClientImpl implements SqsClient {
       const duration = performance.now() - startTime;
 
       // Log purge result
-      logger.debug("SQS purge queue completed", {
+      logger.info("SQS purge queue completed", {
         duration: `${duration.toFixed(2)}ms`,
       });
 
@@ -823,7 +823,7 @@ class SqsClientImpl implements SqsClient {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQS purge queue failed", {
+      logger.debug("SQS purge queue failed", {
         queueUrl,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -841,7 +841,7 @@ class SqsClientImpl implements SqsClient {
     const operation = "ensureQueue";
 
     // Log ensureQueue start
-    logger.debug("SQS ensure queue starting", {
+    logger.info("SQS ensure queue starting", {
       queueName,
       hasAttributes: !!options?.attributes,
       hasTags: !!options?.tags,
@@ -867,7 +867,7 @@ class SqsClientImpl implements SqsClient {
       this.#queueUrl = queueUrl;
 
       // Log ensureQueue result
-      logger.debug("SQS ensure queue completed", {
+      logger.info("SQS ensure queue completed", {
         queueName,
         queueUrl,
         duration: `${duration.toFixed(2)}ms`,
@@ -881,7 +881,7 @@ class SqsClientImpl implements SqsClient {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQS ensure queue failed", {
+      logger.debug("SQS ensure queue failed", {
         queueName,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -899,7 +899,7 @@ class SqsClientImpl implements SqsClient {
     const operation = "deleteQueue";
 
     // Log deleteQueue start
-    logger.debug("SQS delete queue starting", {
+    logger.info("SQS delete queue starting", {
       queueUrl,
     });
 
@@ -917,7 +917,7 @@ class SqsClientImpl implements SqsClient {
       const duration = performance.now() - startTime;
 
       // Log deleteQueue result
-      logger.debug("SQS delete queue completed", {
+      logger.info("SQS delete queue completed", {
         queueUrl,
         duration: `${duration.toFixed(2)}ms`,
       });
@@ -929,7 +929,7 @@ class SqsClientImpl implements SqsClient {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQS delete queue failed", {
+      logger.debug("SQS delete queue failed", {
         queueUrl,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),

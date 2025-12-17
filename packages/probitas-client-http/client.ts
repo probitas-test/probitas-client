@@ -286,7 +286,7 @@ class HttpClientImpl implements HttpClient {
     }
 
     // Log request start
-    logger.debug("HTTP request starting", {
+    logger.info("HTTP request starting", {
       method,
       url,
       headers: Object.keys(headers),
@@ -314,7 +314,7 @@ class HttpClientImpl implements HttpClient {
     const response = await createHttpResponse(rawResponse, duration);
 
     // Log response
-    logger.debug("HTTP response received", {
+    logger.info("HTTP response received", {
       method,
       url,
       status: response.status,

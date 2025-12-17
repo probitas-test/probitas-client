@@ -289,7 +289,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `GET ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "GET",
       key,
     });
@@ -299,7 +299,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const value = await withOptions(this.#redis.get(key), options, command);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "GET",
         key,
         duration: `${duration.toFixed(2)}ms`,
@@ -334,7 +334,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `SET ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "SET",
       key,
       options: {
@@ -370,7 +370,7 @@ class RedisClientImpl implements RedisClient {
         command,
       );
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "SET",
         key,
         duration: `${duration.toFixed(2)}ms`,
@@ -401,7 +401,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `DEL ${keys.join(" ")}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "DEL",
       keyCount: keys.length,
     });
@@ -411,7 +411,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const count = await this.#redis.del(...keys);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "DEL",
         keyCount: keys.length,
         deletedCount: count,
@@ -442,7 +442,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `INCR ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "INCR",
       key,
     });
@@ -452,7 +452,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const value = await this.#redis.incr(key);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "INCR",
         key,
         value,
@@ -483,7 +483,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `DECR ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "DECR",
       key,
     });
@@ -493,7 +493,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const value = await this.#redis.decr(key);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "DECR",
         key,
         value,
@@ -530,7 +530,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `HGET ${key} ${field}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "HGET",
       key,
       field,
@@ -546,7 +546,7 @@ class RedisClientImpl implements RedisClient {
         command,
       );
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "HGET",
         key,
         field,
@@ -584,7 +584,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `HSET ${key} ${field}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "HSET",
       key,
       field,
@@ -601,7 +601,7 @@ class RedisClientImpl implements RedisClient {
         command,
       );
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "HSET",
         key,
         field,
@@ -637,7 +637,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `HGETALL ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "HGETALL",
       key,
     });
@@ -651,7 +651,7 @@ class RedisClientImpl implements RedisClient {
         command,
       );
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "HGETALL",
         key,
         duration: `${duration.toFixed(2)}ms`,
@@ -682,7 +682,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `HDEL ${key} ${fields.join(" ")}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "HDEL",
       key,
       fieldCount: fields.length,
@@ -694,7 +694,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const count = await this.#redis.hdel(key, ...fields);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "HDEL",
         key,
         fieldCount: fields.length,
@@ -729,7 +729,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `LPUSH ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "LPUSH",
       key,
       valueCount: values.length,
@@ -741,7 +741,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const count = await this.#redis.lpush(key, ...values);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "LPUSH",
         key,
         valueCount: values.length,
@@ -774,7 +774,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `RPUSH ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "RPUSH",
       key,
       valueCount: values.length,
@@ -786,7 +786,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const count = await this.#redis.rpush(key, ...values);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "RPUSH",
         key,
         valueCount: values.length,
@@ -819,7 +819,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `LPOP ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "LPOP",
       key,
     });
@@ -829,7 +829,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const value = await this.#redis.lpop(key);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "LPOP",
         key,
         duration: `${duration.toFixed(2)}ms`,
@@ -860,7 +860,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `RPOP ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "RPOP",
       key,
     });
@@ -870,7 +870,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const value = await this.#redis.rpop(key);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "RPOP",
         key,
         duration: `${duration.toFixed(2)}ms`,
@@ -906,7 +906,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `LRANGE ${key} ${start} ${stop}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "LRANGE",
       key,
       start,
@@ -924,7 +924,7 @@ class RedisClientImpl implements RedisClient {
         command,
       );
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "LRANGE",
         key,
         start,
@@ -959,7 +959,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `LLEN ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "LLEN",
       key,
     });
@@ -969,7 +969,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const value = await this.#redis.llen(key);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "LLEN",
         key,
         duration: `${duration.toFixed(2)}ms`,
@@ -1002,7 +1002,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `SADD ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "SADD",
       key,
       memberCount: members.length,
@@ -1014,7 +1014,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const count = await this.#redis.sadd(key, ...members);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "SADD",
         key,
         memberCount: members.length,
@@ -1047,7 +1047,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `SREM ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "SREM",
       key,
       memberCount: members.length,
@@ -1059,7 +1059,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const count = await this.#redis.srem(key, ...members);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "SREM",
         key,
         memberCount: members.length,
@@ -1095,7 +1095,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `SMEMBERS ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "SMEMBERS",
       key,
     });
@@ -1109,7 +1109,7 @@ class RedisClientImpl implements RedisClient {
         command,
       );
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "SMEMBERS",
         key,
         duration: `${duration.toFixed(2)}ms`,
@@ -1143,7 +1143,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `SISMEMBER ${key} ${member}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "SISMEMBER",
       key,
       member,
@@ -1155,7 +1155,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const result = await this.#redis.sismember(key, member);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "SISMEMBER",
         key,
         member,
@@ -1193,7 +1193,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `ZADD ${key}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "ZADD",
       key,
       entryCount: entries.length,
@@ -1209,7 +1209,7 @@ class RedisClientImpl implements RedisClient {
       }
       const count = await this.#redis.zadd(key, ...args);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "ZADD",
         key,
         entryCount: entries.length,
@@ -1247,7 +1247,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `ZRANGE ${key} ${start} ${stop}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "ZRANGE",
       key,
       start,
@@ -1265,7 +1265,7 @@ class RedisClientImpl implements RedisClient {
         command,
       );
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "ZRANGE",
         key,
         start,
@@ -1303,7 +1303,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `ZSCORE ${key} ${member}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "ZSCORE",
       key,
       member,
@@ -1315,7 +1315,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const value = await this.#redis.zscore(key, member);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "ZSCORE",
         key,
         member,
@@ -1353,7 +1353,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `PUBLISH ${channel}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: "PUBLISH",
       channel,
     });
@@ -1364,7 +1364,7 @@ class RedisClientImpl implements RedisClient {
     try {
       const count = await this.#redis.publish(channel, message);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: "PUBLISH",
         channel,
         duration: `${duration.toFixed(2)}ms`,
@@ -1507,7 +1507,7 @@ class RedisClientImpl implements RedisClient {
     this.#ensureOpen();
     const startTime = performance.now();
     const command = `${cmd} ${args.join(" ")}`;
-    logger.debug("Redis command starting", {
+    logger.info("Redis command starting", {
       command: cmd,
       argCount: args.length,
     });
@@ -1519,7 +1519,7 @@ class RedisClientImpl implements RedisClient {
       // deno-lint-ignore no-explicit-any
       const value = await (this.#redis as any).call(cmd, ...args);
       const duration = performance.now() - startTime;
-      logger.debug("Redis command succeeded", {
+      logger.info("Redis command succeeded", {
         command: cmd,
         argCount: args.length,
         duration: `${duration.toFixed(2)}ms`,

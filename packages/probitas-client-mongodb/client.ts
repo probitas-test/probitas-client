@@ -505,7 +505,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `find(${this.#name})`;
 
-    logger.debug("MongoDB find operation starting", {
+    logger.info("MongoDB find operation starting", {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
       limit: options?.limit,
@@ -534,7 +534,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       ) as unknown as T[];
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB find operation completed", {
+      logger.info("MongoDB find operation completed", {
         collection: this.#name,
         documentCount: docs.length,
         duration: `${duration.toFixed(2)}ms`,
@@ -563,7 +563,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `findOne(${this.#name})`;
 
-    logger.debug("MongoDB findOne operation starting", {
+    logger.info("MongoDB findOne operation starting", {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
     });
@@ -579,7 +579,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const doc = await withOptions(promise, options, operation);
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB findOne operation completed", {
+      logger.info("MongoDB findOne operation completed", {
         collection: this.#name,
         found: doc !== null,
         duration: `${duration.toFixed(2)}ms`,
@@ -608,7 +608,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `insertOne(${this.#name})`;
 
-    logger.debug("MongoDB insertOne operation starting", {
+    logger.info("MongoDB insertOne operation starting", {
       collection: this.#name,
     });
     logger.trace("MongoDB insertOne document", {
@@ -623,7 +623,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const result = await withOptions(promise, options, operation);
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB insertOne operation completed", {
+      logger.info("MongoDB insertOne operation completed", {
         collection: this.#name,
         insertedId: String(result.insertedId),
         acknowledged: result.acknowledged,
@@ -651,7 +651,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `insertMany(${this.#name})`;
 
-    logger.debug("MongoDB insertMany operation starting", {
+    logger.info("MongoDB insertMany operation starting", {
       collection: this.#name,
       documentCount: docs.length,
     });
@@ -667,7 +667,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const result = await withOptions(promise, options, operation);
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB insertMany operation completed", {
+      logger.info("MongoDB insertMany operation completed", {
         collection: this.#name,
         insertedCount: result.insertedCount,
         acknowledged: result.acknowledged,
@@ -697,7 +697,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `updateOne(${this.#name})`;
 
-    logger.debug("MongoDB updateOne operation starting", {
+    logger.info("MongoDB updateOne operation starting", {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
       upsert: options?.upsert ?? false,
@@ -716,7 +716,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const result = await withOptions(promise, options, operation);
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB updateOne operation completed", {
+      logger.info("MongoDB updateOne operation completed", {
         collection: this.#name,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
@@ -749,7 +749,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `updateMany(${this.#name})`;
 
-    logger.debug("MongoDB updateMany operation starting", {
+    logger.info("MongoDB updateMany operation starting", {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
       upsert: options?.upsert ?? false,
@@ -772,7 +772,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const result = await withOptions(promise, options, operation);
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB updateMany operation completed", {
+      logger.info("MongoDB updateMany operation completed", {
         collection: this.#name,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
@@ -804,7 +804,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `deleteOne(${this.#name})`;
 
-    logger.debug("MongoDB deleteOne operation starting", {
+    logger.info("MongoDB deleteOne operation starting", {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
     });
@@ -820,7 +820,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const result = await withOptions(promise, options, operation);
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB deleteOne operation completed", {
+      logger.info("MongoDB deleteOne operation completed", {
         collection: this.#name,
         deletedCount: result.deletedCount,
         acknowledged: result.acknowledged,
@@ -848,7 +848,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `deleteMany(${this.#name})`;
 
-    logger.debug("MongoDB deleteMany operation starting", {
+    logger.info("MongoDB deleteMany operation starting", {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
     });
@@ -864,7 +864,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const result = await withOptions(promise, options, operation);
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB deleteMany operation completed", {
+      logger.info("MongoDB deleteMany operation completed", {
         collection: this.#name,
         deletedCount: result.deletedCount,
         acknowledged: result.acknowledged,
@@ -892,7 +892,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `aggregate(${this.#name})`;
 
-    logger.debug("MongoDB aggregate operation starting", {
+    logger.info("MongoDB aggregate operation starting", {
       collection: this.#name,
       pipelineStages: pipeline.length,
     });
@@ -909,7 +909,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const docs = await withOptions(docsPromise, options, operation) as R[];
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB aggregate operation completed", {
+      logger.info("MongoDB aggregate operation completed", {
         collection: this.#name,
         pipelineStages: pipeline.length,
         documentCount: docs.length,
@@ -939,7 +939,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     const startTime = performance.now();
     const operation = `countDocuments(${this.#name})`;
 
-    logger.debug("MongoDB countDocuments operation starting", {
+    logger.info("MongoDB countDocuments operation starting", {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
     });
@@ -955,7 +955,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       const count = await withOptions(promise, options, operation);
 
       const duration = performance.now() - startTime;
-      logger.debug("MongoDB countDocuments operation completed", {
+      logger.info("MongoDB countDocuments operation completed", {
         collection: this.#name,
         count,
         duration: `${duration.toFixed(2)}ms`,

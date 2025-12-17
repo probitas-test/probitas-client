@@ -145,7 +145,7 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
     const start = performance.now();
 
     // Log atomic commit start
-    logger.debug("Deno KV atomic commit starting", {
+    logger.info("Deno KV atomic commit starting", {
       operationCount: this.#operationCount,
       checkCount: this.#checks.length,
     });
@@ -155,7 +155,7 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
       const duration = performance.now() - start;
 
       // Log atomic commit result
-      logger.debug("Deno KV atomic commit completed", {
+      logger.info("Deno KV atomic commit completed", {
         operationCount: this.#operationCount,
         checkCount: this.#checks.length,
         success: result.ok,
@@ -183,7 +183,7 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
       };
     } catch (error) {
       const duration = performance.now() - start;
-      logger.error("Deno KV atomic commit failed", {
+      logger.debug("Deno KV atomic commit failed", {
         operationCount: this.#operationCount,
         checkCount: this.#checks.length,
         duration: `${duration.toFixed(2)}ms`,

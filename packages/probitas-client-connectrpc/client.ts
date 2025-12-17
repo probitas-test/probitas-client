@@ -653,7 +653,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     request: TRequest,
     options?: ConnectRpcOptions,
   ): Promise<ConnectRpcResponse> {
-    logger.debug("ConnectRPC unary call", {
+    logger.info("ConnectRPC unary call", {
       service: serviceName,
       method: methodName,
     });
@@ -723,7 +723,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     request: TRequest,
     options?: ConnectRpcOptions,
   ): AsyncIterable<ConnectRpcResponse> {
-    logger.debug("ConnectRPC server stream", {
+    logger.info("ConnectRPC server stream", {
       service: serviceName,
       method: methodName,
     });
@@ -795,7 +795,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     requests: AsyncIterable<TRequest>,
     options?: ConnectRpcOptions,
   ): Promise<ConnectRpcResponse> {
-    logger.debug("ConnectRPC client stream", {
+    logger.info("ConnectRPC client stream", {
       service: serviceName,
       method: methodName,
     });
@@ -864,7 +864,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     requests: AsyncIterable<TRequest>,
     options?: ConnectRpcOptions,
   ): AsyncIterable<ConnectRpcResponse> {
-    logger.debug("ConnectRPC bidirectional stream", {
+    logger.info("ConnectRPC bidirectional stream", {
       service: serviceName,
       method: methodName,
     });

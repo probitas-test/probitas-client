@@ -113,7 +113,7 @@ class DenoKvClientImpl implements DenoKvClient {
     const start = performance.now();
 
     // Log get operation start
-    logger.debug("Deno KV get starting", {
+    logger.info("Deno KV get starting", {
       key: key.map((k) => typeof k === "string" ? k : String(k)),
     });
 
@@ -122,7 +122,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log get operation result
-      logger.debug("Deno KV get completed", {
+      logger.info("Deno KV get completed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         found: entry.value !== null,
         duration: `${duration.toFixed(2)}ms`,
@@ -145,7 +145,7 @@ class DenoKvClientImpl implements DenoKvClient {
       };
     } catch (error) {
       const duration = performance.now() - start;
-      logger.error("Deno KV get failed", {
+      logger.debug("Deno KV get failed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -161,7 +161,7 @@ class DenoKvClientImpl implements DenoKvClient {
     const start = performance.now();
 
     // Log getMany operation start
-    logger.debug("Deno KV getMany starting", {
+    logger.info("Deno KV getMany starting", {
       count: keys.length,
     });
 
@@ -170,7 +170,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log getMany operation result
-      logger.debug("Deno KV getMany completed", {
+      logger.info("Deno KV getMany completed", {
         count: keys.length,
         found: entries.filter((e) => e.value !== null).length,
         duration: `${duration.toFixed(2)}ms`,
@@ -193,7 +193,7 @@ class DenoKvClientImpl implements DenoKvClient {
       })) as { [K in keyof T]: DenoKvGetResult<T[K]> };
     } catch (error) {
       const duration = performance.now() - start;
-      logger.error("Deno KV getMany failed", {
+      logger.debug("Deno KV getMany failed", {
         count: keys.length,
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -210,7 +210,7 @@ class DenoKvClientImpl implements DenoKvClient {
     const start = performance.now();
 
     // Log set operation start
-    logger.debug("Deno KV set starting", {
+    logger.info("Deno KV set starting", {
       key: key.map((k) => typeof k === "string" ? k : String(k)),
       expireIn: options?.expireIn,
     });
@@ -222,7 +222,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log set operation result
-      logger.debug("Deno KV set completed", {
+      logger.info("Deno KV set completed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         success: result.ok,
         duration: `${duration.toFixed(2)}ms`,
@@ -241,7 +241,7 @@ class DenoKvClientImpl implements DenoKvClient {
       };
     } catch (error) {
       const duration = performance.now() - start;
-      logger.error("Deno KV set failed", {
+      logger.debug("Deno KV set failed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -257,7 +257,7 @@ class DenoKvClientImpl implements DenoKvClient {
     const start = performance.now();
 
     // Log delete operation start
-    logger.debug("Deno KV delete starting", {
+    logger.info("Deno KV delete starting", {
       key: key.map((k) => typeof k === "string" ? k : String(k)),
     });
 
@@ -266,7 +266,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log delete operation result
-      logger.debug("Deno KV delete completed", {
+      logger.info("Deno KV delete completed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         duration: `${duration.toFixed(2)}ms`,
       });
@@ -278,7 +278,7 @@ class DenoKvClientImpl implements DenoKvClient {
       };
     } catch (error) {
       const duration = performance.now() - start;
-      logger.error("Deno KV delete failed", {
+      logger.debug("Deno KV delete failed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
@@ -308,7 +308,7 @@ class DenoKvClientImpl implements DenoKvClient {
           typeof k === "string" ? k : String(k)
         ),
       };
-    logger.debug("Deno KV list starting", {
+    logger.info("Deno KV list starting", {
       selector: selectorInfo,
       limit: options?.limit,
     });
@@ -332,7 +332,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log list operation result
-      logger.debug("Deno KV list completed", {
+      logger.info("Deno KV list completed", {
         selector: selectorInfo,
         limit: options?.limit,
         returned: entries.length,
@@ -354,7 +354,7 @@ class DenoKvClientImpl implements DenoKvClient {
       };
     } catch (error) {
       const duration = performance.now() - start;
-      logger.error("Deno KV list failed", {
+      logger.debug("Deno KV list failed", {
         selector: selectorInfo,
         limit: options?.limit,
         duration: `${duration.toFixed(2)}ms`,

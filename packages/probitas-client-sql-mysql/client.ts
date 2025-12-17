@@ -290,7 +290,7 @@ class MySqlClientImpl implements MySqlClient {
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
 
-    logger.debug("MySQL query starting", {
+    logger.info("MySQL query starting", {
       sql: sqlPreview,
       paramCount: params?.length ?? 0,
     });
@@ -307,7 +307,7 @@ class MySqlClientImpl implements MySqlClient {
 
       // Handle SELECT queries
       if (Array.isArray(rows)) {
-        logger.debug("MySQL query success", {
+        logger.info("MySQL query success", {
           duration: `${duration.toFixed(2)}ms`,
           rowCount: rows.length,
         });
@@ -331,7 +331,7 @@ class MySqlClientImpl implements MySqlClient {
       // deno-lint-ignore no-explicit-any
       const resultHeader = rows as any;
 
-      logger.debug("MySQL query success", {
+      logger.info("MySQL query success", {
         duration: `${duration.toFixed(2)}ms`,
         affectedRows: resultHeader.affectedRows,
         lastInsertId: resultHeader.insertId ? resultHeader.insertId : undefined,

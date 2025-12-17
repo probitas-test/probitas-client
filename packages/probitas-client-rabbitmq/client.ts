@@ -773,7 +773,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     const operation = `publish(${exchange}, ${routingKey})`;
 
     try {
-      logger.debug("Publishing message", {
+      logger.info("Publishing message", {
         exchange,
         routingKey,
         messageSize: content.length,
@@ -807,7 +807,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       }
 
       const duration = performance.now() - startTime;
-      logger.debug("Message published", {
+      logger.info("Message published", {
         exchange,
         routingKey,
         messageSize: content.length,
@@ -848,7 +848,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     const operation = `get(${queue})`;
 
     try {
-      logger.debug("Getting message", { queue });
+      logger.info("Getting message", { queue });
 
       const msg = await withOptions(
         this.#channel.get(queue, { noAck: false }),
@@ -859,7 +859,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       const duration = performance.now() - startTime;
 
       if (msg === false) {
-        logger.debug("No message available", {
+        logger.info("No message available", {
           queue,
           duration: `${duration.toFixed(2)}ms`,
         });
@@ -874,7 +874,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       const message = convertMessage(msg);
       this.#deliveryTagMap.set(message, msg.fields.deliveryTag);
 
-      logger.debug("Message received", {
+      logger.info("Message received", {
         queue,
         routingKey: message.fields.routingKey,
         size: message.content.length,
@@ -909,7 +909,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     let done = false;
 
     try {
-      logger.debug("Starting consume", {
+      logger.info("Starting consume", {
         queue,
         noAck: options?.noAck,
         exclusive: options?.exclusive,
@@ -946,7 +946,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       );
 
       consumerTag = consumeResult.consumerTag;
-      logger.debug("Consumer started", {
+      logger.info("Consumer started", {
         queue,
         consumerTag,
       });
@@ -996,12 +996,12 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
         throw new RabbitMqChannelError("Message delivery tag not found");
       }
 
-      logger.debug("Acknowledging message", { deliveryTag });
+      logger.info("Acknowledging message", { deliveryTag });
 
       this.#channel.ack({ fields: { deliveryTag } } as amqp.Message);
 
       const duration = performance.now() - startTime;
-      logger.debug("Message acknowledged", {
+      logger.info("Message acknowledged", {
         deliveryTag,
         duration: `${duration.toFixed(2)}ms`,
       });
@@ -1036,7 +1036,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
         throw new RabbitMqChannelError("Message delivery tag not found");
       }
 
-      logger.debug("Nacking message", {
+      logger.info("Nacking message", {
         deliveryTag,
         allUpTo: options?.allUpTo ?? false,
         requeue: options?.requeue ?? true,
@@ -1049,7 +1049,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       );
 
       const duration = performance.now() - startTime;
-      logger.debug("Message nacked", {
+      logger.info("Message nacked", {
         deliveryTag,
         duration: `${duration.toFixed(2)}ms`,
       });
@@ -1084,7 +1084,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
         throw new RabbitMqChannelError("Message delivery tag not found");
       }
 
-      logger.debug("Rejecting message", {
+      logger.info("Rejecting message", {
         deliveryTag,
         requeue: requeue ?? false,
       });
@@ -1095,7 +1095,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       );
 
       const duration = performance.now() - startTime;
-      logger.debug("Message rejected", {
+      logger.info("Message rejected", {
         deliveryTag,
         requeue: requeue ?? false,
         duration: `${duration.toFixed(2)}ms`,
