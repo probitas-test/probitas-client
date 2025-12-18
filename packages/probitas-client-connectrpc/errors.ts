@@ -5,8 +5,24 @@
  */
 
 import { type Code, ConnectError } from "@connectrpc/connect";
-import { ClientError } from "@probitas/client";
+import { AbortError, ClientError, TimeoutError } from "@probitas/client";
 import type { ConnectRpcStatusCode } from "./status.ts";
+
+/**
+ * Error thrown when a network-level failure occurs.
+ *
+ * This error indicates that the request could not be processed by the server
+ * due to network issues (connection refused, DNS resolution failure, timeout, etc.).
+ * Unlike ConnectRpcError, this error means the server was never reached.
+ */
+export class ConnectRpcNetworkError extends ClientError {
+  override readonly name: string = "ConnectRpcNetworkError";
+  override readonly kind = "connectrpc" as const;
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, "network", options);
+  }
+}
 
 /**
  * Rich error detail from google.rpc.Status.
@@ -64,7 +80,7 @@ export class ConnectRpcError extends ClientError {
     statusMessage: string,
     options?: ConnectRpcErrorOptions,
   ) {
-    super(message, "ConnectRpcError", options);
+    super(message, "connectrpc", options);
     this.statusCode = statusCode;
     this.statusMessage = statusMessage;
     this.metadata = options?.metadata;
@@ -199,3 +215,25 @@ export function fromConnectError(
       );
   }
 }
+
+/**
+ * Error types that indicate an operation was processed by the server.
+ * These errors occur after the request reaches the gRPC/ConnectRPC server.
+ */
+export type ConnectRpcOperationError =
+  | ConnectRpcUnauthenticatedError
+  | ConnectRpcPermissionDeniedError
+  | ConnectRpcNotFoundError
+  | ConnectRpcResourceExhaustedError
+  | ConnectRpcInternalError
+  | ConnectRpcUnavailableError
+  | ConnectRpcError;
+
+/**
+ * Error types that indicate the operation was not processed.
+ * These are errors that occur before the request reaches the server.
+ */
+export type ConnectRpcFailureError =
+  | ConnectRpcNetworkError
+  | AbortError
+  | TimeoutError;

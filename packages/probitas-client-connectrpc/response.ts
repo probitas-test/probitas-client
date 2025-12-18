@@ -6,12 +6,27 @@
 
 import type { ConnectError } from "@connectrpc/connect";
 import type { ClientResult } from "@probitas/client";
+import type {
+  ConnectRpcError,
+  ConnectRpcFailureError,
+  ConnectRpcNetworkError,
+} from "./errors.ts";
 import type { ConnectRpcStatusCode } from "./status.ts";
 
 /**
- * ConnectRPC response interface.
+ * ConnectRPC error type union.
+ *
+ * Contains either:
+ * - ConnectRpcError: gRPC error returned by the server
+ * - ConnectRpcNetworkError: Network-level failure before reaching the server
  */
-export interface ConnectRpcResponse extends ClientResult {
+export type ConnectRpcErrorType = ConnectRpcError | ConnectRpcNetworkError;
+
+/**
+ * Base interface for all ConnectRPC response types.
+ */
+// deno-lint-ignore no-explicit-any
+interface ConnectRpcResponseBase<T = any> extends ClientResult {
   /**
    * Result kind discriminator.
    *
@@ -21,61 +36,32 @@ export interface ConnectRpcResponse extends ClientResult {
   readonly kind: "connectrpc";
 
   /**
-   * Whether the operation was processed by the server.
+   * Whether the request was processed by the server.
    *
-   * Always `true` for ConnectRpcResponse since the existence of this response
-   * means the server received and processed the request (whether success or error).
+   * - `true`: Server responded (success or gRPC error)
+   * - `false`: Request failed before processing (network error, connection refused)
    */
-  readonly processed: true;
+  readonly processed: boolean;
 
   /**
-   * Whether the request was successful (statusCode === 0).
+   * Whether the request was successful.
    *
-   * Inherited from ClientResult. True when statusCode is 0 (OK),
-   * false for any error code.
+   * - `true`: statusCode === 0 (OK)
+   * - `false`: gRPC error or request failure
    */
   readonly ok: boolean;
 
   /**
-   * Error that occurred during the operation (null if successful).
+   * Error information (null if successful).
    *
-   * Contains the ConnectError when ok is false, null otherwise.
+   * Contains:
+   * - ConnectRpcError for gRPC errors
+   * - ConnectRpcNetworkError/AbortError/TimeoutError for failures
    */
-  readonly error: Error | null;
-
-  /**
-   * ConnectRPC/gRPC status code.
-   *
-   * 0 indicates success (OK). Non-zero values represent various error conditions
-   * compatible with gRPC status codes.
-   */
-  readonly statusCode: ConnectRpcStatusCode;
-
-  /**
-   * Status message (null for successful responses).
-   *
-   * Contains error description when ok is false.
-   */
-  readonly statusMessage: string | null;
-
-  /**
-   * Response headers.
-   *
-   * HTTP headers sent at the beginning of the response.
-   */
-  readonly headers: Headers;
-
-  /**
-   * Response trailers (sent at end of RPC).
-   *
-   * Additional metadata sent after the response body in streaming RPCs.
-   */
-  readonly trailers: Headers;
+  readonly error: ConnectRpcErrorType | ConnectRpcFailureError | null;
 
   /**
    * Response time in milliseconds.
-   *
-   * Inherited from ClientResult. Measures the full RPC duration.
    */
   readonly duration: number;
 
@@ -84,72 +70,261 @@ export interface ConnectRpcResponse extends ClientResult {
    * Returns the response message as-is (already deserialized by Connect).
    * Returns null if the response is an error or has no data.
    */
-  // deno-lint-ignore no-explicit-any
-  data<T = any>(): T | null;
+  data<U = T>(): U | null;
 
   /**
    * Get raw response or error.
+   * Returns null for failure responses.
    */
+  raw(): unknown | null;
+}
+
+/**
+ * Successful ConnectRPC response (statusCode === 0).
+ */
+// deno-lint-ignore no-explicit-any
+export interface ConnectRpcResponseSuccess<T = any>
+  extends ConnectRpcResponseBase<T> {
+  readonly processed: true;
+  readonly ok: true;
+  readonly error: null;
+
+  /** gRPC status code (always 0 for success). */
+  readonly statusCode: 0;
+
+  /** Status message (null for successful responses). */
+  readonly statusMessage: null;
+
+  /** Response headers. */
+  readonly headers: Headers;
+
+  /** Response trailers (sent at end of RPC). */
+  readonly trailers: Headers;
+
   raw(): unknown;
 }
 
 /**
- * Parameters for creating a ConnectRpcResponse.
+ * ConnectRPC response with gRPC error (statusCode !== 0).
+ *
+ * The server processed the request but returned an error status.
  */
-export interface ConnectRpcResponseParams<T = unknown> {
-  readonly response?: T;
-  readonly error?: ConnectError;
+// deno-lint-ignore no-explicit-any
+export interface ConnectRpcResponseError<T = any>
+  extends ConnectRpcResponseBase<T> {
+  readonly processed: true;
+  readonly ok: false;
+  readonly error: ConnectRpcError;
+
+  /** gRPC status code (1-16). */
+  readonly statusCode: ConnectRpcStatusCode;
+
+  /** Status message describing the error. */
+  readonly statusMessage: string;
+
+  /** Response headers. */
+  readonly headers: Headers;
+
+  /** Response trailers (sent at end of RPC). */
+  readonly trailers: Headers;
+
+  raw(): ConnectError;
+}
+
+/**
+ * Failed ConnectRPC request (network error, connection refused, etc.).
+ *
+ * The request did not reach gRPC processing.
+ */
+// deno-lint-ignore no-explicit-any
+export interface ConnectRpcResponseFailure<T = any>
+  extends ConnectRpcResponseBase<T> {
+  readonly processed: false;
+  readonly ok: false;
+  readonly error: ConnectRpcFailureError;
+
+  /** Status code (null for network failures). */
+  readonly statusCode: null;
+
+  /** Status message (null for network failures). */
+  readonly statusMessage: null;
+
+  /** Response headers (null for failures). */
+  readonly headers: null;
+
+  /** Response trailers (null for failures). */
+  readonly trailers: null;
+
+  raw(): null;
+}
+
+/**
+ * ConnectRPC response union type.
+ *
+ * Use `processed` to distinguish between server responses and failures:
+ * - `processed === true`: Server responded (Success or Error)
+ * - `processed === false`: Request failed (Failure)
+ *
+ * Use `ok` to check for success:
+ * - `ok === true`: Success (statusCode === 0)
+ * - `ok === false`: Error or Failure
+ */
+// deno-lint-ignore no-explicit-any
+export type ConnectRpcResponse<T = any> =
+  | ConnectRpcResponseSuccess<T>
+  | ConnectRpcResponseError<T>
+  | ConnectRpcResponseFailure<T>;
+
+/**
+ * Parameters for creating a successful ConnectRpcResponse.
+ */
+export interface ConnectRpcResponseSuccessParams<T> {
+  readonly response: T | null;
   readonly headers: Headers;
   readonly trailers: Headers;
   readonly duration: number;
 }
 
 /**
- * Implementation of ConnectRpcResponse.
+ * Parameters for creating an error ConnectRpcResponse.
  */
-export class ConnectRpcResponseImpl<T = unknown> implements ConnectRpcResponse {
+export interface ConnectRpcResponseErrorParams {
+  readonly error: ConnectError;
+  readonly rpcError: ConnectRpcError;
+  readonly headers: Headers;
+  readonly trailers: Headers;
+  readonly duration: number;
+}
+
+/**
+ * Parameters for creating a failure ConnectRpcResponse.
+ */
+export interface ConnectRpcResponseFailureParams {
+  readonly error: ConnectRpcFailureError;
+  readonly duration: number;
+}
+
+/**
+ * Implementation of ConnectRpcResponseSuccess.
+ */
+class ConnectRpcResponseSuccessImpl<T> implements ConnectRpcResponseSuccess<T> {
   readonly kind = "connectrpc" as const;
   readonly processed = true as const;
-  readonly ok: boolean;
-  readonly error: Error | null;
-  readonly statusCode: ConnectRpcStatusCode;
-  readonly statusMessage: string | null;
+  readonly ok = true as const;
+  readonly error = null;
+  readonly statusCode = 0 as const;
+  readonly statusMessage = null;
   readonly headers: Headers;
   readonly trailers: Headers;
   readonly duration: number;
 
-  readonly #response?: T;
-  readonly #error?: ConnectError;
+  readonly #response: T | null;
 
-  constructor(params: ConnectRpcResponseParams<T>) {
+  constructor(params: ConnectRpcResponseSuccessParams<T>) {
     this.headers = params.headers;
     this.trailers = params.trailers;
     this.duration = params.duration;
     this.#response = params.response;
-    this.#error = params.error;
-
-    if (params.error) {
-      this.ok = false;
-      this.error = params.error;
-      this.statusCode = params.error.code as ConnectRpcStatusCode;
-      this.statusMessage = params.error.rawMessage || params.error.message;
-    } else {
-      this.ok = true;
-      this.error = null;
-      this.statusCode = 0;
-      this.statusMessage = null;
-    }
   }
 
-  // deno-lint-ignore no-explicit-any
-  data<U = any>(): U | null {
+  data<U = T>(): U | null {
     if (this.#response === null || this.#response === undefined) {
       return null;
     }
     return this.#response as U;
   }
 
-  raw(): T | ConnectError | undefined {
-    return this.#response ?? this.#error;
+  raw(): T | null {
+    return this.#response;
   }
+}
+
+/**
+ * Implementation of ConnectRpcResponseError.
+ */
+class ConnectRpcResponseErrorImpl<T> implements ConnectRpcResponseError<T> {
+  readonly kind = "connectrpc" as const;
+  readonly processed = true as const;
+  readonly ok = false as const;
+  readonly error: ConnectRpcError;
+  readonly statusCode: ConnectRpcStatusCode;
+  readonly statusMessage: string;
+  readonly headers: Headers;
+  readonly trailers: Headers;
+  readonly duration: number;
+
+  readonly #connectError: ConnectError;
+
+  constructor(params: ConnectRpcResponseErrorParams) {
+    this.headers = params.headers;
+    this.trailers = params.trailers;
+    this.duration = params.duration;
+    this.error = params.rpcError;
+    this.#connectError = params.error;
+    this.statusCode = params.rpcError.statusCode;
+    this.statusMessage = params.rpcError.statusMessage;
+  }
+
+  data<U = T>(): U | null {
+    return null;
+  }
+
+  raw(): ConnectError {
+    return this.#connectError;
+  }
+}
+
+/**
+ * Implementation of ConnectRpcResponseFailure.
+ */
+class ConnectRpcResponseFailureImpl<T> implements ConnectRpcResponseFailure<T> {
+  readonly kind = "connectrpc" as const;
+  readonly processed = false as const;
+  readonly ok = false as const;
+  readonly error: ConnectRpcFailureError;
+  readonly statusCode = null;
+  readonly statusMessage = null;
+  readonly headers = null;
+  readonly trailers = null;
+  readonly duration: number;
+
+  constructor(params: ConnectRpcResponseFailureParams) {
+    this.error = params.error;
+    this.duration = params.duration;
+  }
+
+  data(): null {
+    return null;
+  }
+
+  raw(): null {
+    return null;
+  }
+}
+
+/**
+ * Create a successful ConnectRPC response.
+ */
+export function createConnectRpcResponseSuccess<T>(
+  params: ConnectRpcResponseSuccessParams<T>,
+): ConnectRpcResponseSuccess<T> {
+  return new ConnectRpcResponseSuccessImpl(params);
+}
+
+/**
+ * Create a ConnectRPC response with gRPC error.
+ */
+export function createConnectRpcResponseError<T>(
+  params: ConnectRpcResponseErrorParams,
+): ConnectRpcResponseError<T> {
+  return new ConnectRpcResponseErrorImpl(params);
+}
+
+/**
+ * Create a failed ConnectRPC response.
+ */
+export function createConnectRpcResponseFailure<T>(
+  params: ConnectRpcResponseFailureParams,
+): ConnectRpcResponseFailure<T> {
+  return new ConnectRpcResponseFailureImpl(params);
 }

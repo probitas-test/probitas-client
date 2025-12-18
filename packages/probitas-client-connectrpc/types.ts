@@ -7,6 +7,19 @@
 import type { MessageShape } from "@bufbuild/protobuf";
 import type { FileDescriptorSetSchema } from "@bufbuild/protobuf/wkt";
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
+import type {
+  ConnectRpcResponse,
+  ConnectRpcResponseError,
+  ConnectRpcResponseFailure,
+  ConnectRpcResponseSuccess,
+} from "./response.ts";
+
+export type {
+  ConnectRpcResponse,
+  ConnectRpcResponseError,
+  ConnectRpcResponseFailure,
+  ConnectRpcResponseSuccess,
+};
 
 /**
  * FileDescriptorSet message type from @bufbuild/protobuf.
@@ -117,9 +130,9 @@ export interface ConnectRpcClientConfig extends CommonOptions {
   readonly useBinaryFormat?: boolean;
 
   /**
-   * Whether to throw ConnectRpcError on non-OK responses (code !== 0).
+   * Whether to throw ConnectRpcError on non-OK responses (code !== 0) or failures.
    * Can be overridden per-request via ConnectRpcOptions.throwOnError.
-   * @default true
+   * @default false
    */
   readonly throwOnError?: boolean;
 }
@@ -132,9 +145,9 @@ export interface ConnectRpcOptions extends CommonOptions {
   readonly metadata?: Record<string, string>;
 
   /**
-   * Whether to throw ConnectRpcError on non-OK responses (code !== 0).
+   * Whether to throw ConnectRpcError on non-OK responses (code !== 0) or failures.
    * Overrides ConnectRpcClientConfig.throwOnError.
-   * @default true (when not specified in client config)
+   * @default false (inherited from client config if not specified)
    */
   readonly throwOnError?: boolean;
 }

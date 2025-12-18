@@ -24,7 +24,7 @@ import {
   ServerReflectionClient,
 } from "@lambdalisue/connectrpc-grpcreflect/client";
 import { getLogger } from "@probitas/logger";
-import { ConnectionError } from "@probitas/client";
+import { AbortError, ConnectionError, TimeoutError } from "@probitas/client";
 import type {
   ConnectProtocol,
   ConnectRpcClientConfig,
@@ -36,11 +36,29 @@ import type {
   ServiceInfo,
   TlsConfig,
 } from "./types.ts";
-import { fromConnectError } from "./errors.ts";
+import { ConnectRpcNetworkError, fromConnectError } from "./errors.ts";
 import type { ConnectRpcResponse } from "./response.ts";
-import { ConnectRpcResponseImpl } from "./response.ts";
+import {
+  createConnectRpcResponseError,
+  createConnectRpcResponseFailure,
+  createConnectRpcResponseSuccess,
+} from "./response.ts";
 
 const logger = getLogger("probitas", "client", "connectrpc");
+
+/**
+ * Convert an error to a failure error type.
+ * AbortError and TimeoutError are returned as-is, others are wrapped.
+ */
+function toFailureError(
+  error: unknown,
+  message: string,
+): ConnectRpcNetworkError | AbortError | TimeoutError {
+  if (error instanceof AbortError || error instanceof TimeoutError) {
+    return error;
+  }
+  return new ConnectRpcNetworkError(message, { cause: error });
+}
 
 /**
  * Reflection API for ConnectRPC client.
@@ -658,7 +676,32 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       method: methodName,
     });
 
-    const dynamicClient = await this.#getDynamicClient();
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
+    let dynamicClient;
+    const startTime = performance.now();
+    try {
+      dynamicClient = await this.#getDynamicClient();
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      const failureError = toFailureError(
+        error,
+        `Failed to initialize client: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      if (shouldThrow) {
+        throw failureError;
+      }
+      return createConnectRpcResponseFailure({
+        error: failureError,
+        duration,
+      });
+    }
+
     let headers = new Headers();
     let trailers = new Headers();
 
@@ -674,7 +717,6 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       },
     };
 
-    const startTime = performance.now();
     try {
       const response = await dynamicClient.call(
         serviceName,
@@ -684,7 +726,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       );
       const duration = performance.now() - startTime;
 
-      return new ConnectRpcResponseImpl({
+      return createConnectRpcResponseSuccess({
         response,
         headers,
         trailers,
@@ -693,27 +735,42 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     } catch (error) {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
-        const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-          true;
+        // Merge headers and trailers for error metadata
+        const metadata = new Headers(headers);
+        trailers.forEach((value, key) => {
+          metadata.set(key, value);
+        });
+        const rpcError = fromConnectError(error, metadata);
 
         if (shouldThrow) {
-          // Merge headers and trailers for error metadata
-          const metadata = new Headers(headers);
-          trailers.forEach((value, key) => {
-            metadata.set(key, value);
-          });
-          throw fromConnectError(error, metadata);
+          throw rpcError;
         }
 
         // Return error as response
-        return new ConnectRpcResponseImpl({
+        return createConnectRpcResponseError({
           error,
+          rpcError,
           headers,
           trailers,
           duration,
         });
       }
-      throw error;
+
+      // Non-ConnectError: treat as network failure
+      const failureError = toFailureError(
+        error,
+        `Network error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      if (shouldThrow) {
+        throw failureError;
+      }
+      return createConnectRpcResponseFailure({
+        error: failureError,
+        duration,
+      });
     }
   }
 
@@ -728,7 +785,33 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       method: methodName,
     });
 
-    const dynamicClient = await this.#getDynamicClient();
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
+    let dynamicClient;
+    const startTime = performance.now();
+    try {
+      dynamicClient = await this.#getDynamicClient();
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      const failureError = toFailureError(
+        error,
+        `Failed to initialize client: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      if (shouldThrow) {
+        throw failureError;
+      }
+      yield createConnectRpcResponseFailure({
+        error: failureError,
+        duration,
+      });
+      return;
+    }
+
     let headers = new Headers();
     let trailers = new Headers();
 
@@ -744,7 +827,6 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       },
     };
 
-    const startTime = performance.now();
     const stream = dynamicClient.serverStream(
       serviceName,
       methodName,
@@ -755,7 +837,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     try {
       for await (const message of stream) {
         const duration = performance.now() - startTime;
-        yield new ConnectRpcResponseImpl({
+        yield createConnectRpcResponseSuccess({
           response: message,
           headers,
           trailers,
@@ -765,27 +847,42 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     } catch (error) {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
-        const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-          true;
+        const metadata = new Headers(headers);
+        trailers.forEach((value, key) => {
+          metadata.set(key, value);
+        });
+        const rpcError = fromConnectError(error, metadata);
 
         if (shouldThrow) {
-          const metadata = new Headers(headers);
-          trailers.forEach((value, key) => {
-            metadata.set(key, value);
-          });
-          throw fromConnectError(error, metadata);
+          throw rpcError;
         }
 
         // Yield error as final response
-        yield new ConnectRpcResponseImpl({
+        yield createConnectRpcResponseError({
           error,
+          rpcError,
           headers,
           trailers,
           duration,
         });
         return;
       }
-      throw error;
+
+      // Non-ConnectError: treat as network failure
+      const failureError = toFailureError(
+        error,
+        `Network error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      if (shouldThrow) {
+        throw failureError;
+      }
+      yield createConnectRpcResponseFailure({
+        error: failureError,
+        duration,
+      });
     }
   }
 
@@ -800,7 +897,32 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       method: methodName,
     });
 
-    const dynamicClient = await this.#getDynamicClient();
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
+    let dynamicClient;
+    const startTime = performance.now();
+    try {
+      dynamicClient = await this.#getDynamicClient();
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      const failureError = toFailureError(
+        error,
+        `Failed to initialize client: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      if (shouldThrow) {
+        throw failureError;
+      }
+      return createConnectRpcResponseFailure({
+        error: failureError,
+        duration,
+      });
+    }
+
     let headers = new Headers();
     let trailers = new Headers();
 
@@ -816,7 +938,6 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       },
     };
 
-    const startTime = performance.now();
     try {
       const response = await dynamicClient.clientStream(
         serviceName,
@@ -826,7 +947,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       );
       const duration = performance.now() - startTime;
 
-      return new ConnectRpcResponseImpl({
+      return createConnectRpcResponseSuccess({
         response,
         headers,
         trailers,
@@ -835,26 +956,41 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     } catch (error) {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
-        const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-          true;
+        const metadata = new Headers(headers);
+        trailers.forEach((value, key) => {
+          metadata.set(key, value);
+        });
+        const rpcError = fromConnectError(error, metadata);
 
         if (shouldThrow) {
-          const metadata = new Headers(headers);
-          trailers.forEach((value, key) => {
-            metadata.set(key, value);
-          });
-          throw fromConnectError(error, metadata);
+          throw rpcError;
         }
 
         // Return error as response
-        return new ConnectRpcResponseImpl({
+        return createConnectRpcResponseError({
           error,
+          rpcError,
           headers,
           trailers,
           duration,
         });
       }
-      throw error;
+
+      // Non-ConnectError: treat as network failure
+      const failureError = toFailureError(
+        error,
+        `Network error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      if (shouldThrow) {
+        throw failureError;
+      }
+      return createConnectRpcResponseFailure({
+        error: failureError,
+        duration,
+      });
     }
   }
 
@@ -869,7 +1005,33 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       method: methodName,
     });
 
-    const dynamicClient = await this.#getDynamicClient();
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
+    let dynamicClient;
+    const startTime = performance.now();
+    try {
+      dynamicClient = await this.#getDynamicClient();
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      const failureError = toFailureError(
+        error,
+        `Failed to initialize client: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      if (shouldThrow) {
+        throw failureError;
+      }
+      yield createConnectRpcResponseFailure({
+        error: failureError,
+        duration,
+      });
+      return;
+    }
+
     let headers = new Headers();
     let trailers = new Headers();
 
@@ -885,7 +1047,6 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       },
     };
 
-    const startTime = performance.now();
     const stream = dynamicClient.bidiStream(
       serviceName,
       methodName,
@@ -896,7 +1057,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     try {
       for await (const message of stream) {
         const duration = performance.now() - startTime;
-        yield new ConnectRpcResponseImpl({
+        yield createConnectRpcResponseSuccess({
           response: message,
           headers,
           trailers,
@@ -906,27 +1067,42 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     } catch (error) {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
-        const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-          true;
+        const metadata = new Headers(headers);
+        trailers.forEach((value, key) => {
+          metadata.set(key, value);
+        });
+        const rpcError = fromConnectError(error, metadata);
 
         if (shouldThrow) {
-          const metadata = new Headers(headers);
-          trailers.forEach((value, key) => {
-            metadata.set(key, value);
-          });
-          throw fromConnectError(error, metadata);
+          throw rpcError;
         }
 
         // Yield error as final response
-        yield new ConnectRpcResponseImpl({
+        yield createConnectRpcResponseError({
           error,
+          rpcError,
           headers,
           trailers,
           duration,
         });
         return;
       }
-      throw error;
+
+      // Non-ConnectError: treat as network failure
+      const failureError = toFailureError(
+        error,
+        `Network error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      if (shouldThrow) {
+        throw failureError;
+      }
+      yield createConnectRpcResponseFailure({
+        error: failureError,
+        duration,
+      });
     }
   }
 

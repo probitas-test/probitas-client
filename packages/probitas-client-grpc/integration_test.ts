@@ -261,9 +261,10 @@ Deno.test({
       },
     );
 
-    await t.step("throwOnError: true (default) throws error", async () => {
+    await t.step("throwOnError: true throws error", async () => {
       await using client = createGrpcClient({
         url: GRPC_URL,
+        throwOnError: true,
       });
 
       await assertRejects(

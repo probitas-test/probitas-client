@@ -7,7 +7,13 @@
  *   docker compose down
  */
 
-import { assertEquals, assertExists, assertLess } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+  assertFalse,
+  assertLess,
+} from "@std/assert";
 import { ConnectRpcError, createConnectRpcClient } from "./mod.ts";
 
 // Suppress HTTP/2 cleanup errors from Deno's node:http2 compatibility layer.
@@ -181,7 +187,7 @@ Deno.test({
         { message: "Hello Reflection!" },
       );
 
-      assertEquals(response.ok, true);
+      assert(response.ok);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
 
@@ -197,7 +203,7 @@ Deno.test({
         { message: "Test message" },
       );
 
-      assertEquals(response.ok, true);
+      assert(response.ok);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
       const data = response.data<{ message: string }>();
@@ -249,7 +255,7 @@ Deno.test({
           { throwOnError: false },
         );
 
-        assertEquals(response.ok, false);
+        assertFalse(response.ok);
         assertEquals(response.statusCode !== 0, true);
       },
     );
@@ -287,7 +293,7 @@ Deno.test({
         { message: "trigger error" },
       );
 
-      assertEquals(response.ok, false);
+      assertFalse(response.ok);
     });
   },
 });
@@ -310,7 +316,7 @@ Deno.test({
         { message: "with metadata" },
       );
 
-      assertEquals(response.ok, true);
+      assert(response.ok);
       assertExists(response.headers);
     });
 
@@ -329,7 +335,7 @@ Deno.test({
         { metadata: { "x-header": "from-request" } },
       );
 
-      assertEquals(response.ok, true);
+      assert(response.ok);
     });
   },
 });
@@ -348,7 +354,7 @@ Deno.test({
       { message: "disposable test" },
     );
 
-    assertEquals(response.ok, true);
+    assert(response.ok);
   },
 });
 
@@ -370,7 +376,7 @@ Deno.test({
         { message: "stream test", count: 3 },
       )
     ) {
-      assertEquals(response.ok, true);
+      assert(response.ok);
       messages.push(response.data());
     }
 
@@ -418,7 +424,7 @@ Deno.test({
       { message: "protocol: connect" },
     );
 
-    assertEquals(response.ok, true);
+    assert(response.ok);
   },
 });
 
@@ -437,7 +443,7 @@ Deno.test({
       { message: "protocol: grpc" },
     );
 
-    assertEquals(response.ok, true);
+    assert(response.ok);
   },
 });
 
@@ -456,7 +462,7 @@ Deno.test({
       { message: "protocol: grpc-web" },
     );
 
-    assertEquals(response.ok, true);
+    assert(response.ok);
   },
 });
 
@@ -499,7 +505,7 @@ Deno.test({
         { message: "test error" },
       );
 
-      assertEquals(response.ok, false);
+      assertFalse(response.ok);
       assertEquals(response.statusCode !== 0, true);
       assertEquals(response.data(), null);
     });

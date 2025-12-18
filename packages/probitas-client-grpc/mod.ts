@@ -101,12 +101,16 @@ export {
   ConnectRpcError as GrpcError,
   type ConnectRpcErrorOptions as GrpcErrorOptions,
   ConnectRpcInternalError as GrpcInternalError,
+  ConnectRpcNetworkError as GrpcNetworkError,
   ConnectRpcNotFoundError as GrpcNotFoundError,
   type ConnectRpcOptions as GrpcOptions,
   ConnectRpcPermissionDeniedError as GrpcPermissionDeniedError,
   ConnectRpcResourceExhaustedError as GrpcResourceExhaustedError,
-  // Response
+  // Response types
   type ConnectRpcResponse as GrpcResponse,
+  type ConnectRpcResponseError as GrpcResponseError,
+  type ConnectRpcResponseFailure as GrpcResponseFailure,
+  type ConnectRpcResponseSuccess as GrpcResponseSuccess,
   ConnectRpcStatus as GrpcStatus,
   // Status codes
   type ConnectRpcStatusCode as GrpcStatusCode,
