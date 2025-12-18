@@ -29,23 +29,17 @@
  * // String operations
  * await client.set("user:1:name", "Alice", { ex: 3600 });
  * const result = await client.get("user:1:name");
- * if (result.ok) {
- *   console.log("Name:", result.value);
- * }
+ * console.log("Name:", result.value);
  *
  * // Hash operations
  * await client.hset("user:1", "email", "alice@example.com");
  * const email = await client.hget("user:1", "email");
- * if (email.ok) {
- *   console.log("Email:", email.value);
- * }
+ * console.log("Email:", email.value);
  *
  * // List operations
  * await client.rpush("queue", "job1", "job2", "job3");
  * const job = await client.lpop("queue");
- * if (job.ok) {
- *   console.log("Job:", job.value);
- * }
+ * console.log("Job:", job.value);
  *
  * await client.close();
  * ```
@@ -116,9 +110,7 @@
  *
  * await client.set("test", "value");
  * const result = await client.get("test");
- * if (result.ok) {
- *   console.log(result.value);
- * }
+ * console.log(result.value);
  * // Client automatically closed when block exits
  * ```
  *
@@ -140,5 +132,4 @@
 
 export type * from "./types.ts";
 export * from "./errors.ts";
-export * from "./result.ts";
 export * from "./client.ts";

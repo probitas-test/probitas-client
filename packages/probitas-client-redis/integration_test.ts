@@ -40,19 +40,11 @@ Deno.test({
 
         await t.step("SET and GET", async () => {
           const setResult = await client.set(testKey, "hello");
-          if (!setResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${setResult.error.message}`,
-            );
-          }
+          assertEquals(setResult.ok, true);
           assertEquals(setResult.value, "OK");
 
           const getResult = await client.get(testKey);
-          if (!getResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${getResult.error.message}`,
-            );
-          }
+          assertEquals(getResult.ok, true);
           assertEquals(getResult.value, "hello");
         });
 
@@ -60,11 +52,7 @@ Deno.test({
           const key = `${testKey}:ex`;
           await client.set(key, "expires", { ex: 60 });
           const result = await client.get(key);
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, "expires");
         });
 
@@ -73,19 +61,11 @@ Deno.test({
           await client.set(key, "10");
 
           const incrResult = await client.incr(key);
-          if (!incrResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${incrResult.error.message}`,
-            );
-          }
+          assertEquals(incrResult.ok, true);
           assertEquals(incrResult.value, 11);
 
           const decrResult = await client.decr(key);
-          if (!decrResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${decrResult.error.message}`,
-            );
-          }
+          assertEquals(decrResult.ok, true);
           assertEquals(decrResult.value, 10);
         });
 
@@ -95,11 +75,7 @@ Deno.test({
             `${testKey}:ex`,
             `${testKey}:counter`,
           );
-          if (!delResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${delResult.error.message}`,
-            );
-          }
+          assertEquals(delResult.ok, true);
           assertGreaterOrEqual(delResult.value, 1);
         });
       });
@@ -109,40 +85,24 @@ Deno.test({
 
         await t.step("HSET and HGET", async () => {
           const hsetResult = await client.hset(testKey, "field1", "value1");
-          if (!hsetResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${hsetResult.error.message}`,
-            );
-          }
+          assertEquals(hsetResult.ok, true);
 
           const hgetResult = await client.hget(testKey, "field1");
-          if (!hgetResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${hgetResult.error.message}`,
-            );
-          }
+          assertEquals(hgetResult.ok, true);
           assertEquals(hgetResult.value, "value1");
         });
 
         await t.step("HGETALL", async () => {
           await client.hset(testKey, "field2", "value2");
           const result = await client.hgetall(testKey);
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.field1, "value1");
           assertEquals(result.value.field2, "value2");
         });
 
         await t.step("HDEL", async () => {
           const result = await client.hdel(testKey, "field1", "field2");
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, 2);
         });
 
@@ -154,56 +114,32 @@ Deno.test({
 
         await t.step("LPUSH and RPUSH", async () => {
           const lpushResult = await client.lpush(testKey, "a", "b");
-          if (!lpushResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${lpushResult.error.message}`,
-            );
-          }
+          assertEquals(lpushResult.ok, true);
           assertEquals(lpushResult.value, 2);
 
           const rpushResult = await client.rpush(testKey, "c");
-          if (!rpushResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${rpushResult.error.message}`,
-            );
-          }
+          assertEquals(rpushResult.ok, true);
           assertEquals(rpushResult.value, 3);
         });
 
         await t.step("LRANGE", async () => {
           const result = await client.lrange(testKey, 0, -1);
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.length, 3);
         });
 
         await t.step("LPOP and RPOP", async () => {
           const lpopResult = await client.lpop(testKey);
-          if (!lpopResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${lpopResult.error.message}`,
-            );
-          }
+          assertEquals(lpopResult.ok, true);
 
           const rpopResult = await client.rpop(testKey);
-          if (!rpopResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${rpopResult.error.message}`,
-            );
-          }
+          assertEquals(rpopResult.ok, true);
           assertEquals(rpopResult.value, "c");
         });
 
         await t.step("LLEN", async () => {
           const result = await client.llen(testKey);
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, 1);
         });
 
@@ -215,49 +151,29 @@ Deno.test({
 
         await t.step("SADD", async () => {
           const result = await client.sadd(testKey, "a", "b", "c");
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, 3);
         });
 
         await t.step("SMEMBERS", async () => {
           const result = await client.smembers(testKey);
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.length, 3);
         });
 
         await t.step("SISMEMBER", async () => {
           const existsResult = await client.sismember(testKey, "a");
-          if (!existsResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${existsResult.error.message}`,
-            );
-          }
+          assertEquals(existsResult.ok, true);
           assertEquals(existsResult.value, true);
 
           const notExistsResult = await client.sismember(testKey, "x");
-          if (!notExistsResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${notExistsResult.error.message}`,
-            );
-          }
+          assertEquals(notExistsResult.ok, true);
           assertEquals(notExistsResult.value, false);
         });
 
         await t.step("SREM", async () => {
           const result = await client.srem(testKey, "a");
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, 1);
         });
 
@@ -274,39 +190,23 @@ Deno.test({
             { score: 2, member: "b" },
             { score: 3, member: "c" },
           );
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, 3);
         });
 
         await t.step("ZRANGE", async () => {
           const result = await client.zrange(testKey, 0, -1);
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.length, 3);
         });
 
         await t.step("ZSCORE", async () => {
           const result = await client.zscore(testKey, "b");
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, 2);
 
           const notExistsResult = await client.zscore(testKey, "x");
-          if (!notExistsResult.ok) {
-            throw new Error(
-              `Expected ok but got error: ${notExistsResult.error.message}`,
-            );
-          }
+          assertEquals(notExistsResult.ok, true);
           assertEquals(notExistsResult.value, null);
         });
 
@@ -323,11 +223,7 @@ Deno.test({
           tx.get(testKey);
 
           const result = await tx.exec();
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.length, 3);
           assertEquals(result.value[0], "OK");
           assertEquals(result.value[1], 2);
@@ -339,11 +235,7 @@ Deno.test({
 
       await t.step("Raw command", async () => {
         const result = await client.command("PING");
-        if (!result.ok) {
-          throw new Error(
-            `Expected ok but got error: ${result.error.message}`,
-          );
-        }
+        assertEquals(result.ok, true);
         assertEquals(result.value, "PONG");
       });
 
@@ -353,11 +245,7 @@ Deno.test({
         await t.step("GET with timeout option succeeds", async () => {
           await client.set(testKey, "value");
           const result = await client.get(testKey, { timeout: 5000 });
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, "value");
         });
 
@@ -366,11 +254,7 @@ Deno.test({
           const result = await client.get(testKey, {
             signal: controller.signal,
           });
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value, "value");
         });
 
@@ -392,11 +276,7 @@ Deno.test({
           const hashKey = `${testKey}:hash`;
           await client.hset(hashKey, "field", "value");
           const result = await client.hgetall(hashKey, { timeout: 5000 });
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.field, "value");
           await client.del(hashKey);
         });
@@ -405,11 +285,7 @@ Deno.test({
           const listKey = `${testKey}:list`;
           await client.lpush(listKey, "a", "b");
           const result = await client.lrange(listKey, 0, -1, { timeout: 5000 });
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.length, 2);
           await client.del(listKey);
         });
@@ -418,11 +294,7 @@ Deno.test({
           const setKey = `${testKey}:set`;
           await client.sadd(setKey, "a", "b");
           const result = await client.smembers(setKey, { timeout: 5000 });
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.length, 2);
           await client.del(setKey);
         });
@@ -431,11 +303,7 @@ Deno.test({
           const zsetKey = `${testKey}:zset`;
           await client.zadd(zsetKey, { score: 1, member: "a" });
           const result = await client.zrange(zsetKey, 0, -1, { timeout: 5000 });
-          if (!result.ok) {
-            throw new Error(
-              `Expected ok but got error: ${result.error.message}`,
-            );
-          }
+          assertEquals(result.ok, true);
           assertEquals(result.value.length, 1);
           await client.del(zsetKey);
         });
