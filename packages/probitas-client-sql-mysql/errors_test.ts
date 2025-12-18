@@ -1,5 +1,5 @@
 import { assertEquals, assertInstanceOf } from "@std/assert";
-import { SqlError } from "@probitas/client-sql";
+import { SqlConnectionError, SqlError } from "@probitas/client-sql";
 import {
   AccessDeniedError,
   ConnectionRefusedError,
@@ -67,21 +67,18 @@ Deno.test("convertMySqlError", async (t) => {
     assertEquals(error.kind, "unknown");
   });
 
-  await t.step("converts ECONNREFUSED to ConnectionRefusedError", () => {
+  await t.step("converts ECONNREFUSED to SqlConnectionError", () => {
     const mysqlError = Object.assign(new Error("Connection refused"), {
       code: "ECONNREFUSED",
     });
 
     const error = convertMySqlError(mysqlError);
 
-    assertInstanceOf(error, ConnectionRefusedError);
-    assertEquals(
-      (error as ConnectionRefusedError).mysqlKind,
-      "connection_refused",
-    );
+    // Connection errors return SqlConnectionError for Failure pattern
+    assertInstanceOf(error, SqlConnectionError);
   });
 
-  await t.step("converts errno 1045 to AccessDeniedError", () => {
+  await t.step("converts errno 1045 to SqlConnectionError", () => {
     const mysqlError = Object.assign(
       new Error("Access denied for user 'root'@'localhost'"),
       {
@@ -92,8 +89,8 @@ Deno.test("convertMySqlError", async (t) => {
 
     const error = convertMySqlError(mysqlError);
 
-    assertInstanceOf(error, AccessDeniedError);
-    assertEquals((error as AccessDeniedError).mysqlKind, "access_denied");
+    // Access denied is a connection-level error for Failure pattern
+    assertInstanceOf(error, SqlConnectionError);
   });
 
   await t.step("converts errno 1064 to QuerySyntaxError", () => {

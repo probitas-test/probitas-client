@@ -1,7 +1,12 @@
 import mysql from "mysql2/promise";
 import { getLogger } from "@probitas/logger";
 import {
-  SqlQueryResult,
+  createSqlQueryResultError,
+  createSqlQueryResultFailure,
+  createSqlQueryResultSuccess,
+  SqlConnectionError,
+  type SqlQueryOptions,
+  type SqlQueryResult,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -45,22 +50,26 @@ export interface MySqlClient extends AsyncDisposable {
    * Execute a SQL query.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -151,7 +160,9 @@ function parseConnectionUrl(url: string): MySqlConnectionConfig {
  *   "SELECT * FROM users WHERE id = ?",
  *   [1],
  * );
- * console.log(result.rows.first());  // { id: 1, name: "Alice" }
+ * if (result.ok) {
+ *   console.log(result.rows[0]);  // { id: 1, name: "Alice" }
+ * }
  *
  * await client.close();
  * ```
@@ -282,9 +293,18 @@ class MySqlClientImpl implements MySqlClient {
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>> {
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
     if (this.#closed) {
-      throw convertMySqlError(new Error("Client is closed"));
+      const error = new SqlConnectionError("Client is closed");
+      if (shouldThrow) {
+        throw error;
+      }
+      return createSqlQueryResultFailure<T>(error, 0);
     }
 
     const startTime = performance.now();
@@ -319,8 +339,7 @@ class MySqlClientImpl implements MySqlClient {
           });
         }
 
-        return new SqlQueryResult<T>({
-          ok: true,
+        return createSqlQueryResultSuccess<T>({
           rows: rows as unknown as T[],
           rowCount: rows.length,
           duration,
@@ -338,8 +357,7 @@ class MySqlClientImpl implements MySqlClient {
         warnings: resultHeader.warningStatus,
       });
 
-      return new SqlQueryResult<T>({
-        ok: true,
+      return createSqlQueryResultSuccess<T>({
         rows: [],
         rowCount: resultHeader.affectedRows,
         duration,
@@ -351,7 +369,26 @@ class MySqlClientImpl implements MySqlClient {
           : undefined,
       });
     } catch (error) {
-      throw convertMySqlError(error);
+      const duration = performance.now() - startTime;
+      const sqlError = convertMySqlError(error);
+
+      logger.debug("MySQL query failed", {
+        sql: sqlPreview,
+        duration: `${duration.toFixed(2)}ms`,
+        error: sqlError.message,
+      });
+
+      // Throw error if required
+      if (shouldThrow) {
+        throw sqlError;
+      }
+
+      // Return Failure for connection errors, Error for query errors
+      if (sqlError instanceof SqlConnectionError) {
+        return createSqlQueryResultFailure<T>(sqlError, duration);
+      }
+
+      return createSqlQueryResultError<T>(sqlError, duration);
     }
   }
 
@@ -359,9 +396,18 @@ class MySqlClientImpl implements MySqlClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
-    return result.rows.first();
+    // queryOne always throws on error for convenience
+    const result = await this.query<T>(sql, params, {
+      ...options,
+      throwOnError: true,
+    });
+    // result.ok is guaranteed to be true here due to throwOnError: true
+    if (!result.ok) {
+      throw result.error;
+    }
+    return result.rows[0];
   }
 
   async transaction<T>(

@@ -1,6 +1,11 @@
 import type { DuckDBConnection } from "@duckdb/node-api";
 import {
-  SqlQueryResult,
+  createSqlQueryResultError,
+  createSqlQueryResultFailure,
+  createSqlQueryResultSuccess,
+  SqlConnectionError,
+  type SqlQueryOptions,
+  type SqlQueryResult,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -43,9 +48,17 @@ export class DuckDbTransactionImpl implements SqlTransaction {
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>> {
+    // Determine whether to throw on error (default false for transactions)
+    const shouldThrow = options?.throwOnError ?? false;
+
     if (this.#finished) {
-      throw convertDuckDbError(new Error("Transaction is already finished"));
+      const error = new SqlConnectionError("Transaction is already finished");
+      if (shouldThrow) {
+        throw error;
+      }
+      return createSqlQueryResultFailure<T>(error, 0);
     }
 
     const startTime = performance.now();
@@ -108,23 +121,34 @@ export class DuckDbTransactionImpl implements SqlTransaction {
       const duration = performance.now() - startTime;
 
       if (isSelect) {
-        return new SqlQueryResult<T>({
-          ok: true,
+        return createSqlQueryResultSuccess<T>({
           rows: rows as T[],
           rowCount: rows.length,
           duration,
         });
       } else {
         // For INSERT/UPDATE/DELETE, rows will be empty
-        return new SqlQueryResult<T>({
-          ok: true,
+        return createSqlQueryResultSuccess<T>({
           rows: [],
           rowCount: rows.length,
           duration,
         });
       }
     } catch (error) {
-      throw convertDuckDbError(error);
+      const duration = performance.now() - startTime;
+      const sqlError = convertDuckDbError(error);
+
+      // Throw error if required
+      if (shouldThrow) {
+        throw sqlError;
+      }
+
+      // Return Failure for connection errors, Error for query errors
+      if (sqlError instanceof SqlConnectionError) {
+        return createSqlQueryResultFailure<T>(sqlError, duration);
+      }
+
+      return createSqlQueryResultError<T>(sqlError, duration);
     }
   }
 
@@ -132,9 +156,18 @@ export class DuckDbTransactionImpl implements SqlTransaction {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
-    return result.rows.first();
+    // queryOne always throws on error for convenience
+    const result = await this.query<T>(sql, params, {
+      ...options,
+      throwOnError: true,
+    });
+    // result.ok is guaranteed to be true here due to throwOnError: true
+    if (!result.ok) {
+      throw result.error;
+    }
+    return result.rows[0];
   }
 
   async commit(): Promise<void> {

@@ -1,7 +1,12 @@
 import type { BindValue, Database } from "@db/sqlite";
 import {
+  createSqlQueryResultError,
+  createSqlQueryResultFailure,
+  createSqlQueryResultSuccess,
+  SqlConnectionError,
   type SqlIsolationLevel,
-  SqlQueryResult,
+  type SqlQueryOptions,
+  type SqlQueryResult,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -88,11 +93,17 @@ export class SqliteTransactionImpl implements SqlTransaction {
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>> {
+    // Determine whether to throw on error (default false for transactions)
+    const shouldThrow = options?.throwOnError ?? false;
+
     if (this.#finished) {
-      return Promise.reject(
-        convertSqliteError(new Error("Transaction is already finished")),
-      );
+      const error = new SqlConnectionError("Transaction is already finished");
+      if (shouldThrow) {
+        return Promise.reject(error);
+      }
+      return Promise.resolve(createSqlQueryResultFailure<T>(error, 0));
     }
 
     const startTime = performance.now();
@@ -118,8 +129,7 @@ export class SqliteTransactionImpl implements SqlTransaction {
           const duration = performance.now() - startTime;
 
           return Promise.resolve(
-            new SqlQueryResult<T>({
-              ok: true,
+            createSqlQueryResultSuccess<T>({
               rows: rows,
               rowCount: rows.length,
               duration,
@@ -144,8 +154,7 @@ export class SqliteTransactionImpl implements SqlTransaction {
           const lastInsertRowId = this.#db.lastInsertRowId;
 
           return Promise.resolve(
-            new SqlQueryResult<T>({
-              ok: true,
+            createSqlQueryResultSuccess<T>({
               rows: [],
               rowCount: changes,
               duration,
@@ -159,7 +168,22 @@ export class SqliteTransactionImpl implements SqlTransaction {
         }
       }
     } catch (error) {
-      return Promise.reject(convertSqliteError(error));
+      const duration = performance.now() - startTime;
+      const sqlError = convertSqliteError(error);
+
+      // Throw error if required
+      if (shouldThrow) {
+        return Promise.reject(sqlError);
+      }
+
+      // Return Failure for connection errors, Error for query errors
+      if (sqlError instanceof SqlConnectionError) {
+        return Promise.resolve(
+          createSqlQueryResultFailure<T>(sqlError, duration),
+        );
+      }
+
+      return Promise.resolve(createSqlQueryResultError<T>(sqlError, duration));
     }
   }
 
@@ -167,9 +191,18 @@ export class SqliteTransactionImpl implements SqlTransaction {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
-    return result.rows.first();
+    // queryOne always throws on error for convenience
+    const result = await this.query<T>(sql, params, {
+      ...options,
+      throwOnError: true,
+    });
+    // result.ok is guaranteed to be true here due to throwOnError: true
+    if (!result.ok) {
+      throw result.error;
+    }
+    return result.rows[0];
   }
 
   commit(): Promise<void> {

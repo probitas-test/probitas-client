@@ -1,6 +1,7 @@
 import {
   ConstraintError,
   QuerySyntaxError,
+  SqlConnectionError,
   SqlError,
   type SqlErrorOptions,
 } from "@probitas/client-sql";
@@ -73,6 +74,11 @@ export function convertDuckDbError(error: unknown): SqlError {
     cause: error,
   };
 
+  // Check for connection errors first
+  if (isConnectionError(error)) {
+    return new SqlConnectionError(error.message, options);
+  }
+
   const message = error.message.toLowerCase();
 
   // Check for constraint violations
@@ -143,4 +149,27 @@ export function convertDuckDbError(error: unknown): SqlError {
   }
 
   return new DuckDbError(error.message, options);
+}
+
+/**
+ * Check if an error is a connection-level error.
+ * These are errors that indicate the database cannot be accessed at all,
+ * not errors that occur during query execution.
+ */
+export function isConnectionError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+
+  // Connection-level patterns only (client state, not file operations)
+  const connectionPatterns = [
+    "client is closed",
+    "connection closed",
+    "unable to open database",
+    "database is locked",
+  ];
+
+  return connectionPatterns.some((pattern) => message.includes(pattern));
 }

@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 
 /**
  * Check if DuckDB native library is available.
@@ -50,8 +50,8 @@ Deno.test({
           "SELECT 1 as value",
         );
 
-        assertEquals(result.ok, true);
-        assertEquals(result.rows.first(), { value: 1 });
+        assert(result.ok);
+        assertEquals(result.rows[0], { value: 1 });
         assertEquals(result.rowCount, 1);
       } finally {
         await client.close();
@@ -67,7 +67,8 @@ Deno.test({
           [42, "hello"],
         );
 
-        assertEquals(result.rows.first(), { a: 42, b: "hello" });
+        assert(result.ok);
+        assertEquals(result.rows[0], { a: 42, b: "hello" });
       } finally {
         await client.close();
       }
@@ -90,7 +91,7 @@ Deno.test({
           [1, "Alice", "alice@example.com"],
         );
 
-        assertEquals(insertResult.ok, true);
+        assert(insertResult.ok);
 
         const selectResult = await client.query<
           { id: number; name: string; email: string }
@@ -99,7 +100,8 @@ Deno.test({
           [1],
         );
 
-        assertEquals(selectResult.rows.first(), {
+        assert(selectResult.ok);
+        assertEquals(selectResult.rows[0], {
           id: 1,
           name: "Alice",
           email: "alice@example.com",
@@ -142,10 +144,9 @@ Deno.test({
       const client = await createDuckDbClient({});
 
       try {
-        await assertRejects(
-          () => client.query("SELEC * FROM users"),
-          QuerySyntaxError,
-        );
+        const result = await client.query("SELEC * FROM users");
+        assert(!result.ok);
+        assert(result.error instanceof QuerySyntaxError);
       } finally {
         await client.close();
       }
@@ -167,14 +168,12 @@ Deno.test({
           [1, "ABC"],
         );
 
-        await assertRejects(
-          () =>
-            client.query(
-              "INSERT INTO unique_test (id, code) VALUES ($1, $2)",
-              [2, "ABC"],
-            ),
-          ConstraintError,
+        const result = await client.query(
+          "INSERT INTO unique_test (id, code) VALUES ($1, $2)",
+          [2, "ABC"],
         );
+        assert(!result.ok);
+        assert(result.error instanceof ConstraintError);
       } finally {
         await client.close();
       }
@@ -203,6 +202,7 @@ Deno.test({
           "SELECT * FROM tx_test ORDER BY id",
         );
 
+        assert(result.ok);
         assertEquals(result.rows.length, 2);
         assertEquals(result.rows[0].value, "one");
         assertEquals(result.rows[1].value, "two");
@@ -235,6 +235,7 @@ Deno.test({
           "SELECT * FROM rollback_test",
         );
 
+        assert(result.ok);
         assertEquals(result.rows.length, 0);
       } finally {
         await client.close();
@@ -249,17 +250,16 @@ Deno.test({
         clientRef = client;
 
         const result = await client.query("SELECT 1 as value");
-        assertEquals(result.ok, true);
+        assert(result.ok);
       }
 
       // After the block, client should be closed
-      // Attempting to use it should throw
+      // Attempting to use it should return Failure
       if (clientRef) {
-        await assertRejects(
-          () => clientRef!.query("SELECT 1"),
-          Error,
-          "Client is closed",
-        );
+        const result = await clientRef.query("SELECT 1");
+        assert(!result.ok);
+        assert(!result.processed);
+        assertEquals(result.error.message, "Client is closed");
       }
     });
 
@@ -289,7 +289,7 @@ Deno.test({
             "SELECT * FROM sample_test ORDER BY id",
           );
 
-          assertEquals(result.ok, true);
+          assert(result.ok);
           assertEquals(result.rows.length > 0, true);
           assertEquals(result.rows.length, 2);
           assertEquals(
@@ -335,6 +335,7 @@ Deno.test({
            ORDER BY total DESC`,
         );
 
+        assert(result.ok);
         assertEquals(result.rows.length, 2);
         assertEquals(result.rows[0].product, "Widget");
       } finally {
@@ -370,6 +371,7 @@ Deno.test({
            ORDER BY id`,
         );
 
+        assert(result.ok);
         assertEquals(result.rows.length, 3);
         assertEquals(result.rows[0].running_total, 10n);
         assertEquals(result.rows[1].running_total, 30n);
@@ -395,7 +397,7 @@ Deno.test({
           value: number;
         }>(csvPath);
 
-        assertEquals(result.ok, true);
+        assert(result.ok);
         assertEquals(result.rows.length, 2);
         assertEquals(result.rows[0].name, "Alice");
         assertEquals(result.rows[1].name, "Bob");
@@ -434,7 +436,7 @@ Deno.test({
             value: number;
           }>(parquetPath);
 
-          assertEquals(result.ok, true);
+          assert(result.ok);
           assertEquals(result.rows.length, 2);
           assertEquals(result.rows[0].name, "Alice");
           assertEquals(result.rows[1].name, "Bob");
@@ -466,6 +468,7 @@ Deno.test({
           [1],
         );
 
+        assert(result.ok);
         assertEquals(result.rows.length, 1);
         const parsed = JSON.parse(result.rows[0].data);
         assertEquals(parsed.name, "Alice");
@@ -495,6 +498,7 @@ Deno.test({
           SELECT n, fact as factorial FROM factorial
         `);
 
+          assert(result.ok);
           assertEquals(result.rows.length, 5);
           // DuckDB may return number or bigint depending on the computation
           assertEquals(Number(result.rows[4].factorial), 120); // 5! = 120

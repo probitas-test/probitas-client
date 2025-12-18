@@ -2,6 +2,7 @@ import {
   ConstraintError,
   DeadlockError,
   QuerySyntaxError,
+  SqlConnectionError,
   SqlError,
   type SqlErrorOptions,
 } from "@probitas/client-sql";
@@ -70,6 +71,67 @@ const ER_LOCK_DEADLOCK = 1213;
 const ER_PARSE_ERROR = 1064;
 const ER_CHECK_CONSTRAINT_VIOLATED = 3819;
 
+// Connection-related error codes
+const ER_CON_COUNT_ERROR = 1040; // Too many connections
+const ER_HOST_NOT_PRIVILEGED = 1130; // Host not allowed
+const ER_HOST_IS_BLOCKED = 1129; // Host is blocked
+const ER_SERVER_SHUTDOWN = 1053; // Server shutdown in progress
+
+/**
+ * Check if an error is a connection-level error.
+ */
+export function isConnectionError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const err = error as Error & {
+    errno?: number;
+    sqlState?: string;
+    code?: string;
+  };
+
+  // Check Node.js/network error codes
+  const connectionCodes = [
+    "ECONNREFUSED",
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "EHOSTUNREACH",
+    "ENETUNREACH",
+    "EPIPE",
+    "PROTOCOL_CONNECTION_LOST",
+    "PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR",
+    "PROTOCOL_PACKETS_OUT_OF_ORDER",
+  ];
+  if (err.code && connectionCodes.includes(err.code)) {
+    return true;
+  }
+
+  // Check MySQL error numbers
+  const connectionErrno = [
+    ER_ACCESS_DENIED_ERROR,
+    ER_CON_COUNT_ERROR,
+    ER_HOST_NOT_PRIVILEGED,
+    ER_HOST_IS_BLOCKED,
+    ER_SERVER_SHUTDOWN,
+  ];
+  if (err.errno && connectionErrno.includes(err.errno)) {
+    return true;
+  }
+
+  // Check message patterns
+  const message = err.message.toLowerCase();
+  const connectionPatterns = [
+    "connection",
+    "timeout",
+    "socket",
+    "authentication",
+    "access denied",
+  ];
+
+  return connectionPatterns.some((pattern) => message.includes(pattern));
+}
+
 /**
  * Convert a mysql2 error to the appropriate error class.
  */
@@ -92,12 +154,8 @@ export function convertMySqlError(error: unknown): SqlError {
   };
 
   // Check for connection errors first
-  if (err.code === "ECONNREFUSED") {
-    return new ConnectionRefusedError(err.message, options);
-  }
-
-  if (err.errno === ER_ACCESS_DENIED_ERROR) {
-    return new AccessDeniedError(err.message, options);
+  if (isConnectionError(error)) {
+    return new SqlConnectionError(err.message, options);
   }
 
   if (err.errno === ER_PARSE_ERROR) {

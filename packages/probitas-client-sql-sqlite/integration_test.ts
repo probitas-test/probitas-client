@@ -1,4 +1,4 @@
-import { assertEquals, assertExists, assertRejects } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import {
   ConstraintError,
   createSqliteClient,
@@ -31,8 +31,8 @@ Deno.test({
           "SELECT 1 as value",
         );
 
-        assertEquals(result.ok, true);
-        assertEquals(result.rows.first(), { value: 1 });
+        assert(result.ok);
+        assertEquals(result.rows[0], { value: 1 });
         assertEquals(result.rowCount, 1);
       } finally {
         await client.close();
@@ -50,7 +50,8 @@ Deno.test({
           [42, "hello"],
         );
 
-        assertEquals(result.rows.first(), { a: 42, b: "hello" });
+        assert(result.ok);
+        assertEquals(result.rows[0], { a: 42, b: "hello" });
       } finally {
         await client.close();
       }
@@ -75,7 +76,7 @@ Deno.test({
           ["Alice", "alice@example.com"],
         );
 
-        assertEquals(insertResult.ok, true);
+        assert(insertResult.ok);
         assertEquals(insertResult.rowCount, 1);
         assertEquals(insertResult.lastInsertId, 1n);
 
@@ -86,7 +87,8 @@ Deno.test({
           [1],
         );
 
-        assertEquals(selectResult.rows.first(), {
+        assert(selectResult.ok);
+        assertEquals(selectResult.rows[0], {
           id: 1,
           name: "Alice",
           email: "alice@example.com",
@@ -133,10 +135,9 @@ Deno.test({
       });
 
       try {
-        await assertRejects(
-          () => client.query("SELEC * FROM users"),
-          QuerySyntaxError,
-        );
+        const result = await client.query("SELEC * FROM users");
+        assert(!result.ok);
+        assert(result.error instanceof QuerySyntaxError);
       } finally {
         await client.close();
       }
@@ -160,14 +161,12 @@ Deno.test({
           ["ABC"],
         );
 
-        await assertRejects(
-          () =>
-            client.query(
-              "INSERT INTO unique_test (code) VALUES (?)",
-              ["ABC"],
-            ),
-          ConstraintError,
+        const result = await client.query(
+          "INSERT INTO unique_test (code) VALUES (?)",
+          ["ABC"],
         );
+        assert(!result.ok);
+        assert(result.error instanceof ConstraintError);
       } finally {
         await client.close();
       }
@@ -192,6 +191,7 @@ Deno.test({
           "SELECT * FROM tx_test ORDER BY id",
         );
 
+        assert(result.ok);
         assertEquals(result.rows.length, 2);
         assertEquals(result.rows[0].value, "one");
         assertEquals(result.rows[1].value, "two");
@@ -226,6 +226,7 @@ Deno.test({
           "SELECT * FROM rollback_test",
         );
 
+        assert(result.ok);
         assertEquals(result.rows.length, 0);
       } finally {
         await client.close();
@@ -256,7 +257,8 @@ Deno.test({
           "SELECT value FROM isolation_test",
         );
 
-        assertEquals(result.rows.first()?.value, "serializable");
+        assert(result.ok);
+        assertEquals(result.rows[0]?.value, "serializable");
       } finally {
         await client.close();
       }
@@ -272,17 +274,16 @@ Deno.test({
         clientRef = client;
 
         const result = await client.query("SELECT 1 as value");
-        assertEquals(result.ok, true);
+        assert(result.ok);
       }
 
       // After the block, client should be closed
-      // Attempting to use it should throw
+      // Attempting to use it should return Failure
       if (clientRef) {
-        await assertRejects(
-          () => clientRef!.query("SELECT 1"),
-          Error,
-          "Client is closed",
-        );
+        const result = await clientRef.query("SELECT 1");
+        assert(!result.ok);
+        assert(!result.processed);
+        assertEquals(result.error.message, "Client is closed");
       }
     });
 
@@ -312,7 +313,7 @@ Deno.test({
           "SELECT * FROM sample_test ORDER BY id",
         );
 
-        assertEquals(result.ok, true);
+        assert(result.ok);
         assertExists(result.rows.length);
         assertEquals(result.rows.length, 2);
         assertEquals(
@@ -334,7 +335,8 @@ Deno.test({
         const journalResult = await client.query<{ journal_mode: string }>(
           "PRAGMA journal_mode",
         );
-        assertEquals(journalResult.rows.first()?.journal_mode, "memory");
+        assert(journalResult.ok);
+        assertEquals(journalResult.rows[0]?.journal_mode, "memory");
         // Note: In-memory databases return "memory" even with WAL enabled
         // WAL is effectively ignored for :memory: databases
       } finally {
@@ -389,7 +391,8 @@ Deno.test({
           const result = await backupClient.query<{ id: number; name: string }>(
             "SELECT * FROM backup_test",
           );
-          assertEquals(result.rows.first(), { id: 1, name: "Alice" });
+          assert(result.ok);
+          assertEquals(result.rows[0], { id: 1, name: "Alice" });
         } finally {
           await backupClient.close();
         }
