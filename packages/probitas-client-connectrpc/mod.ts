@@ -43,7 +43,9 @@
  *   "echo",
  *   { message: "Hello!" }
  * );
- * console.log(response.data());
+ * if ("statusCode" in response) {
+ *   console.log(response.data());
+ * }
  *
  * await client.close();
  * ```
@@ -63,7 +65,7 @@
  *   { throwOnError: false }
  * );
  *
- * if (!errorResponse.ok) {
+ * if ("statusCode" in errorResponse && !errorResponse.ok) {
  *   console.log("Error code:", errorResponse.statusCode);  // INVALID_ARGUMENT = 3
  * }
  * await client.close();
@@ -77,7 +79,9 @@
  * await using client = createConnectRpcClient({ url: "http://localhost:50051" });
  *
  * const res = await client.call("echo.EchoService", "echo", { message: "test" });
- * console.log(res.data());
+ * if ("statusCode" in res) {
+ *   console.log(res.data());
+ * }
  * // Client automatically closed when block exits
  * ```
  *

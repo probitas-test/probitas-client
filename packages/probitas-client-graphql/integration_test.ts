@@ -44,6 +44,9 @@ Deno.test({
         "{ __typename }",
       );
 
+      if (!("status" in res)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
       assertExists(res.data());
@@ -56,6 +59,9 @@ Deno.test({
         __schema: { queryType: { name: string } };
       }>("{ __schema { queryType { name } } }");
 
+      if (!("status" in res)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(res.ok, true);
       assertExists(res.data());
 
@@ -72,6 +78,9 @@ Deno.test({
         { message: "Hello, Probitas!" },
       );
 
+      if (!("status" in res)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(res.ok, true);
       assertExists(res.data());
       assertEquals(res.data()?.echo, "Hello, Probitas!");
@@ -89,6 +98,9 @@ Deno.test({
       );
       const elapsed = Date.now() - start;
 
+      if (!("status" in res)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(res.ok, true);
       assertExists(res.data());
       assertEquals(res.data()?.echoWithDelay, "Delayed message");
@@ -147,6 +159,9 @@ Deno.test({
           { messages: ["success", "error", "also success"] },
         );
 
+        if (!("status" in res)) {
+          throw new Error("Expected GraphqlResponse");
+        }
         assertEquals(res.ok, true);
         assertExists(res.data());
         const results = res.data()?.echoPartialError;
@@ -185,12 +200,18 @@ Deno.test({
     await t.step("includes status in response", async () => {
       const res = await client.query("{ __typename }");
 
+      if (!("status" in res)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(res.status, 200);
     });
 
     await t.step("includes raw response", async () => {
       const res = await client.query("{ __typename }");
 
+      if (!("status" in res)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertInstanceOf(res.raw(), Response);
     });
 
@@ -292,6 +313,9 @@ Deno.test({
         { text: "Hello from integration test" },
       );
 
+      if (!("status" in res)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(res.ok, true);
       assertExists(res.data());
 
@@ -304,6 +328,9 @@ Deno.test({
     await t.step("standard assertion chaining", async () => {
       const res = await client.query<{ __typename: string }>("{ __typename }");
 
+      if (!("status" in res)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
       assertExists(res.data());
@@ -325,6 +352,9 @@ Deno.test({
           { message: "Hello" },
         );
 
+        if (!("status" in res)) {
+          throw new Error("Expected GraphqlResponse");
+        }
         assertEquals(res.ok, true);
         assertExists(res.data());
         assertEquals(res.data()?.echoWithExtensions, "Hello");
@@ -350,6 +380,9 @@ Deno.test({
         { text: "Original text" },
       );
 
+      if (!("status" in createRes)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       const messageId = createRes.data()?.createMessage.id;
 
       // Then update it
@@ -367,6 +400,9 @@ Deno.test({
         { id: messageId, text: "Updated text" },
       );
 
+      if (!("status" in updateRes)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(updateRes.ok, true);
       assertExists(updateRes.data());
       assertEquals(updateRes.data()?.updateMessage.id, messageId);
@@ -388,6 +424,9 @@ Deno.test({
         { text: "To be deleted" },
       );
 
+      if (!("status" in createRes)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       const messageId = createRes.data()?.createMessage.id;
 
       // Then delete it
@@ -402,6 +441,9 @@ Deno.test({
         { id: messageId },
       );
 
+      if (!("status" in deleteRes)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(deleteRes.ok, true);
       assertExists(deleteRes.data());
       assertEquals(deleteRes.data()?.deleteMessage, true);
@@ -425,6 +467,9 @@ Deno.test({
             { from: 3 },
           )
         ) {
+          if (!("status" in res)) {
+            throw new Error("Expected GraphqlResponse");
+          }
           assertEquals(res.ok, true);
           assertExists(res.data());
           numbers.push(res.data()?.countdown ?? -1);
@@ -466,6 +511,9 @@ Deno.test({
           { headers: { "X-Request-Id": "req-789" } },
         );
 
+        if (!("status" in res)) {
+          throw new Error("Expected GraphqlResponse");
+        }
         assertEquals(res.ok, true);
         assertExists(res.data());
 

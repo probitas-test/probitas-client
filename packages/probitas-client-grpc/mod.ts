@@ -37,7 +37,9 @@
  *   "echo",
  *   { message: "Hello!" }
  * );
- * console.log(response.data());
+ * if ("statusCode" in response) {
+ *   console.log(response.data());
+ * }
  *
  * await client.close();
  * ```
@@ -68,7 +70,9 @@
  * await using client = createGrpcClient({ url: "http://localhost:50051" });
  *
  * const res = await client.call("echo.EchoService", "echo", { message: "test" });
- * console.log(res.data());
+ * if ("statusCode" in res) {
+ *   console.log(res.data());
+ * }
  * // Client automatically closed when block exits
  * ```
  *
@@ -107,6 +111,8 @@ export {
   ConnectRpcResourceExhaustedError as GrpcResourceExhaustedError,
   // Response
   type ConnectRpcResponse as GrpcResponse,
+  type ConnectRpcResponseFailure as GrpcResponseFailure,
+  type ConnectRpcResponseType as GrpcResponseType,
   ConnectRpcStatus as GrpcStatus,
   // Status codes
   type ConnectRpcStatusCode as GrpcStatusCode,
@@ -156,7 +162,9 @@ export interface GrpcClientConfig
  *   "echo",
  *   { message: "Hello!" }
  * );
- * console.log(response.data());
+ * if ("statusCode" in response) {
+ *   console.log(response.data());
+ * }
  *
  * await client.close();
  * ```
@@ -193,7 +201,7 @@ export interface GrpcClientConfig
  *   { throwOnError: false }
  * );
  *
- * if (!response.ok) {
+ * if ("statusCode" in response && !response.ok) {
  *   console.log("Error code:", response.statusCode);  // NOT_FOUND = 5
  * }
  *
@@ -209,7 +217,9 @@ export interface GrpcClientConfig
  * });
  *
  * const res = await client.call("echo.EchoService", "echo", { message: "test" });
- * console.log(res.data());
+ * if ("statusCode" in res) {
+ *   console.log(res.data());
+ * }
  * // Client automatically closed when scope exits
  * ```
  */

@@ -112,6 +112,9 @@ Deno.test("GraphqlClient.query", async (t) => {
     const response = await client.query("query { user { id name } }");
     await client.close();
 
+    if (!("status" in response)) {
+      throw new Error("Expected GraphqlResponse");
+    }
     assertEquals(response.ok, true);
     assertEquals(response.data(), { user: { id: 1, name: "John" } });
     assertEquals(response.errors, null);
@@ -137,6 +140,9 @@ Deno.test("GraphqlClient.query", async (t) => {
       const response = await client.query("query { user { id } }");
       await client.close();
 
+      if (!("status" in response)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(response.ok, false);
       assertEquals(response.errors?.length, 1);
       assertEquals(response.errors?.[0].message, "User not found");
@@ -262,6 +268,9 @@ Deno.test("GraphqlClient.execute", async (t) => {
     const response = await client.execute("query { test }");
     await client.close();
 
+    if (!("status" in response)) {
+      throw new Error("Expected GraphqlResponse");
+    }
     assertEquals(response.data(), { test: true });
   });
 
@@ -278,6 +287,9 @@ Deno.test("GraphqlClient.execute", async (t) => {
     const response = await client.execute("mutation { updateSomething }");
     await client.close();
 
+    if (!("status" in response)) {
+      throw new Error("Expected GraphqlResponse");
+    }
     assertEquals(response.data(), { updated: true });
   });
 });
@@ -386,6 +398,9 @@ Deno.test("GraphqlClient response", async (t) => {
     const response = await client.query("query { test }");
     await client.close();
 
+    if (!("status" in response)) {
+      throw new Error("Expected GraphqlResponse");
+    }
     assertEquals(response.status, 200);
   });
 
@@ -407,6 +422,9 @@ Deno.test("GraphqlClient response", async (t) => {
     const response = await client.query("query { test }");
     await client.close();
 
+    if (!("status" in response)) {
+      throw new Error("Expected GraphqlResponse");
+    }
     assertEquals(response.extensions, { tracing: { duration: 123 } });
   });
 
@@ -423,32 +441,63 @@ Deno.test("GraphqlClient response", async (t) => {
     const response = await client.query("query { test }");
     await client.close();
 
+    if (!("status" in response)) {
+      throw new Error("Expected GraphqlResponse");
+    }
     assertInstanceOf(response.raw(), Response);
   });
 });
 
 Deno.test("GraphqlClient network errors", async (t) => {
-  await t.step("throws GraphqlNetworkError on fetch failure", async () => {
-    const mockFetch = createMockFetch(() => {
-      throw new TypeError("fetch failed");
-    });
+  await t.step(
+    "returns GraphqlResponseFailure on fetch failure by default",
+    async () => {
+      const mockFetch = createMockFetch(() => {
+        throw new TypeError("fetch failed");
+      });
 
-    const client = createGraphqlClient({
-      url: "http://localhost:4000/graphql",
-      fetch: mockFetch,
-    });
+      const client = createGraphqlClient({
+        url: "http://localhost:4000/graphql",
+        fetch: mockFetch,
+      });
 
-    const error = await assertRejects(
-      () => client.query("query { test }"),
-      GraphqlNetworkError,
-    );
-    assertInstanceOf(error, GraphqlNetworkError);
-    assertEquals(error.message.includes("Network error"), true);
-    await client.close();
-  });
+      const response = await client.query("query { test }");
+      await client.close();
+
+      assertEquals(response.ok, false);
+      if ("status" in response) {
+        throw new Error("Expected GraphqlResponseFailure");
+      }
+      assertInstanceOf(response.error, GraphqlNetworkError);
+      assertEquals(response.error.message.includes("Network error"), true);
+    },
+  );
 
   await t.step(
-    "throws GraphqlNetworkError on non-200 HTTP response",
+    "throws GraphqlNetworkError on fetch failure when throwOnError: true",
+    async () => {
+      const mockFetch = createMockFetch(() => {
+        throw new TypeError("fetch failed");
+      });
+
+      const client = createGraphqlClient({
+        url: "http://localhost:4000/graphql",
+        fetch: mockFetch,
+        throwOnError: true,
+      });
+
+      const error = await assertRejects(
+        () => client.query("query { test }"),
+        GraphqlNetworkError,
+      );
+      assertInstanceOf(error, GraphqlNetworkError);
+      assertEquals(error.message.includes("Network error"), true);
+      await client.close();
+    },
+  );
+
+  await t.step(
+    "returns GraphqlResponseFailure on non-200 HTTP response by default",
     async () => {
       const mockFetch = createMockFetch(() => {
         return new Response("Internal Server Error", {
@@ -462,6 +511,34 @@ Deno.test("GraphqlClient network errors", async (t) => {
         fetch: mockFetch,
       });
 
+      const response = await client.query("query { test }");
+      await client.close();
+
+      assertEquals(response.ok, false);
+      if ("status" in response) {
+        throw new Error("Expected GraphqlResponseFailure");
+      }
+      assertInstanceOf(response.error, GraphqlNetworkError);
+      assertEquals(response.error.message, "HTTP 500: Internal Server Error");
+    },
+  );
+
+  await t.step(
+    "throws GraphqlNetworkError on non-200 HTTP response when throwOnError: true",
+    async () => {
+      const mockFetch = createMockFetch(() => {
+        return new Response("Internal Server Error", {
+          status: 500,
+          statusText: "Internal Server Error",
+        });
+      });
+
+      const client = createGraphqlClient({
+        url: "http://localhost:4000/graphql",
+        fetch: mockFetch,
+        throwOnError: true,
+      });
+
       const error = await assertRejects(
         () => client.query("query { test }"),
         GraphqlNetworkError,
@@ -472,7 +549,7 @@ Deno.test("GraphqlClient network errors", async (t) => {
   );
 
   await t.step(
-    "throws GraphqlNetworkError on invalid JSON response",
+    "returns GraphqlResponseFailure on invalid JSON response by default",
     async () => {
       const mockFetch = createMockFetch(() => {
         return new Response("not json", { status: 200 });
@@ -481,6 +558,31 @@ Deno.test("GraphqlClient network errors", async (t) => {
       const client = createGraphqlClient({
         url: "http://localhost:4000/graphql",
         fetch: mockFetch,
+      });
+
+      const response = await client.query("query { test }");
+      await client.close();
+
+      assertEquals(response.ok, false);
+      if ("status" in response) {
+        throw new Error("Expected GraphqlResponseFailure");
+      }
+      assertInstanceOf(response.error, GraphqlNetworkError);
+      assertEquals(response.error.message.includes("Failed to parse"), true);
+    },
+  );
+
+  await t.step(
+    "throws GraphqlNetworkError on invalid JSON response when throwOnError: true",
+    async () => {
+      const mockFetch = createMockFetch(() => {
+        return new Response("not json", { status: 200 });
+      });
+
+      const client = createGraphqlClient({
+        url: "http://localhost:4000/graphql",
+        fetch: mockFetch,
+        throwOnError: true,
       });
 
       const error = await assertRejects(
@@ -515,6 +617,9 @@ Deno.test("GraphqlClient partial data with errors", async (t) => {
       const response = await client.query("query { user { id } posts { id } }");
       await client.close();
 
+      if (!("status" in response)) {
+        throw new Error("Expected GraphqlResponse");
+      }
       assertEquals(response.ok, false);
       assertEquals(response.data(), { user: { id: 1 }, posts: null });
       assertEquals(response.errors?.length, 1);

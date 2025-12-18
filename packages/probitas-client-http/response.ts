@@ -1,10 +1,15 @@
 import type { ClientResult } from "@probitas/client";
+import type { HttpError } from "./errors.ts";
 
 /**
  * HTTP response with pre-loaded body for synchronous access.
  *
  * Wraps Web standard Response, allowing body to be read synchronously
  * and multiple times (unlike the streaming-based standard Response).
+ *
+ * This interface represents a **successful HTTP response** where the request
+ * was completed (regardless of status code). Use `ok` to check if the status
+ * is in the 2xx range.
  */
 export interface HttpResponse extends ClientResult {
   /**
@@ -161,4 +166,66 @@ export async function createHttpResponse(
   }
 
   return new HttpResponseImpl(raw, body, duration);
+}
+
+/**
+ * HTTP response failure result.
+ *
+ * Represents a failure to complete an HTTP request due to network errors,
+ * connection failures, or other issues that prevented the request from
+ * reaching the server or receiving a response.
+ *
+ * Note: HTTP error status codes (4xx, 5xx) are NOT represented by this type.
+ * Those are successful HTTP responses with error status codes and are
+ * represented by `HttpResponse` with `ok: false`.
+ */
+export interface HttpResponseFailure {
+  /** Result kind discriminator */
+  readonly kind: "http";
+
+  /** Always false for failure results */
+  readonly ok: false;
+
+  /** The error that caused the failure */
+  readonly error: HttpError;
+
+  /** Response time in milliseconds until failure */
+  readonly duration: number;
+}
+
+/**
+ * Union type for HTTP response results.
+ *
+ * Use type narrowing with the `status` property to distinguish between
+ * HttpResponse and HttpResponseFailure:
+ *
+ * ```ts ignore
+ * const result = await http.get("/api/data");
+ * if ("status" in result) {
+ *   // result is HttpResponse - request completed
+ *   console.log(result.status, result.data());
+ * } else {
+ *   // result is HttpResponseFailure - request failed
+ *   console.error(result.error.message);
+ * }
+ * ```
+ */
+export type HttpResponseType = HttpResponse | HttpResponseFailure;
+
+/**
+ * Create an HTTP response failure result.
+ *
+ * @param error - The error that caused the failure
+ * @param duration - Time in milliseconds until failure
+ */
+export function createHttpResponseFailure(
+  error: HttpError,
+  duration: number,
+): HttpResponseFailure {
+  return {
+    kind: "http",
+    ok: false as const,
+    error,
+    duration,
+  };
 }

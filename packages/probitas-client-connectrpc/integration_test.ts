@@ -181,6 +181,9 @@ Deno.test({
         { message: "Hello Reflection!" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected ConnectRpcResponse");
+      }
       assertEquals(response.ok, true);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
@@ -197,6 +200,9 @@ Deno.test({
         { message: "Test message" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected ConnectRpcResponse");
+      }
       assertEquals(response.ok, true);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
@@ -223,6 +229,9 @@ Deno.test({
         { message: "check headers" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected ConnectRpcResponse");
+      }
       assertExists(response.headers);
       assertExists(response.trailers);
       assertEquals(typeof response.headers, "object");
@@ -249,6 +258,9 @@ Deno.test({
           { throwOnError: false },
         );
 
+        if (!("statusCode" in response)) {
+          throw new Error("Expected ConnectRpcResponse");
+        }
         assertEquals(response.ok, false);
         assertEquals(response.statusCode !== 0, true);
       },
@@ -329,6 +341,9 @@ Deno.test({
         { message: "with metadata" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected ConnectRpcResponse");
+      }
       assertEquals(response.ok, true);
       assertExists(response.headers);
     });
@@ -389,6 +404,9 @@ Deno.test({
         { message: "stream test", count: 3 },
       )
     ) {
+      if (!("statusCode" in response)) {
+        throw new Error("Expected ConnectRpcResponse");
+      }
       assertEquals(response.ok, true);
       messages.push(response.data());
     }
@@ -518,6 +536,9 @@ Deno.test({
         { message: "test error" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected ConnectRpcResponse");
+      }
       assertEquals(response.ok, false);
       assertEquals(response.statusCode !== 0, true);
       assertEquals(response.data(), null);

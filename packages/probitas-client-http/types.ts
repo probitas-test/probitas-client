@@ -1,7 +1,11 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
-import type { HttpResponse } from "./response.ts";
+import type {
+  HttpResponse,
+  HttpResponseFailure,
+  HttpResponseType,
+} from "./response.ts";
 
-export type { HttpResponse };
+export type { HttpResponse, HttpResponseFailure, HttpResponseType };
 
 /**
  * Query parameter value type.
@@ -148,38 +152,38 @@ export interface HttpClient extends AsyncDisposable {
   readonly config: HttpClientConfig;
 
   /** Send GET request */
-  get(path: string, options?: HttpOptions): Promise<HttpResponse>;
+  get(path: string, options?: HttpOptions): Promise<HttpResponseType>;
 
   /** Send POST request */
   post(
     path: string,
     body?: BodyInit,
     options?: HttpOptions,
-  ): Promise<HttpResponse>;
+  ): Promise<HttpResponseType>;
 
   /** Send PUT request */
   put(
     path: string,
     body?: BodyInit,
     options?: HttpOptions,
-  ): Promise<HttpResponse>;
+  ): Promise<HttpResponseType>;
 
   /** Send PATCH request */
   patch(
     path: string,
     body?: BodyInit,
     options?: HttpOptions,
-  ): Promise<HttpResponse>;
+  ): Promise<HttpResponseType>;
 
   /** Send DELETE request */
-  delete(path: string, options?: HttpOptions): Promise<HttpResponse>;
+  delete(path: string, options?: HttpOptions): Promise<HttpResponseType>;
 
   /** Send request with arbitrary method */
   request(
     method: string,
     path: string,
     options?: HttpOptions & { body?: BodyInit },
-  ): Promise<HttpResponse>;
+  ): Promise<HttpResponseType>;
 
   /**
    * Get all cookies in the cookie jar.

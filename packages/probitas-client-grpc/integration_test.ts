@@ -188,6 +188,9 @@ Deno.test({
         { message: "Hello gRPC!" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected GrpcResponse");
+      }
       assertEquals(response.ok, true);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
@@ -204,6 +207,9 @@ Deno.test({
         { message: "Test message" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected GrpcResponse");
+      }
       assertEquals(response.ok, true);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
@@ -230,6 +236,9 @@ Deno.test({
         { message: "check headers" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected GrpcResponse");
+      }
       assertExists(response.headers);
       assertExists(response.trailers);
       assertEquals(typeof response.headers, "object");
@@ -256,6 +265,9 @@ Deno.test({
           { throwOnError: false },
         );
 
+        if (!("statusCode" in response)) {
+          throw new Error("Expected GrpcResponse");
+        }
         assertEquals(response.ok, false);
         assertEquals(response.statusCode, 3);
       },
@@ -332,6 +344,9 @@ Deno.test({
         { message: "with metadata" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected GrpcResponse");
+      }
       assertEquals(response.ok, true);
       assertExists(response.headers);
     });
@@ -391,6 +406,9 @@ Deno.test({
         { message: "stream test", count: 3 },
       )
     ) {
+      if (!("statusCode" in response)) {
+        throw new Error("Expected GrpcResponse");
+      }
       assertEquals(response.ok, true);
       messages.push(response.data());
     }
@@ -463,6 +481,9 @@ Deno.test({
         { message: "test error", code: 3, details: "test error" },
       );
 
+      if (!("statusCode" in response)) {
+        throw new Error("Expected GrpcResponse");
+      }
       assertEquals(response.ok, false);
       assertEquals(response.statusCode, 3);
       assertEquals(response.data(), null);

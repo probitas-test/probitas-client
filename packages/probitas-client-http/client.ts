@@ -1,3 +1,4 @@
+import { AbortError, TimeoutError } from "@probitas/client";
 import type {
   BodyInit,
   HttpClient,
@@ -5,6 +6,7 @@ import type {
   HttpConnectionConfig,
   HttpOptions,
   HttpResponse,
+  HttpResponseType,
   QueryValue,
 } from "./types.ts";
 import {
@@ -17,7 +19,7 @@ import {
   HttpTooManyRequestsError,
   HttpUnauthorizedError,
 } from "./errors.ts";
-import { createHttpResponse } from "./response.ts";
+import { createHttpResponse, createHttpResponseFailure } from "./response.ts";
 import { getLogger } from "@probitas/logger";
 
 const logger = getLogger("probitas", "client", "http");
@@ -176,6 +178,24 @@ function throwHttpError(response: HttpResponse): never {
 }
 
 /**
+ * Convert an error to HttpError.
+ *
+ * Used for network errors, connection failures, and other non-HTTP errors.
+ */
+function toHttpError(error: unknown): HttpError {
+  // Already an HttpError, return as-is
+  if (error instanceof HttpError) {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return new HttpError(error.message, 0, "Network Error", { cause: error });
+  }
+
+  return new HttpError(String(error), 0, "Network Error");
+}
+
+/**
  * HttpClient implementation.
  */
 class HttpClientImpl implements HttpClient {
@@ -209,7 +229,7 @@ class HttpClientImpl implements HttpClient {
     }
   }
 
-  get(path: string, options?: HttpOptions): Promise<HttpResponse> {
+  get(path: string, options?: HttpOptions): Promise<HttpResponseType> {
     return this.#request("GET", path, undefined, options);
   }
 
@@ -217,7 +237,7 @@ class HttpClientImpl implements HttpClient {
     path: string,
     body?: BodyInit,
     options?: HttpOptions,
-  ): Promise<HttpResponse> {
+  ): Promise<HttpResponseType> {
     return this.#request("POST", path, body, options);
   }
 
@@ -225,7 +245,7 @@ class HttpClientImpl implements HttpClient {
     path: string,
     body?: BodyInit,
     options?: HttpOptions,
-  ): Promise<HttpResponse> {
+  ): Promise<HttpResponseType> {
     return this.#request("PUT", path, body, options);
   }
 
@@ -233,11 +253,11 @@ class HttpClientImpl implements HttpClient {
     path: string,
     body?: BodyInit,
     options?: HttpOptions,
-  ): Promise<HttpResponse> {
+  ): Promise<HttpResponseType> {
     return this.#request("PATCH", path, body, options);
   }
 
-  delete(path: string, options?: HttpOptions): Promise<HttpResponse> {
+  delete(path: string, options?: HttpOptions): Promise<HttpResponseType> {
     return this.#request("DELETE", path, undefined, options);
   }
 
@@ -245,7 +265,7 @@ class HttpClientImpl implements HttpClient {
     method: string,
     path: string,
     options?: HttpOptions & { body?: BodyInit },
-  ): Promise<HttpResponse> {
+  ): Promise<HttpResponseType> {
     return this.#request(method, path, options?.body, options);
   }
 
@@ -271,7 +291,7 @@ class HttpClientImpl implements HttpClient {
     path: string,
     body?: BodyInit,
     options?: HttpOptions,
-  ): Promise<HttpResponse> {
+  ): Promise<HttpResponseType> {
     const url = buildUrl(this.#baseUrl, path, options?.query);
     const prepared = prepareBody(body);
     const headers = mergeHeaders(
@@ -286,7 +306,7 @@ class HttpClientImpl implements HttpClient {
     }
 
     // Log request start
-    logger.info("HTTP request starting", {
+    logger.debug("HTTP request starting", {
       method,
       url,
       headers: Object.keys(headers),
@@ -302,60 +322,80 @@ class HttpClientImpl implements HttpClient {
     const redirect = options?.redirect ?? this.config.redirect ?? "follow";
     const startTime = performance.now();
 
-    const rawResponse = await fetchFn(url, {
-      method,
-      headers,
-      body: prepared.body as globalThis.BodyInit,
-      signal: options?.signal,
-      redirect,
-    });
-
-    const duration = performance.now() - startTime;
-    const response = await createHttpResponse(rawResponse, duration);
-
-    // Log response
-    logger.info("HTTP response received", {
-      method,
-      url,
-      status: response.status,
-      statusText: response.statusText,
-      duration: `${duration.toFixed(2)}ms`,
-      contentType: response.headers.get("content-type"),
-      contentLength: response.body?.length,
-    });
-    logger.trace("HTTP response details", {
-      headers: Object.fromEntries(rawResponse.headers.entries()),
-      bodyPreview: response.body ? formatBodyPreview(response.text) : undefined,
-    });
-
-    // Store cookies from Set-Cookie headers if cookies are enabled
-    if (this.#cookiesEnabled) {
-      // Use getSetCookie() if available (modern API), otherwise fallback to get()
-      const setCookies = rawResponse.headers.getSetCookie?.() ??
-        (rawResponse.headers.get("set-cookie")?.split(/,(?=\s*\w+=)/) ?? []);
-      const parsedCount = setCookies.length;
-      for (const cookieStr of setCookies) {
-        const parsed = parseSetCookie(cookieStr.trim());
-        if (parsed) {
-          this.#cookieJar.set(parsed.name, parsed.value);
-        }
-      }
-      if (parsedCount > 0) {
-        logger.debug("Cookies received and stored", {
-          count: parsedCount,
-        });
-      }
-    }
-
     // Determine whether to throw on error (request option > config > default false)
     const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
       false;
 
-    if (!response.ok && shouldThrow) {
-      throwHttpError(response);
-    }
+    try {
+      const rawResponse = await fetchFn(url, {
+        method,
+        headers,
+        body: prepared.body as globalThis.BodyInit,
+        signal: options?.signal,
+        redirect,
+      });
 
-    return response;
+      const duration = performance.now() - startTime;
+      const response = await createHttpResponse(rawResponse, duration);
+
+      // Log response
+      logger.debug("HTTP response received", {
+        method,
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        duration: `${duration.toFixed(2)}ms`,
+        contentType: response.headers.get("content-type"),
+        contentLength: response.body?.length,
+      });
+      logger.trace("HTTP response details", {
+        headers: Object.fromEntries(rawResponse.headers.entries()),
+        bodyPreview: response.body
+          ? formatBodyPreview(response.text)
+          : undefined,
+      });
+
+      // Store cookies from Set-Cookie headers if cookies are enabled
+      if (this.#cookiesEnabled) {
+        // Use getSetCookie() if available (modern API), otherwise fallback to get()
+        const setCookies = rawResponse.headers.getSetCookie?.() ??
+          (rawResponse.headers.get("set-cookie")?.split(/,(?=\s*\w+=)/) ?? []);
+        const parsedCount = setCookies.length;
+        for (const cookieStr of setCookies) {
+          const parsed = parseSetCookie(cookieStr.trim());
+          if (parsed) {
+            this.#cookieJar.set(parsed.name, parsed.value);
+          }
+        }
+        if (parsedCount > 0) {
+          logger.debug("Cookies received and stored", {
+            count: parsedCount,
+          });
+        }
+      }
+
+      if (!response.ok && shouldThrow) {
+        throwHttpError(response);
+      }
+
+      return response;
+    } catch (error) {
+      const duration = performance.now() - startTime;
+
+      // TimeoutError and AbortError should always be thrown
+      if (error instanceof TimeoutError || error instanceof AbortError) {
+        throw error;
+      }
+
+      // Convert to HttpError
+      const httpError = toHttpError(error);
+
+      if (shouldThrow) {
+        throw httpError;
+      }
+
+      return createHttpResponseFailure(httpError, duration);
+    }
   }
 
   close(): Promise<void> {
@@ -383,7 +423,9 @@ class HttpClientImpl implements HttpClient {
  * const http = createHttpClient({ url: "http://localhost:3000" });
  *
  * const response = await http.get("/users/123");
- * console.log(response.data());
+ * if ("status" in response) {
+ *   console.log(response.data());
+ * }
  *
  * await http.close();
  * ```
