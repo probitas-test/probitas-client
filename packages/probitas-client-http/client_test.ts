@@ -5,7 +5,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { createHttpClient } from "./client.ts";
-import { HttpInternalServerError, HttpNotFoundError } from "./errors.ts";
+import { HttpNotFoundError } from "./errors.ts";
 
 function createMockFetch(
   handler: (req: Request) => Response | Promise<Response>,
@@ -339,31 +339,27 @@ Deno.test("HttpClient.request", async (t) => {
 });
 
 Deno.test("HttpClient error handling", async (t) => {
-  await t.step(
-    "throws HttpNotFoundError for 404 when throwOnError: true",
-    async () => {
-      const mockFetch = createMockFetch(() => {
-        return new Response("Not Found", {
-          status: 404,
-          statusText: "Not Found",
-        });
+  await t.step("throws HttpNotFoundError for 404", async () => {
+    const mockFetch = createMockFetch(() => {
+      return new Response("Not Found", {
+        status: 404,
+        statusText: "Not Found",
       });
+    });
 
-      const client = createHttpClient({
-        url: "http://localhost:3000",
-        fetch: mockFetch,
-        throwOnError: true,
-      });
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
 
-      const error = await assertRejects(
-        () => client.get("/missing"),
-        HttpNotFoundError,
-      );
-      assertInstanceOf(error, HttpNotFoundError);
-      assertEquals(error.status, 404);
-      await client.close();
-    },
-  );
+    const error = await assertRejects(
+      () => client.get("/missing"),
+      HttpNotFoundError,
+    );
+    assertInstanceOf(error, HttpNotFoundError);
+    assertEquals(error.status, 404);
+    await client.close();
+  });
 });
 
 Deno.test("HttpClient response duration", async (t) => {
@@ -386,11 +382,28 @@ Deno.test("HttpClient response duration", async (t) => {
 });
 
 Deno.test("HttpClient throwOnError option", async (t) => {
+  await t.step("throws by default for 4xx response", async () => {
+    const mockFetch = createMockFetch(() => {
+      return new Response("Not Found", { status: 404 });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    await assertRejects(() => client.get("/missing"), HttpNotFoundError);
+    await client.close();
+  });
+
   await t.step(
-    "returns error response by default for 4xx response",
+    "returns response when throwOnError: false in request options",
     async () => {
       const mockFetch = createMockFetch(() => {
-        return new Response("Not Found", { status: 404 });
+        return new Response("Not Found", {
+          status: 404,
+          statusText: "Not Found",
+        });
       });
 
       const client = createHttpClient({
@@ -398,36 +411,17 @@ Deno.test("HttpClient throwOnError option", async (t) => {
         fetch: mockFetch,
       });
 
-      const response = await client.get("/missing");
+      const response = await client.get("/missing", { throwOnError: false });
       await client.close();
 
       assertEquals(response.ok, false);
       assertEquals(response.status, 404);
+      assertEquals(response.statusText, "Not Found");
     },
   );
 
   await t.step(
-    "throws when throwOnError: true in request options",
-    async () => {
-      const mockFetch = createMockFetch(() => {
-        return new Response("Not Found", { status: 404 });
-      });
-
-      const client = createHttpClient({
-        url: "http://localhost:3000",
-        fetch: mockFetch,
-      });
-
-      await assertRejects(
-        () => client.get("/missing", { throwOnError: true }),
-        HttpNotFoundError,
-      );
-      await client.close();
-    },
-  );
-
-  await t.step(
-    "throws when throwOnError: true in client config",
+    "returns response when throwOnError: false in client config",
     async () => {
       const mockFetch = createMockFetch(() => {
         return new Response("Server Error", {
@@ -439,14 +433,14 @@ Deno.test("HttpClient throwOnError option", async (t) => {
       const client = createHttpClient({
         url: "http://localhost:3000",
         fetch: mockFetch,
-        throwOnError: true,
+        throwOnError: false,
       });
 
-      await assertRejects(
-        () => client.get("/error"),
-        HttpInternalServerError,
-      );
+      const response = await client.get("/error");
       await client.close();
+
+      assertEquals(response.ok, false);
+      assertEquals(response.status, 500);
     },
   );
 

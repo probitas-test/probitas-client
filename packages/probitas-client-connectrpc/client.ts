@@ -694,7 +694,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
         const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-          false;
+          true;
 
         if (shouldThrow) {
           // Merge headers and trailers for error metadata
@@ -766,7 +766,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
         const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-          false;
+          true;
 
         if (shouldThrow) {
           const metadata = new Headers(headers);
@@ -836,7 +836,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
         const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-          false;
+          true;
 
         if (shouldThrow) {
           const metadata = new Headers(headers);
@@ -907,7 +907,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       const duration = performance.now() - startTime;
       if (error instanceof ConnectError) {
         const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-          false;
+          true;
 
         if (shouldThrow) {
           const metadata = new Headers(headers);

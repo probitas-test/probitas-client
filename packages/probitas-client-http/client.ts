@@ -347,9 +347,9 @@ class HttpClientImpl implements HttpClient {
       }
     }
 
-    // Determine whether to throw on error (request option > config > default false)
+    // Determine whether to throw on error (request option > config > default true)
     const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-      false;
+      true;
 
     if (!response.ok && shouldThrow) {
       throwHttpError(response);

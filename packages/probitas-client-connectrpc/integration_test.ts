@@ -254,27 +254,9 @@ Deno.test({
       },
     );
 
-    await t.step(
-      "throwOnError: false (default) returns error response",
-      async () => {
-        await using client = createConnectRpcClient({
-          url: CONNECTRPC_URL,
-        });
-
-        const response = await client.call(
-          "echo.v1.Echo",
-          "echoError",
-          { message: "trigger error" },
-        );
-
-        assertEquals(response.ok, false);
-      },
-    );
-
-    await t.step("throwOnError: true throws error", async () => {
+    await t.step("throwOnError: true (default) throws error", async () => {
       await using client = createConnectRpcClient({
         url: CONNECTRPC_URL,
-        throwOnError: true,
       });
 
       try {
@@ -293,17 +275,16 @@ Deno.test({
       }
     });
 
-    await t.step("request option overrides client config", async () => {
+    await t.step("client config throwOnError: false", async () => {
       await using client = createConnectRpcClient({
         url: CONNECTRPC_URL,
-        throwOnError: true,
+        throwOnError: false,
       });
 
       const response = await client.call(
         "echo.v1.Echo",
         "echoError",
         { message: "trigger error" },
-        { throwOnError: false },
       );
 
       assertEquals(response.ok, false);
