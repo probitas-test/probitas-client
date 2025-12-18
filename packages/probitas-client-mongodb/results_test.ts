@@ -1,15 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import {
-  createMongoCountFailure,
-  createMongoDeleteFailure,
-  createMongoDocs,
-  createMongoFindFailure,
-  createMongoFindOneFailure,
-  createMongoInsertManyFailure,
-  createMongoInsertOneFailure,
-  createMongoUpdateFailure,
-} from "./results.ts";
-import { MongoNotFoundError, MongoQueryError } from "./errors.ts";
+import { createMongoDocs } from "./results.ts";
+import { MongoNotFoundError } from "./errors.ts";
 
 Deno.test("createMongoDocs", async (t) => {
   await t.step("creates array with first/last methods", () => {
@@ -87,66 +78,5 @@ Deno.test("createMongoDocs", async (t) => {
 
     const found = docs.find((d) => d.id === 2);
     assertEquals(found, { id: 2 });
-  });
-});
-
-Deno.test("Failure result factory functions", async (t) => {
-  const testError = new MongoQueryError("Test error", "test_collection");
-  const testDuration = 123.45;
-
-  await t.step("createMongoFindFailure creates correct result", () => {
-    const result = createMongoFindFailure(testError, testDuration);
-    assertEquals(result.kind, "mongo:find");
-    assertEquals(result.ok, false);
-    assertEquals(result.error, testError);
-    assertEquals(result.duration, testDuration);
-  });
-
-  await t.step("createMongoFindOneFailure creates correct result", () => {
-    const result = createMongoFindOneFailure(testError, testDuration);
-    assertEquals(result.kind, "mongo:find-one");
-    assertEquals(result.ok, false);
-    assertEquals(result.error, testError);
-    assertEquals(result.duration, testDuration);
-  });
-
-  await t.step("createMongoInsertOneFailure creates correct result", () => {
-    const result = createMongoInsertOneFailure(testError, testDuration);
-    assertEquals(result.kind, "mongo:insert-one");
-    assertEquals(result.ok, false);
-    assertEquals(result.error, testError);
-    assertEquals(result.duration, testDuration);
-  });
-
-  await t.step("createMongoInsertManyFailure creates correct result", () => {
-    const result = createMongoInsertManyFailure(testError, testDuration);
-    assertEquals(result.kind, "mongo:insert-many");
-    assertEquals(result.ok, false);
-    assertEquals(result.error, testError);
-    assertEquals(result.duration, testDuration);
-  });
-
-  await t.step("createMongoUpdateFailure creates correct result", () => {
-    const result = createMongoUpdateFailure(testError, testDuration);
-    assertEquals(result.kind, "mongo:update");
-    assertEquals(result.ok, false);
-    assertEquals(result.error, testError);
-    assertEquals(result.duration, testDuration);
-  });
-
-  await t.step("createMongoDeleteFailure creates correct result", () => {
-    const result = createMongoDeleteFailure(testError, testDuration);
-    assertEquals(result.kind, "mongo:delete");
-    assertEquals(result.ok, false);
-    assertEquals(result.error, testError);
-    assertEquals(result.duration, testDuration);
-  });
-
-  await t.step("createMongoCountFailure creates correct result", () => {
-    const result = createMongoCountFailure(testError, testDuration);
-    assertEquals(result.kind, "mongo:count");
-    assertEquals(result.ok, false);
-    assertEquals(result.error, testError);
-    assertEquals(result.duration, testDuration);
   });
 });
