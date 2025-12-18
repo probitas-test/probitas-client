@@ -61,7 +61,7 @@ Deno.test({
           "SELECT 1 as value",
         );
 
-        if (!result.ok) throw new Error("Expected ok");
+        assertEquals(result.ok, true);
         assertEquals(result.rows.first(), { value: 1 });
         assertEquals(result.rowCount, 1);
       } finally {
@@ -110,7 +110,6 @@ Deno.test({
           [10, 20],
         );
 
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first(), { sum: 30 });
       } finally {
         await client.close();
@@ -140,7 +139,6 @@ Deno.test({
         const result = await client.query<{ value: string }>(
           "SELECT value FROM test_commit",
         );
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first()?.value, "committed");
       } finally {
         await client.query("DROP TABLE IF EXISTS test_commit");
@@ -177,7 +175,6 @@ Deno.test({
         const result = await client.query<{ count: string }>(
           "SELECT COUNT(*) as count FROM test_rollback",
         );
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first()?.count, "0");
       } finally {
         await client.query("DROP TABLE IF EXISTS test_rollback");
@@ -196,7 +193,6 @@ Deno.test({
             const result = await tx.query<{ transaction_isolation: string }>(
               "SHOW transaction_isolation",
             );
-            if (!result.ok) throw new Error("Expected ok");
             return result.rows.first()?.transaction_isolation;
           },
           { isolationLevel: "serializable" },
@@ -227,87 +223,44 @@ Deno.test({
       }
     });
 
-    await t.step(
-      "constraint error handling - unique violation with throwOnError",
-      async () => {
-        const client = await createPostgresClient({
-          url: CONNECTION_STRING,
-          throwOnError: true,
-        });
+    await t.step("constraint error handling - unique violation", async () => {
+      const client = await createPostgresClient({
+        url: CONNECTION_STRING,
+      });
 
-        try {
-          await client.query(`
+      try {
+        await client.query(`
           CREATE TABLE IF NOT EXISTS test_unique (
             id SERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL
           )
         `);
-          await client.query("TRUNCATE TABLE test_unique");
+        await client.query("TRUNCATE TABLE test_unique");
 
-          await client.query(
-            "INSERT INTO test_unique (email) VALUES ($1)",
-            ["test@example.com"],
-          );
+        await client.query(
+          "INSERT INTO test_unique (email) VALUES ($1)",
+          ["test@example.com"],
+        );
 
-          const error = await assertRejects(
-            () =>
-              client.query(
-                "INSERT INTO test_unique (email) VALUES ($1)",
-                ["test@example.com"],
-              ),
-          );
+        const error = await assertRejects(
+          () =>
+            client.query(
+              "INSERT INTO test_unique (email) VALUES ($1)",
+              ["test@example.com"],
+            ),
+        );
 
-          assertInstanceOf(error, ConstraintError);
-          assertEquals(error.kind, "constraint");
-        } finally {
-          await client.query("DROP TABLE IF EXISTS test_unique");
-          await client.close();
-        }
-      },
-    );
+        assertInstanceOf(error, ConstraintError);
+        assertEquals(error.kind, "constraint");
+      } finally {
+        await client.query("DROP TABLE IF EXISTS test_unique");
+        await client.close();
+      }
+    });
 
-    await t.step(
-      "constraint error handling - returns failure by default",
-      async () => {
-        const client = await createPostgresClient({
-          url: CONNECTION_STRING,
-        });
-
-        try {
-          await client.query(`
-          CREATE TABLE IF NOT EXISTS test_unique2 (
-            id SERIAL PRIMARY KEY,
-            email TEXT UNIQUE NOT NULL
-          )
-        `);
-          await client.query("TRUNCATE TABLE test_unique2");
-
-          await client.query(
-            "INSERT INTO test_unique2 (email) VALUES ($1)",
-            ["test@example.com"],
-          );
-
-          const result = await client.query(
-            "INSERT INTO test_unique2 (email) VALUES ($1)",
-            ["test@example.com"],
-          );
-
-          assertEquals(result.ok, false);
-          if (!result.ok) {
-            assertInstanceOf(result.error, ConstraintError);
-            assertEquals(result.error.kind, "constraint");
-          }
-        } finally {
-          await client.query("DROP TABLE IF EXISTS test_unique2");
-          await client.close();
-        }
-      },
-    );
-
-    await t.step("syntax error handling with throwOnError", async () => {
+    await t.step("syntax error handling", async () => {
       const client = await createPostgresClient({
         url: CONNECTION_STRING,
-        throwOnError: true,
       });
 
       try {
@@ -319,27 +272,6 @@ Deno.test({
         await client.close();
       }
     });
-
-    await t.step(
-      "syntax error handling - returns failure by default",
-      async () => {
-        const client = await createPostgresClient({
-          url: CONNECTION_STRING,
-        });
-
-        try {
-          const result = await client.query("SELEC 1");
-
-          assertEquals(result.ok, false);
-          if (!result.ok) {
-            assertInstanceOf(result.error, QuerySyntaxError);
-            assertEquals(result.error.kind, "query");
-          }
-        } finally {
-          await client.close();
-        }
-      },
-    );
 
     await t.step("AsyncDisposable - await using syntax", async () => {
       let clientRef: PostgresClient | null = null;
@@ -354,7 +286,6 @@ Deno.test({
         const result = await client.query<{ value: number }>(
           "SELECT 42 as value",
         );
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first()?.value, 42);
       }
 
@@ -379,9 +310,6 @@ Deno.test({
           client.query<{ n: number }>("SELECT 3 as n"),
         ]);
 
-        if (!results[0].ok) throw new Error("Expected ok");
-        if (!results[1].ok) throw new Error("Expected ok");
-        if (!results[2].ok) throw new Error("Expected ok");
         assertEquals(results[0].rows.first()?.n, 1);
         assertEquals(results[1].rows.first()?.n, 2);
         assertEquals(results[2].rows.first()?.n, 3);
@@ -398,7 +326,7 @@ Deno.test({
       try {
         const result = await client.query("SELECT pg_sleep(0.01)");
 
-        if (!result.ok) throw new Error("Expected ok");
+        assertEquals(result.ok, true);
         assertEquals(typeof result.duration, "number");
         // Duration should be at least 10ms (we slept for 10ms)
         assertEquals(result.duration >= 10, true);
@@ -422,7 +350,6 @@ Deno.test({
         const result = await client.query<{ value: number }>(
           "SELECT 1 as value",
         );
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first()?.value, 1);
       } finally {
         await client.close();
@@ -443,7 +370,6 @@ Deno.test({
         const result = await client.query<{ value: number }>(
           "SELECT 1 as value",
         );
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first()?.value, 1);
       } finally {
         await client.close();
@@ -460,7 +386,6 @@ Deno.test({
         const result = await client.query<{ application_name: string }>(
           "SELECT current_setting('application_name') as application_name",
         );
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first()?.application_name, "test-app");
       } finally {
         await client.close();

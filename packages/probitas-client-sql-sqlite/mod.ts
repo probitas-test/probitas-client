@@ -44,9 +44,7 @@
  *   "SELECT id, name FROM users WHERE active = ?",
  *   [1]
  * );
- * if (result.ok) {
- *   console.log(result.rows);
- * }
+ * console.log(result.rows);
  *
  * await client.close();
  * ```

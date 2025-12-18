@@ -38,9 +38,7 @@
  *   "SELECT id, name FROM users WHERE active = ?",
  *   [true]
  * );
- * if (result.ok) {
- *   console.log(result.rows);
- * }
+ * console.log(result.rows);
  *
  * // Get first row
  * const user = await client.queryOne<{ id: number; name: string }>(

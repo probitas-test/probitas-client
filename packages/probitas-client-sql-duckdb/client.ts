@@ -1,12 +1,8 @@
 import type { DuckDBConnection } from "@duckdb/node-api";
 import { DuckDBInstance } from "@duckdb/node-api";
-import { AbortError, TimeoutError } from "@probitas/client";
 import { getLogger } from "@probitas/logger";
 import {
-  createSqlQueryFailure,
-  type SqlOptions,
   SqlQueryResult,
-  type SqlQueryResultType,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -52,26 +48,22 @@ export interface DuckDbClient extends AsyncDisposable {
    * Execute a SQL query.
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>>;
+  ): Promise<SqlQueryResult<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -93,7 +85,7 @@ export interface DuckDbClient extends AsyncDisposable {
   // deno-lint-ignore no-explicit-any
   queryParquet<T = Record<string, any>>(
     path: string,
-  ): Promise<SqlQueryResultType<T>>;
+  ): Promise<SqlQueryResult<T>>;
 
   /**
    * Query a CSV file directly.
@@ -101,9 +93,7 @@ export interface DuckDbClient extends AsyncDisposable {
    * @param path - Path to the CSV file
    */
   // deno-lint-ignore no-explicit-any
-  queryCsv<T = Record<string, any>>(
-    path: string,
-  ): Promise<SqlQueryResultType<T>>;
+  queryCsv<T = Record<string, any>>(path: string): Promise<SqlQueryResult<T>>;
 
   /**
    * Close the database connection.
@@ -127,9 +117,7 @@ export interface DuckDbClient extends AsyncDisposable {
  * const client = await createDuckDbClient({});
  *
  * const result = await client.query("SELECT 42 as answer");
- * if (result.ok) {
- *   console.log(result.rows.first()); // { answer: 42 }
- * }
+ * console.log(result.rows.first());  // { answer: 42 }
  *
  * await client.close();
  * ```
@@ -241,32 +229,19 @@ class DuckDbClientImpl implements DuckDbClient {
     });
   }
 
-  /**
-   * Determine if errors should be thrown based on options and config.
-   * Priority: request option > client config > default (false)
-   */
-  #shouldThrow(options?: SqlOptions): boolean {
-    return options?.throwOnError ?? this.config.throwOnError ?? false;
-  }
-
   // deno-lint-ignore no-explicit-any
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>> {
+  ): Promise<SqlQueryResult<T>> {
     if (this.#closed) {
-      const error = convertDuckDbError(new Error("Client is closed"));
-      if (this.#shouldThrow(options)) {
-        throw error;
-      }
-      return createSqlQueryFailure(error, 0);
+      throw convertDuckDbError(new Error("Client is closed"));
     }
 
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
 
-    logger.debug("DuckDB query starting", {
+    logger.info("DuckDB query starting", {
       sql: sqlPreview,
       paramCount: params?.length ?? 0,
     });
@@ -334,7 +309,7 @@ class DuckDbClientImpl implements DuckDbClient {
 
       const duration = performance.now() - startTime;
 
-      logger.debug("DuckDB query success", {
+      logger.info("DuckDB query success", {
         duration: `${duration.toFixed(2)}ms`,
         rowCount: rows.length,
       });
@@ -348,6 +323,7 @@ class DuckDbClientImpl implements DuckDbClient {
 
       if (isSelect) {
         return new SqlQueryResult<T>({
+          ok: true,
           rows: rows as T[],
           rowCount: rows.length,
           duration,
@@ -355,24 +331,14 @@ class DuckDbClientImpl implements DuckDbClient {
       } else {
         // For INSERT/UPDATE/DELETE queries
         return new SqlQueryResult<T>({
+          ok: true,
           rows: [],
           rowCount: rows.length,
           duration,
         });
       }
     } catch (error) {
-      const duration = performance.now() - startTime;
-      const sqlError = convertDuckDbError(error);
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
-      if (this.#shouldThrow(options)) {
-        throw sqlError;
-      }
-      return createSqlQueryFailure(sqlError, duration);
+      throw convertDuckDbError(error);
     }
   }
 
@@ -380,12 +346,8 @@ class DuckDbClientImpl implements DuckDbClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params, options);
-    if (!result.ok) {
-      throw result.error;
-    }
+    const result = await this.query<T>(sql, params);
     return result.rows.first();
   }
 
@@ -429,7 +391,7 @@ class DuckDbClientImpl implements DuckDbClient {
   // deno-lint-ignore no-explicit-any
   queryParquet<T = Record<string, any>>(
     path: string,
-  ): Promise<SqlQueryResultType<T>> {
+  ): Promise<SqlQueryResult<T>> {
     logger.info("DuckDB queryParquet starting", {
       path,
     });
@@ -440,9 +402,7 @@ class DuckDbClientImpl implements DuckDbClient {
   }
 
   // deno-lint-ignore no-explicit-any
-  queryCsv<T = Record<string, any>>(
-    path: string,
-  ): Promise<SqlQueryResultType<T>> {
+  queryCsv<T = Record<string, any>>(path: string): Promise<SqlQueryResult<T>> {
     logger.info("DuckDB queryCsv starting", {
       path,
     });

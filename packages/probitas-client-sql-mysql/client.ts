@@ -1,11 +1,7 @@
 import mysql from "mysql2/promise";
-import { AbortError, TimeoutError } from "@probitas/client";
 import { getLogger } from "@probitas/logger";
 import {
-  createSqlQueryFailure,
-  type SqlOptions,
   SqlQueryResult,
-  type SqlQueryResultType,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -49,26 +45,22 @@ export interface MySqlClient extends AsyncDisposable {
    * Execute a SQL query.
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>>;
+  ): Promise<SqlQueryResult<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -159,9 +151,7 @@ function parseConnectionUrl(url: string): MySqlConnectionConfig {
  *   "SELECT * FROM users WHERE id = ?",
  *   [1],
  * );
- * if (result.ok) {
- *   console.log(result.rows.first()); // { id: 1, name: "Alice" }
- * }
+ * console.log(result.rows.first());  // { id: 1, name: "Alice" }
  *
  * await client.close();
  * ```
@@ -288,32 +278,19 @@ class MySqlClientImpl implements MySqlClient {
     });
   }
 
-  /**
-   * Determine if errors should be thrown based on options and config.
-   * Priority: request option > client config > default (false)
-   */
-  #shouldThrow(options?: SqlOptions): boolean {
-    return options?.throwOnError ?? this.config.throwOnError ?? false;
-  }
-
   // deno-lint-ignore no-explicit-any
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>> {
+  ): Promise<SqlQueryResult<T>> {
     if (this.#closed) {
-      const error = convertMySqlError(new Error("Client is closed"));
-      if (this.#shouldThrow(options)) {
-        throw error;
-      }
-      return createSqlQueryFailure(error, 0);
+      throw convertMySqlError(new Error("Client is closed"));
     }
 
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
 
-    logger.debug("MySQL query starting", {
+    logger.info("MySQL query starting", {
       sql: sqlPreview,
       paramCount: params?.length ?? 0,
     });
@@ -330,7 +307,7 @@ class MySqlClientImpl implements MySqlClient {
 
       // Handle SELECT queries
       if (Array.isArray(rows)) {
-        logger.debug("MySQL query success", {
+        logger.info("MySQL query success", {
           duration: `${duration.toFixed(2)}ms`,
           rowCount: rows.length,
         });
@@ -343,6 +320,7 @@ class MySqlClientImpl implements MySqlClient {
         }
 
         return new SqlQueryResult<T>({
+          ok: true,
           rows: rows as unknown as T[],
           rowCount: rows.length,
           duration,
@@ -353,7 +331,7 @@ class MySqlClientImpl implements MySqlClient {
       // deno-lint-ignore no-explicit-any
       const resultHeader = rows as any;
 
-      logger.debug("MySQL query success", {
+      logger.info("MySQL query success", {
         duration: `${duration.toFixed(2)}ms`,
         affectedRows: resultHeader.affectedRows,
         lastInsertId: resultHeader.insertId ? resultHeader.insertId : undefined,
@@ -361,6 +339,7 @@ class MySqlClientImpl implements MySqlClient {
       });
 
       return new SqlQueryResult<T>({
+        ok: true,
         rows: [],
         rowCount: resultHeader.affectedRows,
         duration,
@@ -372,18 +351,7 @@ class MySqlClientImpl implements MySqlClient {
           : undefined,
       });
     } catch (error) {
-      const duration = performance.now() - startTime;
-      const sqlError = convertMySqlError(error);
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
-      if (this.#shouldThrow(options)) {
-        throw sqlError;
-      }
-      return createSqlQueryFailure(sqlError, duration);
+      throw convertMySqlError(error);
     }
   }
 
@@ -391,12 +359,8 @@ class MySqlClientImpl implements MySqlClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params, options);
-    if (!result.ok) {
-      throw result.error;
-    }
+    const result = await this.query<T>(sql, params);
     return result.rows.first();
   }
 

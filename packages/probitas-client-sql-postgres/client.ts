@@ -1,13 +1,10 @@
 import postgres from "postgres";
-import type { CommonConnectionConfig } from "@probitas/client";
-import { AbortError, ConnectionError, TimeoutError } from "@probitas/client";
+import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
+import { ConnectionError } from "@probitas/client";
 import { getLogger } from "@probitas/logger";
 import {
-  createSqlQueryFailure,
   type SqlIsolationLevel,
-  type SqlOptions,
   SqlQueryResult,
-  type SqlQueryResultType,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -95,7 +92,7 @@ export interface PostgresPoolConfig {
 /**
  * Configuration for creating a PostgreSQL client.
  */
-export interface PostgresClientConfig extends SqlOptions {
+export interface PostgresClientConfig extends CommonOptions {
   /**
    * Connection URL string or configuration object.
    *
@@ -157,27 +154,23 @@ export interface PostgresClient extends AsyncDisposable {
    *
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>>;
+  ): Promise<SqlQueryResult<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    *
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -279,32 +272,17 @@ class PostgresClientImpl implements PostgresClient {
     });
   }
 
-  /**
-   * Determine if errors should be thrown based on options and config.
-   * Priority: request option > client config > default (false)
-   */
-  #shouldThrow(options?: SqlOptions): boolean {
-    return options?.throwOnError ?? this.config.throwOnError ?? false;
-  }
-
   // deno-lint-ignore no-explicit-any
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>> {
-    if (this.#closed) {
-      const error = mapPostgresError({ message: "Client is closed" });
-      if (this.#shouldThrow(options)) {
-        throw error;
-      }
-      return createSqlQueryFailure(error, 0);
-    }
+  ): Promise<SqlQueryResult<T>> {
+    this.#assertNotClosed();
 
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
 
-    logger.debug("PostgreSQL query starting", {
+    logger.info("PostgreSQL query starting", {
       sql: sqlPreview,
       paramCount: params?.length ?? 0,
     });
@@ -321,7 +299,7 @@ class PostgresClientImpl implements PostgresClient {
       );
       const duration = performance.now() - startTime;
 
-      logger.debug("PostgreSQL query success", {
+      logger.info("PostgreSQL query success", {
         duration: `${duration.toFixed(2)}ms`,
         rowCount: result.count ?? result.length,
       });
@@ -334,25 +312,19 @@ class PostgresClientImpl implements PostgresClient {
       }
 
       return new SqlQueryResult<T>({
+        ok: true,
         rows: result as unknown as readonly T[],
         rowCount: result.count ?? result.length,
         duration,
       });
     } catch (error) {
       const duration = performance.now() - startTime;
-      const sqlError = mapPostgresError(
-        error as { message: string; code?: string },
-      );
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
-      if (this.#shouldThrow(options)) {
-        throw sqlError;
-      }
-      return createSqlQueryFailure(sqlError, duration);
+      logger.debug("PostgreSQL query failed", {
+        sql: sqlPreview,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw mapPostgresError(error as { message: string; code?: string });
     }
   }
 
@@ -360,12 +332,8 @@ class PostgresClientImpl implements PostgresClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params, options);
-    if (!result.ok) {
-      throw result.error;
-    }
+    const result = await this.query<T>(sql, params);
     return result.rows.first();
   }
 
@@ -654,9 +622,7 @@ function resolveSslOptions(
  * });
  *
  * const result = await client.query("SELECT * FROM users WHERE id = $1", [1]);
- * if (result.ok) {
- *   console.log(result.rows.first());
- * }
+ * console.log(result.rows.first());
  *
  * await client.close();
  * ```

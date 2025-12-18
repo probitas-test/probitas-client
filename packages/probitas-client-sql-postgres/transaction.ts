@@ -1,21 +1,6 @@
 import type postgres from "postgres";
-import { AbortError, TimeoutError } from "@probitas/client";
-import {
-  createSqlQueryFailure,
-  type SqlOptions,
-  SqlQueryResult,
-  type SqlQueryResultType,
-  type SqlTransaction,
-  type SqlTransactionOptions,
-} from "@probitas/client-sql";
+import { SqlQueryResult, type SqlTransaction } from "@probitas/client-sql";
 import { mapPostgresError } from "./errors.ts";
-
-/**
- * PostgreSQL-specific transaction options.
- */
-export interface PostgresTransactionOptions
-  extends SqlTransactionOptions, SqlOptions {
-}
 
 /**
  * PostgreSQL transaction implementation.
@@ -24,7 +9,6 @@ export interface PostgresTransactionOptions
  */
 export class PostgresTransaction implements SqlTransaction {
   readonly #sql: postgres.ReservedSql;
-  readonly #options?: PostgresTransactionOptions;
   #committed = false;
   #rolledBack = false;
 
@@ -32,44 +16,21 @@ export class PostgresTransaction implements SqlTransaction {
    * Creates a new PostgresTransaction.
    *
    * @param sql - Reserved SQL connection from postgres.js
-   * @param options - Transaction options including throwOnError
    */
-  constructor(sql: postgres.ReservedSql, options?: PostgresTransactionOptions) {
+  constructor(sql: postgres.ReservedSql) {
     this.#sql = sql;
-    this.#options = options;
-  }
-
-  /**
-   * Determine if errors should be thrown based on options and transaction config.
-   * Priority: request option > transaction config > default (false)
-   */
-  #shouldThrow(options?: SqlOptions): boolean {
-    return options?.throwOnError ?? this.#options?.throwOnError ?? false;
   }
 
   /**
    * Checks if the transaction is still active.
    */
-  #assertActive(options?: SqlOptions): SqlQueryResultType<never> | null {
+  #assertActive(): void {
     if (this.#committed) {
-      const error = mapPostgresError({
-        message: "Transaction has already been committed",
-      });
-      if (this.#shouldThrow(options)) {
-        throw error;
-      }
-      return createSqlQueryFailure(error, 0);
+      throw new Error("Transaction has already been committed");
     }
     if (this.#rolledBack) {
-      const error = mapPostgresError({
-        message: "Transaction has already been rolled back",
-      });
-      if (this.#shouldThrow(options)) {
-        throw error;
-      }
-      return createSqlQueryFailure(error, 0);
+      throw new Error("Transaction has already been rolled back");
     }
-    return null;
   }
 
   /**
@@ -77,18 +38,13 @@ export class PostgresTransaction implements SqlTransaction {
    *
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>> {
-    const activeError = this.#assertActive(options);
-    if (activeError) {
-      return activeError as SqlQueryResultType<T>;
-    }
+  ): Promise<SqlQueryResult<T>> {
+    this.#assertActive();
 
     const startTime = performance.now();
 
@@ -97,25 +53,13 @@ export class PostgresTransaction implements SqlTransaction {
       const duration = performance.now() - startTime;
 
       return new SqlQueryResult<T>({
+        ok: true,
         rows: result as unknown as readonly T[],
         rowCount: result.count ?? result.length,
         duration,
       });
     } catch (error) {
-      const duration = performance.now() - startTime;
-      const sqlError = mapPostgresError(
-        error as { message: string; code?: string },
-      );
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
-      if (this.#shouldThrow(options)) {
-        throw sqlError;
-      }
-      return createSqlQueryFailure(sqlError, duration);
+      throw mapPostgresError(error as { message: string; code?: string });
     }
   }
 
@@ -124,18 +68,13 @@ export class PostgresTransaction implements SqlTransaction {
    *
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params, options);
-    if (!result.ok) {
-      throw result.error;
-    }
+    const result = await this.query<T>(sql, params);
     return result.rows.first();
   }
 
