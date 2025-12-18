@@ -1,7 +1,11 @@
 import type { BindValue, Database } from "@db/sqlite";
+import { AbortError, TimeoutError } from "@probitas/client";
 import {
+  createSqlQueryFailure,
   type SqlIsolationLevel,
+  type SqlOptions,
   SqlQueryResult,
+  type SqlQueryResultType,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -22,7 +26,8 @@ export type SqliteTransactionMode = "deferred" | "immediate" | "exclusive";
 /**
  * SQLite-specific transaction options.
  */
-export interface SqliteTransactionOptions extends SqlTransactionOptions {
+export interface SqliteTransactionOptions
+  extends SqlTransactionOptions, SqlOptions {
   /**
    * Transaction behavior mode.
    * @default "deferred"
@@ -54,10 +59,12 @@ function mapIsolationLevelToMode(
 
 export class SqliteTransactionImpl implements SqlTransaction {
   readonly #db: Database;
+  readonly #options?: SqliteTransactionOptions;
   #finished = false;
 
-  private constructor(db: Database) {
+  private constructor(db: Database, options?: SqliteTransactionOptions) {
     this.#db = db;
+    this.#options = options;
   }
 
   /**
@@ -78,21 +85,34 @@ export class SqliteTransactionImpl implements SqlTransaction {
       const modeStr = mode.toUpperCase();
       db.exec(`BEGIN ${modeStr} TRANSACTION`);
 
-      return new SqliteTransactionImpl(db);
+      return new SqliteTransactionImpl(db, options);
     } catch (error) {
       throw convertSqliteError(error);
     }
+  }
+
+  /**
+   * Determine if errors should be thrown based on options and transaction config.
+   * Priority: request option > transaction config > default (false)
+   */
+  #shouldThrow(options?: SqlOptions): boolean {
+    return options?.throwOnError ?? this.#options?.throwOnError ?? false;
   }
 
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-  ): Promise<SqlQueryResult<T>> {
+    options?: SqlOptions,
+  ): Promise<SqlQueryResultType<T>> {
     if (this.#finished) {
-      return Promise.reject(
-        convertSqliteError(new Error("Transaction is already finished")),
+      const error = convertSqliteError(
+        new Error("Transaction is already finished"),
       );
+      if (this.#shouldThrow(options)) {
+        return Promise.reject(error);
+      }
+      return Promise.resolve(createSqlQueryFailure(error, 0));
     }
 
     const startTime = performance.now();
@@ -119,7 +139,6 @@ export class SqliteTransactionImpl implements SqlTransaction {
 
           return Promise.resolve(
             new SqlQueryResult<T>({
-              ok: true,
               rows: rows,
               rowCount: rows.length,
               duration,
@@ -145,7 +164,6 @@ export class SqliteTransactionImpl implements SqlTransaction {
 
           return Promise.resolve(
             new SqlQueryResult<T>({
-              ok: true,
               rows: [],
               rowCount: changes,
               duration,
@@ -159,7 +177,18 @@ export class SqliteTransactionImpl implements SqlTransaction {
         }
       }
     } catch (error) {
-      return Promise.reject(convertSqliteError(error));
+      const duration = performance.now() - startTime;
+      const sqlError = convertSqliteError(error);
+
+      // TimeoutError and AbortError should always be thrown
+      if (error instanceof TimeoutError || error instanceof AbortError) {
+        throw error;
+      }
+
+      if (this.#shouldThrow(options)) {
+        return Promise.reject(sqlError);
+      }
+      return Promise.resolve(createSqlQueryFailure(sqlError, duration));
     }
   }
 
@@ -167,8 +196,12 @@ export class SqliteTransactionImpl implements SqlTransaction {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
+    const result = await this.query<T>(sql, params, options);
+    if (!result.ok) {
+      throw result.error;
+    }
     return result.rows.first();
   }
 

@@ -1,7 +1,11 @@
 import { type BindValue, Database } from "@db/sqlite";
+import { AbortError, TimeoutError } from "@probitas/client";
 import { getLogger } from "@probitas/logger";
 import {
+  createSqlQueryFailure,
+  type SqlOptions,
   SqlQueryResult,
+  type SqlQueryResultType,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -50,22 +54,26 @@ export interface SqliteClient extends AsyncDisposable {
    * Execute a SQL query.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-  ): Promise<SqlQueryResult<T>>;
+    options?: SqlOptions,
+  ): Promise<SqlQueryResultType<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -118,7 +126,9 @@ export interface SqliteClient extends AsyncDisposable {
  *   "SELECT * FROM users WHERE id = ?",
  *   [1],
  * );
- * console.log(result.rows.first());
+ * if (result.ok) {
+ *   console.log(result.rows.first());
+ * }
  *
  * await client.close();
  * ```
@@ -142,6 +152,7 @@ export interface SqliteClient extends AsyncDisposable {
  * const user = await client.transaction(async (tx: SqlTransaction) => {
  *   await tx.query("INSERT INTO users (name) VALUES (?)", ["Alice"]);
  *   const result = await tx.query("SELECT last_insert_rowid() as id");
+ *   if (!result.ok) throw new Error("Query failed");
  *   return result.rows.first();
  * });
  * await client.close();
@@ -219,21 +230,32 @@ class SqliteClientImpl implements SqliteClient {
     });
   }
 
+  /**
+   * Determine if errors should be thrown based on options and config.
+   * Priority: request option > client config > default (false)
+   */
+  #shouldThrow(options?: SqlOptions): boolean {
+    return options?.throwOnError ?? this.config.throwOnError ?? false;
+  }
+
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-  ): Promise<SqlQueryResult<T>> {
+    options?: SqlOptions,
+  ): Promise<SqlQueryResultType<T>> {
     if (this.#closed) {
-      return Promise.reject(
-        convertSqliteError(new Error("Client is closed")),
-      );
+      const error = convertSqliteError(new Error("Client is closed"));
+      if (this.#shouldThrow(options)) {
+        return Promise.reject(error);
+      }
+      return Promise.resolve(createSqlQueryFailure(error, 0));
     }
 
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
 
-    logger.info("SQLite query starting", {
+    logger.debug("SQLite query starting", {
       sql: sqlPreview,
       paramCount: params?.length ?? 0,
     });
@@ -263,7 +285,7 @@ class SqliteClientImpl implements SqliteClient {
           ) as T[];
           const duration = performance.now() - startTime;
 
-          logger.info("SQLite query success", {
+          logger.debug("SQLite query success", {
             duration: `${duration.toFixed(2)}ms`,
             rowCount: rows.length,
           });
@@ -277,7 +299,6 @@ class SqliteClientImpl implements SqliteClient {
 
           return Promise.resolve(
             new SqlQueryResult<T>({
-              ok: true,
               rows: rows,
               rowCount: rows.length,
               duration,
@@ -301,7 +322,7 @@ class SqliteClientImpl implements SqliteClient {
           const changes = this.#db.changes;
           const lastInsertRowId = this.#db.lastInsertRowId;
 
-          logger.info("SQLite query success", {
+          logger.debug("SQLite query success", {
             duration: `${duration.toFixed(2)}ms`,
             affectedRows: changes,
             lastInsertId: lastInsertRowId > 0 ? lastInsertRowId : undefined,
@@ -309,7 +330,6 @@ class SqliteClientImpl implements SqliteClient {
 
           return Promise.resolve(
             new SqlQueryResult<T>({
-              ok: true,
               rows: [],
               rowCount: changes,
               duration,
@@ -324,12 +344,17 @@ class SqliteClientImpl implements SqliteClient {
       }
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQLite query failed", {
-        sql: sqlPreview,
-        duration: `${duration.toFixed(2)}ms`,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return Promise.reject(convertSqliteError(error));
+      const sqlError = convertSqliteError(error);
+
+      // TimeoutError and AbortError should always be thrown
+      if (error instanceof TimeoutError || error instanceof AbortError) {
+        throw error;
+      }
+
+      if (this.#shouldThrow(options)) {
+        return Promise.reject(sqlError);
+      }
+      return Promise.resolve(createSqlQueryFailure(sqlError, duration));
     }
   }
 
@@ -337,8 +362,12 @@ class SqliteClientImpl implements SqliteClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
+    const result = await this.query<T>(sql, params, options);
+    if (!result.ok) {
+      throw result.error;
+    }
     return result.rows.first();
   }
 

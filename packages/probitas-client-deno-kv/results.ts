@@ -1,7 +1,8 @@
 import type { ClientResult } from "@probitas/client";
+import type { DenoKvError } from "./errors.ts";
 
 /**
- * Result of a get operation.
+ * Result of a successful get operation.
  */
 export interface DenoKvGetResult<T> extends ClientResult {
   /**
@@ -10,6 +11,11 @@ export interface DenoKvGetResult<T> extends ClientResult {
    * Always `"deno-kv:get"` for KV get operations.
    */
   readonly kind: "deno-kv:get";
+
+  /**
+   * Indicates successful operation.
+   */
+  readonly ok: true;
 
   /**
    * The key that was requested.
@@ -28,7 +34,63 @@ export interface DenoKvGetResult<T> extends ClientResult {
 }
 
 /**
- * Result of a set operation.
+ * Result of a failed get operation.
+ */
+export interface DenoKvGetResultFailure {
+  /**
+   * Result kind discriminator.
+   *
+   * Always `"deno-kv:get"` for KV get operations.
+   */
+  readonly kind: "deno-kv:get";
+
+  /**
+   * Indicates failed operation.
+   */
+  readonly ok: false;
+
+  /**
+   * The key that was requested.
+   */
+  readonly key: Deno.KvKey;
+
+  /**
+   * The error that occurred.
+   */
+  readonly error: DenoKvError;
+
+  /**
+   * Operation duration in milliseconds.
+   */
+  readonly duration: number;
+}
+
+/**
+ * Union type for get operation results.
+ */
+export type DenoKvGetResultType<T> =
+  | DenoKvGetResult<T>
+  | DenoKvGetResultFailure;
+
+/**
+ * Creates a failure result for get operations.
+ */
+export function createDenoKvGetFailure(
+  error: DenoKvError,
+  key: Deno.KvKey,
+  duration: number,
+): DenoKvGetResultFailure {
+  return {
+    kind: "deno-kv:get",
+    ok: false,
+    key,
+    error,
+    duration,
+  };
+}
+
+/**
+ * Result of a successful set operation.
  */
 export interface DenoKvSetResult extends ClientResult {
   /**
@@ -39,6 +101,11 @@ export interface DenoKvSetResult extends ClientResult {
   readonly kind: "deno-kv:set";
 
   /**
+   * Indicates successful operation.
+   */
+  readonly ok: true;
+
+  /**
    * Version identifier for the newly written value.
    *
    * Use this for subsequent conditional updates.
@@ -47,7 +114,54 @@ export interface DenoKvSetResult extends ClientResult {
 }
 
 /**
- * Result of a delete operation.
+ * Result of a failed set operation.
+ */
+export interface DenoKvSetResultFailure {
+  /**
+   * Result kind discriminator.
+   *
+   * Always `"deno-kv:set"` for KV set operations.
+   */
+  readonly kind: "deno-kv:set";
+
+  /**
+   * Indicates failed operation.
+   */
+  readonly ok: false;
+
+  /**
+   * The error that occurred.
+   */
+  readonly error: DenoKvError;
+
+  /**
+   * Operation duration in milliseconds.
+   */
+  readonly duration: number;
+}
+
+/**
+ * Union type for set operation results.
+ */
+export type DenoKvSetResultType = DenoKvSetResult | DenoKvSetResultFailure;
+
+/**
+ * Creates a failure result for set operations.
+ */
+export function createDenoKvSetFailure(
+  error: DenoKvError,
+  duration: number,
+): DenoKvSetResultFailure {
+  return {
+    kind: "deno-kv:set",
+    ok: false,
+    error,
+    duration,
+  };
+}
+
+/**
+ * Result of a successful delete operation.
  */
 export interface DenoKvDeleteResult extends ClientResult {
   /**
@@ -56,6 +170,60 @@ export interface DenoKvDeleteResult extends ClientResult {
    * Always `"deno-kv:delete"` for KV delete operations.
    */
   readonly kind: "deno-kv:delete";
+
+  /**
+   * Indicates successful operation.
+   */
+  readonly ok: true;
+}
+
+/**
+ * Result of a failed delete operation.
+ */
+export interface DenoKvDeleteResultFailure {
+  /**
+   * Result kind discriminator.
+   *
+   * Always `"deno-kv:delete"` for KV delete operations.
+   */
+  readonly kind: "deno-kv:delete";
+
+  /**
+   * Indicates failed operation.
+   */
+  readonly ok: false;
+
+  /**
+   * The error that occurred.
+   */
+  readonly error: DenoKvError;
+
+  /**
+   * Operation duration in milliseconds.
+   */
+  readonly duration: number;
+}
+
+/**
+ * Union type for delete operation results.
+ */
+export type DenoKvDeleteResultType =
+  | DenoKvDeleteResult
+  | DenoKvDeleteResultFailure;
+
+/**
+ * Creates a failure result for delete operations.
+ */
+export function createDenoKvDeleteFailure(
+  error: DenoKvError,
+  duration: number,
+): DenoKvDeleteResultFailure {
+  return {
+    kind: "deno-kv:delete",
+    ok: false,
+    error,
+    duration,
+  };
 }
 
 /**
@@ -134,7 +302,7 @@ export function createDenoKvEntries<T>(
 }
 
 /**
- * Result of a list operation.
+ * Result of a successful list operation.
  */
 export interface DenoKvListResult<T> extends ClientResult {
   /**
@@ -145,6 +313,11 @@ export interface DenoKvListResult<T> extends ClientResult {
   readonly kind: "deno-kv:list";
 
   /**
+   * Indicates successful operation.
+   */
+  readonly ok: true;
+
+  /**
    * Array of entries matching the list selector.
    *
    * Includes helper methods like first(), last(), etc.
@@ -153,9 +326,58 @@ export interface DenoKvListResult<T> extends ClientResult {
 }
 
 /**
- * Result of an atomic operation.
+ * Result of a failed list operation.
  */
-export interface DenoKvAtomicResult extends ClientResult {
+export interface DenoKvListResultFailure {
+  /**
+   * Result kind discriminator.
+   *
+   * Always `"deno-kv:list"` for KV list operations.
+   */
+  readonly kind: "deno-kv:list";
+
+  /**
+   * Indicates failed operation.
+   */
+  readonly ok: false;
+
+  /**
+   * The error that occurred.
+   */
+  readonly error: DenoKvError;
+
+  /**
+   * Operation duration in milliseconds.
+   */
+  readonly duration: number;
+}
+
+/**
+ * Union type for list operation results.
+ */
+export type DenoKvListResultType<T> =
+  | DenoKvListResult<T>
+  | DenoKvListResultFailure;
+
+/**
+ * Creates a failure result for list operations.
+ */
+export function createDenoKvListFailure(
+  error: DenoKvError,
+  duration: number,
+): DenoKvListResultFailure {
+  return {
+    kind: "deno-kv:list",
+    ok: false,
+    error,
+    duration,
+  };
+}
+
+/**
+ * Result of a successful atomic operation.
+ */
+export interface DenoKvAtomicResultSuccess extends ClientResult {
   /**
    * Result kind discriminator.
    *
@@ -164,19 +386,109 @@ export interface DenoKvAtomicResult extends ClientResult {
   readonly kind: "deno-kv:atomic";
 
   /**
-   * Version identifier for the atomic commit (present only if ok is true).
-   *
-   * Undefined when the atomic operation failed due to version mismatch.
+   * Indicates successful operation.
    */
-  readonly versionstamp?: string;
+  readonly ok: true;
+
+  /**
+   * Version identifier for the atomic commit.
+   */
+  readonly versionstamp: string;
 }
 
 /**
- * Union of all Deno KV result types.
+ * Result of an atomic operation that failed due to version check.
+ * This is not an error - it's expected behavior when optimistic locking detects a conflict.
+ */
+export interface DenoKvAtomicResultCheckFailed extends ClientResult {
+  /**
+   * Result kind discriminator.
+   *
+   * Always `"deno-kv:atomic"` for KV atomic operations.
+   */
+  readonly kind: "deno-kv:atomic";
+
+  /**
+   * Indicates the atomic operation failed due to version mismatch.
+   */
+  readonly ok: false;
+}
+
+/**
+ * Result of an atomic operation that failed due to an error.
+ */
+export interface DenoKvAtomicResultFailure {
+  /**
+   * Result kind discriminator.
+   *
+   * Always `"deno-kv:atomic"` for KV atomic operations.
+   */
+  readonly kind: "deno-kv:atomic";
+
+  /**
+   * Indicates failed operation.
+   */
+  readonly ok: false;
+
+  /**
+   * The error that occurred.
+   */
+  readonly error: DenoKvError;
+
+  /**
+   * Operation duration in milliseconds.
+   */
+  readonly duration: number;
+}
+
+/**
+ * Union type for atomic operation results (success or check failure).
+ * Does not include error failures.
+ */
+export type DenoKvAtomicResult =
+  | DenoKvAtomicResultSuccess
+  | DenoKvAtomicResultCheckFailed;
+
+/**
+ * Union type for all atomic operation results including error failures.
+ */
+export type DenoKvAtomicResultType =
+  | DenoKvAtomicResultSuccess
+  | DenoKvAtomicResultCheckFailed
+  | DenoKvAtomicResultFailure;
+
+/**
+ * Creates a failure result for atomic operations.
+ */
+export function createDenoKvAtomicFailure(
+  error: DenoKvError,
+  duration: number,
+): DenoKvAtomicResultFailure {
+  return {
+    kind: "deno-kv:atomic",
+    ok: false,
+    error,
+    duration,
+  };
+}
+
+/**
+ * Union of all Deno KV success result types.
  */
 export type DenoKvResult<T = unknown> =
   | DenoKvGetResult<T>
   | DenoKvSetResult
   | DenoKvDeleteResult
   | DenoKvListResult<T>
-  | DenoKvAtomicResult;
+  | DenoKvAtomicResultSuccess
+  | DenoKvAtomicResultCheckFailed;
+
+/**
+ * Union of all Deno KV result types including failures.
+ */
+export type DenoKvResultType<T = unknown> =
+  | DenoKvGetResultType<T>
+  | DenoKvSetResultType
+  | DenoKvDeleteResultType
+  | DenoKvListResultType<T>
+  | DenoKvAtomicResultType;

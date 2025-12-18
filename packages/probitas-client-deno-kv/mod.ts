@@ -10,6 +10,7 @@
  * - **Atomic Transactions**: Atomic operations with version checking
  * - **Type Safety**: Generic type parameters for stored values
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
+ * - **Error Handling**: Configurable error handling with `throwOnError` option
  *
  * ## Installation
  *
@@ -26,14 +27,17 @@
  *
  * // Set a value
  * const setResult = await kv.set(["users", "1"], { name: "Alice", age: 30 });
+ * if (!setResult.ok) throw new Error("Set failed");
  * console.log("Versionstamp:", setResult.versionstamp);
  *
  * // Get a value with type
  * const getResult = await kv.get<{ name: string; age: number }>(["users", "1"]);
+ * if (!getResult.ok) throw new Error("Get failed");
  * console.log("User:", getResult.value);
  *
  * // List entries by prefix
  * const listResult = await kv.list<{ name: string }>({ prefix: ["users"] });
+ * if (!listResult.ok) throw new Error("List failed");
  * console.log("Entries:", listResult.entries);
  *
  * await kv.close();
@@ -54,6 +58,7 @@
  *
  * // Atomic increment
  * const current = await kv.get<bigint>(["counter"]);
+ * if (!current.ok) throw new Error("Get failed");
  * const atomic2 = kv.atomic();
  * atomic2.check({ key: ["counter"], versionstamp: current.versionstamp });
  * atomic2.set(["counter"], (current.value ?? 0n) + 1n);
@@ -71,6 +76,7 @@
  *
  * await kv.set(["test"], "value");
  * const result = await kv.get(["test"]);
+ * if (!result.ok) throw new Error("Get failed");
  * console.log(result.value);
  * // Client automatically closed when block exits
  * ```

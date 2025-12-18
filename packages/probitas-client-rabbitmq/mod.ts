@@ -10,6 +10,7 @@
  * - **Publishing**: Publish messages with routing keys and headers
  * - **Consuming**: Consume messages with acknowledgment support
  * - **Resource Management**: Implements `AsyncDisposable` for proper cleanup
+ * - **Error Handling**: Configurable `throwOnError` for flexible error handling
  *
  * ## Installation
  *
@@ -42,7 +43,10 @@
  * const channel = await client.channel();
  *
  * // Declare a queue
- * await channel.assertQueue("test-queue", { durable: true });
+ * const queueResult = await channel.assertQueue("test-queue", { durable: true });
+ * if (!queueResult.ok) {
+ *   console.error("Failed to create queue:", queueResult.error);
+ * }
  *
  * // Publish a message
  * const content = new TextEncoder().encode("Hello, World!");
@@ -59,6 +63,32 @@
  *
  * await client.close();
  * await client2.close();
+ * ```
+ *
+ * ## Error Handling with `throwOnError`
+ *
+ * By default, operations return failure results with `ok: false` on error.
+ * Set `throwOnError: true` to throw errors instead.
+ *
+ * ```ts
+ * import { createRabbitMqClient } from "@probitas/client-rabbitmq";
+ *
+ * // Client-level setting (default: false)
+ * const client = await createRabbitMqClient({
+ *   url: "amqp://localhost:5672",
+ *   throwOnError: true, // All operations will throw on error
+ * });
+ *
+ * // Operation-level override
+ * const channel = await client.channel();
+ * const result = await channel.assertQueue("test", {
+ *   throwOnError: false, // Override for this operation only
+ * });
+ * if (!result.ok) {
+ *   console.error("Queue creation failed:", result.error);
+ * }
+ *
+ * await client.close();
  * ```
  *
  * ## Exchange and Binding
@@ -93,7 +123,8 @@
  * await using client = await createRabbitMqClient({ url: "amqp://localhost:5672" });
  * const channel = await client.channel();
  *
- * await channel.assertQueue("test");
+ * const result = await channel.assertQueue("test");
+ * if (!result.ok) throw result.error;
  * // Client automatically closed when scope exits
  * ```
  *
@@ -116,3 +147,10 @@
 export type * from "./types.ts";
 export * from "./errors.ts";
 export * from "./client.ts";
+export {
+  createRabbitMqAckFailure,
+  createRabbitMqConsumeFailure,
+  createRabbitMqExchangeFailure,
+  createRabbitMqPublishFailure,
+  createRabbitMqQueueFailure,
+} from "./result.ts";

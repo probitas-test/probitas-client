@@ -1,20 +1,27 @@
-import type { CommonOptions } from "@probitas/client";
 import { getLogger } from "@probitas/logger";
 import type {
   DenoKvClientConfig,
+  DenoKvGetDeleteOptions,
   DenoKvListOptions,
   DenoKvSetOptions,
 } from "./types.ts";
 import type {
-  DenoKvDeleteResult,
+  DenoKvDeleteResultType,
   DenoKvEntry,
-  DenoKvGetResult,
-  DenoKvListResult,
-  DenoKvSetResult,
+  DenoKvGetResultType,
+  DenoKvListResultType,
+  DenoKvSetResultType,
 } from "./results.ts";
-import { createDenoKvEntries } from "./results.ts";
+import {
+  createDenoKvDeleteFailure,
+  createDenoKvEntries,
+  createDenoKvGetFailure,
+  createDenoKvListFailure,
+  createDenoKvSetFailure,
+} from "./results.ts";
 import type { DenoKvAtomicBuilder } from "./atomic.ts";
 import { DenoKvAtomicBuilderImpl } from "./atomic.ts";
+import { DenoKvError } from "./errors.ts";
 
 const logger = getLogger("probitas", "client", "deno-kv");
 
@@ -46,15 +53,18 @@ export interface DenoKvClient extends AsyncDisposable {
   /**
    * Get a single value by key.
    */
-  get<T>(key: Deno.KvKey, options?: CommonOptions): Promise<DenoKvGetResult<T>>;
+  get<T>(
+    key: Deno.KvKey,
+    options?: DenoKvGetDeleteOptions,
+  ): Promise<DenoKvGetResultType<T>>;
 
   /**
    * Get multiple values by keys.
    */
   getMany<T extends readonly unknown[]>(
     keys: readonly [...{ [K in keyof T]: Deno.KvKey }],
-    options?: CommonOptions,
-  ): Promise<{ [K in keyof T]: DenoKvGetResult<T[K]> }>;
+    options?: DenoKvGetDeleteOptions,
+  ): Promise<{ [K in keyof T]: DenoKvGetResultType<T[K]> }>;
 
   /**
    * Set a value.
@@ -63,12 +73,15 @@ export interface DenoKvClient extends AsyncDisposable {
     key: Deno.KvKey,
     value: T,
     options?: DenoKvSetOptions,
-  ): Promise<DenoKvSetResult>;
+  ): Promise<DenoKvSetResultType>;
 
   /**
    * Delete a key.
    */
-  delete(key: Deno.KvKey, options?: CommonOptions): Promise<DenoKvDeleteResult>;
+  delete(
+    key: Deno.KvKey,
+    options?: DenoKvGetDeleteOptions,
+  ): Promise<DenoKvDeleteResultType>;
 
   /**
    * List entries by selector.
@@ -76,7 +89,7 @@ export interface DenoKvClient extends AsyncDisposable {
   list<T>(
     selector: Deno.KvListSelector,
     options?: DenoKvListOptions,
-  ): Promise<DenoKvListResult<T>>;
+  ): Promise<DenoKvListResultType<T>>;
 
   /**
    * Create an atomic operation builder.
@@ -108,12 +121,14 @@ class DenoKvClientImpl implements DenoKvClient {
 
   async get<T>(
     key: Deno.KvKey,
-    _options?: CommonOptions,
-  ): Promise<DenoKvGetResult<T>> {
+    options?: DenoKvGetDeleteOptions,
+  ): Promise<DenoKvGetResultType<T>> {
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
     const start = performance.now();
 
     // Log get operation start
-    logger.info("Deno KV get starting", {
+    logger.debug("Deno KV get starting", {
       key: key.map((k) => typeof k === "string" ? k : String(k)),
     });
 
@@ -122,7 +137,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log get operation result
-      logger.info("Deno KV get completed", {
+      logger.debug("Deno KV get completed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         found: entry.value !== null,
         duration: `${duration.toFixed(2)}ms`,
@@ -137,7 +152,7 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return {
         kind: "deno-kv:get",
-        ok: true,
+        ok: true as const,
         key: entry.key,
         value: entry.value,
         versionstamp: entry.versionstamp,
@@ -150,18 +165,28 @@ class DenoKvClientImpl implements DenoKvClient {
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+      const kvError = new DenoKvError(
+        error instanceof Error ? error.message : String(error),
+        "kv",
+        { cause: error },
+      );
+      if (shouldThrow) {
+        throw kvError;
+      }
+      return createDenoKvGetFailure(kvError, key, duration);
     }
   }
 
   async getMany<T extends readonly unknown[]>(
     keys: readonly [...{ [K in keyof T]: Deno.KvKey }],
-    _options?: CommonOptions,
-  ): Promise<{ [K in keyof T]: DenoKvGetResult<T[K]> }> {
+    options?: DenoKvGetDeleteOptions,
+  ): Promise<{ [K in keyof T]: DenoKvGetResultType<T[K]> }> {
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
     const start = performance.now();
 
     // Log getMany operation start
-    logger.info("Deno KV getMany starting", {
+    logger.debug("Deno KV getMany starting", {
       count: keys.length,
     });
 
@@ -170,7 +195,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log getMany operation result
-      logger.info("Deno KV getMany completed", {
+      logger.debug("Deno KV getMany completed", {
         count: keys.length,
         found: entries.filter((e) => e.value !== null).length,
         duration: `${duration.toFixed(2)}ms`,
@@ -185,12 +210,12 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return entries.map((entry) => ({
         kind: "deno-kv:get" as const,
-        ok: true,
+        ok: true as const,
         key: entry.key,
         value: entry.value,
         versionstamp: entry.versionstamp,
         duration,
-      })) as { [K in keyof T]: DenoKvGetResult<T[K]> };
+      })) as { [K in keyof T]: DenoKvGetResultType<T[K]> };
     } catch (error) {
       const duration = performance.now() - start;
       logger.debug("Deno KV getMany failed", {
@@ -198,7 +223,18 @@ class DenoKvClientImpl implements DenoKvClient {
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+      const kvError = new DenoKvError(
+        error instanceof Error ? error.message : String(error),
+        "kv",
+        { cause: error },
+      );
+      if (shouldThrow) {
+        throw kvError;
+      }
+      // Return failure results for all keys
+      return keys.map((key) =>
+        createDenoKvGetFailure(kvError, key, duration)
+      ) as { [K in keyof T]: DenoKvGetResultType<T[K]> };
     }
   }
 
@@ -206,11 +242,13 @@ class DenoKvClientImpl implements DenoKvClient {
     key: Deno.KvKey,
     value: T,
     options?: DenoKvSetOptions,
-  ): Promise<DenoKvSetResult> {
+  ): Promise<DenoKvSetResultType> {
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
     const start = performance.now();
 
     // Log set operation start
-    logger.info("Deno KV set starting", {
+    logger.debug("Deno KV set starting", {
       key: key.map((k) => typeof k === "string" ? k : String(k)),
       expireIn: options?.expireIn,
     });
@@ -222,7 +260,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log set operation result
-      logger.info("Deno KV set completed", {
+      logger.debug("Deno KV set completed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         success: result.ok,
         duration: `${duration.toFixed(2)}ms`,
@@ -235,7 +273,7 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return {
         kind: "deno-kv:set",
-        ok: result.ok,
+        ok: true as const,
         versionstamp: result.versionstamp,
         duration,
       };
@@ -246,18 +284,28 @@ class DenoKvClientImpl implements DenoKvClient {
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+      const kvError = new DenoKvError(
+        error instanceof Error ? error.message : String(error),
+        "kv",
+        { cause: error },
+      );
+      if (shouldThrow) {
+        throw kvError;
+      }
+      return createDenoKvSetFailure(kvError, duration);
     }
   }
 
   async delete(
     key: Deno.KvKey,
-    _options?: CommonOptions,
-  ): Promise<DenoKvDeleteResult> {
+    options?: DenoKvGetDeleteOptions,
+  ): Promise<DenoKvDeleteResultType> {
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
     const start = performance.now();
 
     // Log delete operation start
-    logger.info("Deno KV delete starting", {
+    logger.debug("Deno KV delete starting", {
       key: key.map((k) => typeof k === "string" ? k : String(k)),
     });
 
@@ -266,14 +314,14 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log delete operation result
-      logger.info("Deno KV delete completed", {
+      logger.debug("Deno KV delete completed", {
         key: key.map((k) => typeof k === "string" ? k : String(k)),
         duration: `${duration.toFixed(2)}ms`,
       });
 
       return {
         kind: "deno-kv:delete",
-        ok: true,
+        ok: true as const,
         duration,
       };
     } catch (error) {
@@ -283,14 +331,24 @@ class DenoKvClientImpl implements DenoKvClient {
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+      const kvError = new DenoKvError(
+        error instanceof Error ? error.message : String(error),
+        "kv",
+        { cause: error },
+      );
+      if (shouldThrow) {
+        throw kvError;
+      }
+      return createDenoKvDeleteFailure(kvError, duration);
     }
   }
 
   async list<T>(
     selector: Deno.KvListSelector,
     options?: DenoKvListOptions,
-  ): Promise<DenoKvListResult<T>> {
+  ): Promise<DenoKvListResultType<T>> {
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
     const start = performance.now();
 
     // Log list operation start
@@ -308,7 +366,7 @@ class DenoKvClientImpl implements DenoKvClient {
           typeof k === "string" ? k : String(k)
         ),
       };
-    logger.info("Deno KV list starting", {
+    logger.debug("Deno KV list starting", {
       selector: selectorInfo,
       limit: options?.limit,
     });
@@ -332,7 +390,7 @@ class DenoKvClientImpl implements DenoKvClient {
       const duration = performance.now() - start;
 
       // Log list operation result
-      logger.info("Deno KV list completed", {
+      logger.debug("Deno KV list completed", {
         selector: selectorInfo,
         limit: options?.limit,
         returned: entries.length,
@@ -348,7 +406,7 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return {
         kind: "deno-kv:list",
-        ok: true,
+        ok: true as const,
         entries: createDenoKvEntries(entries),
         duration,
       };
@@ -360,12 +418,20 @@ class DenoKvClientImpl implements DenoKvClient {
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+      const kvError = new DenoKvError(
+        error instanceof Error ? error.message : String(error),
+        "kv",
+        { cause: error },
+      );
+      if (shouldThrow) {
+        throw kvError;
+      }
+      return createDenoKvListFailure(kvError, duration);
     }
   }
 
   atomic(): DenoKvAtomicBuilder {
-    return new DenoKvAtomicBuilderImpl(this.#kv);
+    return new DenoKvAtomicBuilderImpl(this.#kv, this.config);
   }
 
   async close(): Promise<void> {
@@ -402,6 +468,7 @@ class DenoKvClientImpl implements DenoKvClient {
  * await kv.set(["users", "123"], { name: "Alice", email: "alice@example.com" });
  *
  * const result = await kv.get<User>(["users", "123"]);
+ * if (!result.ok) throw new Error("Get failed");
  * console.log(result.value);  // { name: "Alice", email: "alice@example.com" }
  *
  * await kv.close();
@@ -445,6 +512,7 @@ class DenoKvClientImpl implements DenoKvClient {
  * const kv = await createDenoKvClient();
  *
  * const result = await kv.list<User>({ prefix: ["users"] });
+ * if (!result.ok) throw new Error("List failed");
  * for (const entry of result.entries) {
  *   console.log(entry.key, entry.value);
  * }

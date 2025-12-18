@@ -48,6 +48,7 @@ Deno.test({
               autoDelete: true,
             });
             assertEquals(result.ok, true);
+            if (!result.ok) throw new Error("Expected ok");
             assertEquals(result.messageCount, 0);
             assertEquals(result.queue, testQueue);
           });
@@ -116,6 +117,7 @@ Deno.test({
           await t.step("get retrieves a message", async () => {
             const result = await channel.get(testQueue);
             assertEquals(result.ok, true);
+            if (!result.ok) throw new Error("Expected ok");
             assertExists(result.message);
             assertEquals(result.message.fields.routingKey, testQueue);
             assertEquals(
@@ -137,6 +139,7 @@ Deno.test({
           await t.step("get returns null for empty queue", async () => {
             const result = await channel.get(testQueue);
             assertEquals(result.ok, true);
+            if (!result.ok) throw new Error("Expected ok");
             assertEquals(result.message, null);
           });
 
@@ -179,6 +182,7 @@ Deno.test({
 
               const result = await channel.get(testQueue);
               assertEquals(result.ok, true);
+              if (!result.ok) throw new Error("Expected ok");
               assertExists(result.message);
               assertEquals(result.message.fields.exchange, testExchange);
               assertEquals(result.message.fields.routingKey, routingKey);
@@ -223,6 +227,7 @@ Deno.test({
 
               const result1 = await channel.get(testQueue);
               assertEquals(result1.ok, true);
+              if (!result1.ok) throw new Error("Expected ok");
               assertExists(result1.message);
 
               if (result1.message) {
@@ -231,6 +236,7 @@ Deno.test({
 
               const result2 = await channel.get(testQueue);
               assertEquals(result2.ok, true);
+              if (!result2.ok) throw new Error("Expected ok");
               assertExists(result2.message);
 
               if (result2.message) {
@@ -246,6 +252,7 @@ Deno.test({
 
             const result = await channel.get(testQueue);
             assertEquals(result.ok, true);
+            if (!result.ok) throw new Error("Expected ok");
             assertExists(result.message);
 
             if (result.message) {
@@ -254,6 +261,7 @@ Deno.test({
 
             const result2 = await channel.get(testQueue);
             assertEquals(result2.ok, true);
+            if (!result2.ok) throw new Error("Expected ok");
             assertEquals(result2.message, null);
           });
 

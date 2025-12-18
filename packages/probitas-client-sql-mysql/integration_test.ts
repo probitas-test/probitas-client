@@ -60,7 +60,7 @@ Deno.test({
           "SELECT 1 as result",
         );
 
-        assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 1);
 
         assertEquals(result.rows.first()?.result, 1);
@@ -83,7 +83,7 @@ Deno.test({
         "SELECT 1 as result",
       );
 
-      assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.rows.length, 1);
     });
 
@@ -92,7 +92,7 @@ Deno.test({
 
       const result = await client.query<{ now: Date }>("SELECT NOW() as now");
 
-      assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.rows.length, 1);
     });
 
@@ -104,7 +104,7 @@ Deno.test({
         [10, 20],
       );
 
-      assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.rows.length, 1);
 
       assertEquals(result.rows.first()?.sum, 30);
@@ -149,7 +149,7 @@ Deno.test({
           ["Alice", "alice@example.com"],
         );
 
-        assertEquals(insertResult.ok, true);
+        if (!insertResult.ok) throw new Error("Expected ok");
         assertEquals(insertResult.rowCount, 1);
         assertExists(insertResult.lastInsertId);
 
@@ -163,7 +163,7 @@ Deno.test({
           ["Alice"],
         );
 
-        assertEquals(selectResult.ok, true);
+        if (!selectResult.ok) throw new Error("Expected ok");
         assertEquals(selectResult.rows.length, 1);
 
         assertEquals(selectResult.rows.first()?.name, "Alice");
@@ -190,6 +190,7 @@ Deno.test({
             "INSERT INTO test_tx_helper (value) VALUES (?)",
             ["auto-committed"],
           );
+          if (!result.ok) throw new Error("Expected ok");
           return result.lastInsertId;
         });
 
@@ -200,7 +201,7 @@ Deno.test({
           [lastInsertId],
         );
 
-        assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 1);
 
         assertEquals(result.rows.first()?.value, "auto-committed");
@@ -238,7 +239,7 @@ Deno.test({
           ["will-rollback"],
         );
 
-        assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 0);
       } finally {
         await client.query("DROP TABLE IF EXISTS test_tx_error");
@@ -253,6 +254,7 @@ Deno.test({
           "SELECT @@transaction_isolation as level",
         );
 
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first()?.level, "SERIALIZABLE");
       }, { isolationLevel: "serializable" });
     });
@@ -273,7 +275,7 @@ Deno.test({
           ["test"],
         );
 
-        assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rowCount, 1);
         assertExists(result.lastInsertId);
 
@@ -290,6 +292,7 @@ Deno.test({
         "SELECT 1 as n UNION SELECT 2 UNION SELECT 3",
       );
 
+      if (!result.ok) throw new Error("Expected ok");
       const doubled = result.map((row) => row.n * 2);
 
       assertEquals(doubled.sort(), [2, 4, 6]);
@@ -300,7 +303,7 @@ Deno.test({
 
       const result = await client.query("SELECT SLEEP(0.1)");
 
-      assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertLess(result.duration, 1000);
 
       // Should take at least 100ms due to SLEEP

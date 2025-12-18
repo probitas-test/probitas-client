@@ -34,7 +34,9 @@
  *   "SELECT id, name FROM read_parquet('data/*.parquet') WHERE active = ?",
  *   [true]
  * );
- * console.log(result.rows);
+ * if (result.ok) {
+ *   console.log(result.rows);
+ * }
  *
  * // Analytical queries
  * const stats = await client.query(`

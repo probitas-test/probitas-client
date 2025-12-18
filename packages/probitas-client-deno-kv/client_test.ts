@@ -27,6 +27,7 @@ Deno.test("DenoKvClient.get", async (t) => {
     try {
       const result = await kv.get(["nonexistent"]);
       assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.key, ["nonexistent"]);
       assertEquals(result.value, null);
       assertEquals(result.versionstamp, null);
@@ -42,6 +43,7 @@ Deno.test("DenoKvClient.get", async (t) => {
       await kv.set(["test"], { name: "Alice" });
       const result = await kv.get<{ name: string }>(["test"]);
       assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.value, { name: "Alice" });
       assertEquals(typeof result.versionstamp, "string");
     } finally {
@@ -64,6 +66,9 @@ Deno.test("DenoKvClient.getMany", async (t) => {
       ]);
 
       assertEquals(results.length, 3);
+      if (!results[0].ok) throw new Error("Expected ok");
+      if (!results[1].ok) throw new Error("Expected ok");
+      if (!results[2].ok) throw new Error("Expected ok");
       assertEquals(results[0].value, 1);
       assertEquals(results[1].value, 2);
       assertEquals(results[2].value, null);
@@ -79,10 +84,12 @@ Deno.test("DenoKvClient.set", async (t) => {
     try {
       const result = await kv.set(["test"], { name: "Bob" });
       assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(typeof result.versionstamp, "string");
       assertGreater(result.duration, 0);
 
       const getResult = await kv.get<{ name: string }>(["test"]);
+      if (!getResult.ok) throw new Error("Expected ok");
       assertEquals(getResult.value, { name: "Bob" });
     } finally {
       await kv.close();
@@ -107,9 +114,11 @@ Deno.test("DenoKvClient.delete", async (t) => {
       await kv.set(["test"], "value");
       const result = await kv.delete(["test"]);
       assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertGreater(result.duration, 0);
 
       const getResult = await kv.get(["test"]);
+      if (!getResult.ok) throw new Error("Expected ok");
       assertEquals(getResult.value, null);
     } finally {
       await kv.close();
@@ -137,6 +146,7 @@ Deno.test("DenoKvClient.list", async (t) => {
 
       const result = await kv.list<{ name: string }>({ prefix: ["users"] });
       assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.entries.length, 2);
       assertEquals(result.entries.first()?.value.name, "Alice");
       assertEquals(result.entries.last()?.value.name, "Bob");
@@ -153,6 +163,7 @@ Deno.test("DenoKvClient.list", async (t) => {
       await kv.set(["items", "3"], 3);
 
       const result = await kv.list<number>({ prefix: ["items"] }, { limit: 2 });
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.entries.length, 2);
     } finally {
       await kv.close();
@@ -170,6 +181,7 @@ Deno.test("DenoKvClient.list", async (t) => {
         { prefix: ["items"] },
         { reverse: true },
       );
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.entries.first()?.value, "c");
       assertEquals(result.entries.last()?.value, "a");
     } finally {
@@ -182,6 +194,7 @@ Deno.test("DenoKvClient.list", async (t) => {
     try {
       const result = await kv.list({ prefix: ["nonexistent"] });
       assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.entries.length, 0);
     } finally {
       await kv.close();
@@ -198,9 +211,11 @@ Deno.test("DenoKvClient.atomic", async (t) => {
         .commit();
 
       assertEquals(result.ok, true);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(typeof result.versionstamp, "string");
 
       const getResult = await kv.get<number>(["counter"]);
+      if (!getResult.ok) throw new Error("Expected ok");
       assertEquals(getResult.value, 1);
     } finally {
       await kv.close();
@@ -212,6 +227,7 @@ Deno.test("DenoKvClient.atomic", async (t) => {
     try {
       await kv.set(["key"], "initial");
       const entry = await kv.get(["key"]);
+      if (!entry.ok) throw new Error("Expected ok");
 
       const result = await kv.atomic()
         .check({ key: ["key"], versionstamp: entry.versionstamp })
@@ -231,6 +247,7 @@ Deno.test("DenoKvClient.atomic", async (t) => {
       try {
         await kv.set(["key"], "initial");
         const entry = await kv.get(["key"]);
+        if (!entry.ok) throw new Error("Expected ok");
 
         // Simulate concurrent modification
         await kv.set(["key"], "modified_by_other");
@@ -242,7 +259,9 @@ Deno.test("DenoKvClient.atomic", async (t) => {
           .commit();
 
         assertEquals(result.ok, false);
-        assertEquals(result.versionstamp, undefined);
+        if (result.ok) throw new Error("Expected not ok");
+        // Check that it's a version check failure (no error property)
+        assertEquals("error" in result, false);
       } finally {
         await kv.close();
       }
@@ -261,6 +280,7 @@ Deno.test("DenoKvClient.atomic", async (t) => {
       assertEquals(result.ok, true);
 
       const getResult = await kv.get(["to-delete"]);
+      if (!getResult.ok) throw new Error("Expected ok");
       assertEquals(getResult.value, null);
     } finally {
       await kv.close();
@@ -279,6 +299,7 @@ Deno.test("DenoKvClient.atomic", async (t) => {
         .commit();
 
       const result = await kv.get<Deno.KvU64>(["counter"]);
+      if (!result.ok) throw new Error("Expected ok");
       assertEquals(result.value?.value, 15n);
     } finally {
       await kv.close();

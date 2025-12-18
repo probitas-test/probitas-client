@@ -1,4 +1,9 @@
-import { assertEquals, assertExists, assertRejects } from "@std/assert";
+import {
+  assertEquals,
+  assertExists,
+  assertInstanceOf,
+  assertRejects,
+} from "@std/assert";
 import {
   ConstraintError,
   createSqliteClient,
@@ -32,6 +37,7 @@ Deno.test({
         );
 
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first(), { value: 1 });
         assertEquals(result.rowCount, 1);
       } finally {
@@ -50,6 +56,7 @@ Deno.test({
           [42, "hello"],
         );
 
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first(), { a: 42, b: "hello" });
       } finally {
         await client.close();
@@ -76,6 +83,7 @@ Deno.test({
         );
 
         assertEquals(insertResult.ok, true);
+        if (!insertResult.ok) throw new Error("Expected ok");
         assertEquals(insertResult.rowCount, 1);
         assertEquals(insertResult.lastInsertId, 1n);
 
@@ -86,6 +94,7 @@ Deno.test({
           [1],
         );
 
+        if (!selectResult.ok) throw new Error("Expected ok");
         assertEquals(selectResult.rows.first(), {
           id: 1,
           name: "Alice",
@@ -127,9 +136,10 @@ Deno.test({
       }
     });
 
-    await t.step("handles syntax errors", async () => {
+    await t.step("handles syntax errors with throwOnError", async () => {
       const client = await createSqliteClient({
         path: ":memory:",
+        throwOnError: true,
       });
 
       try {
@@ -142,36 +152,94 @@ Deno.test({
       }
     });
 
-    await t.step("handles constraint violations", async () => {
-      const client = await createSqliteClient({
-        path: ":memory:",
-      });
+    await t.step(
+      "returns failure result for syntax errors by default",
+      async () => {
+        const client = await createSqliteClient({
+          path: ":memory:",
+        });
 
-      try {
-        await client.query(`
+        try {
+          const result = await client.query("SELEC * FROM users");
+          assertEquals(result.ok, false);
+          if (!result.ok) {
+            assertInstanceOf(result.error, QuerySyntaxError);
+          }
+        } finally {
+          await client.close();
+        }
+      },
+    );
+
+    await t.step(
+      "handles constraint violations with throwOnError",
+      async () => {
+        const client = await createSqliteClient({
+          path: ":memory:",
+          throwOnError: true,
+        });
+
+        try {
+          await client.query(`
           CREATE TABLE unique_test (
             id INTEGER PRIMARY KEY,
             code TEXT UNIQUE
           )
         `);
 
-        await client.query(
-          "INSERT INTO unique_test (code) VALUES (?)",
-          ["ABC"],
-        );
+          await client.query(
+            "INSERT INTO unique_test (code) VALUES (?)",
+            ["ABC"],
+          );
 
-        await assertRejects(
-          () =>
-            client.query(
-              "INSERT INTO unique_test (code) VALUES (?)",
-              ["ABC"],
-            ),
-          ConstraintError,
-        );
-      } finally {
-        await client.close();
-      }
-    });
+          await assertRejects(
+            () =>
+              client.query(
+                "INSERT INTO unique_test (code) VALUES (?)",
+                ["ABC"],
+              ),
+            ConstraintError,
+          );
+        } finally {
+          await client.close();
+        }
+      },
+    );
+
+    await t.step(
+      "returns failure result for constraint violations by default",
+      async () => {
+        const client = await createSqliteClient({
+          path: ":memory:",
+        });
+
+        try {
+          await client.query(`
+          CREATE TABLE unique_test2 (
+            id INTEGER PRIMARY KEY,
+            code TEXT UNIQUE
+          )
+        `);
+
+          await client.query(
+            "INSERT INTO unique_test2 (code) VALUES (?)",
+            ["ABC"],
+          );
+
+          const result = await client.query(
+            "INSERT INTO unique_test2 (code) VALUES (?)",
+            ["ABC"],
+          );
+
+          assertEquals(result.ok, false);
+          if (!result.ok) {
+            assertInstanceOf(result.error, ConstraintError);
+          }
+        } finally {
+          await client.close();
+        }
+      },
+    );
 
     await t.step("transaction commits on success", async () => {
       const client = await createSqliteClient({
@@ -192,6 +260,7 @@ Deno.test({
           "SELECT * FROM tx_test ORDER BY id",
         );
 
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 2);
         assertEquals(result.rows[0].value, "one");
         assertEquals(result.rows[1].value, "two");
@@ -226,6 +295,7 @@ Deno.test({
           "SELECT * FROM rollback_test",
         );
 
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 0);
       } finally {
         await client.close();
@@ -256,6 +326,7 @@ Deno.test({
           "SELECT value FROM isolation_test",
         );
 
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first()?.value, "serializable");
       } finally {
         await client.close();
@@ -268,6 +339,7 @@ Deno.test({
       {
         await using client = await createSqliteClient({
           path: ":memory:",
+          throwOnError: true,
         });
         clientRef = client;
 
@@ -313,10 +385,13 @@ Deno.test({
         );
 
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertExists(result.rows.length);
         assertEquals(result.rows.length, 2);
         assertEquals(
-          result.rows.some((r) => r.name === "Alice"),
+          result.rows.some((r: { id: number; name: string }) =>
+            r.name === "Alice"
+          ),
           true,
         );
       } finally {
@@ -334,6 +409,7 @@ Deno.test({
         const journalResult = await client.query<{ journal_mode: string }>(
           "PRAGMA journal_mode",
         );
+        if (!journalResult.ok) throw new Error("Expected ok");
         assertEquals(journalResult.rows.first()?.journal_mode, "memory");
         // Note: In-memory databases return "memory" even with WAL enabled
         // WAL is effectively ignored for :memory: databases
@@ -389,6 +465,7 @@ Deno.test({
           const result = await backupClient.query<{ id: number; name: string }>(
             "SELECT * FROM backup_test",
           );
+          if (!result.ok) throw new Error("Expected ok");
           assertEquals(result.rows.first(), { id: 1, name: "Alice" });
         } finally {
           await backupClient.close();

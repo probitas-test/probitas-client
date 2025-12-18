@@ -1,6 +1,10 @@
 import type { DuckDBConnection } from "@duckdb/node-api";
+import { AbortError, TimeoutError } from "@probitas/client";
 import {
+  createSqlQueryFailure,
+  type SqlOptions,
   SqlQueryResult,
+  type SqlQueryResultType,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -9,16 +13,22 @@ import { convertDuckDbError } from "./errors.ts";
 /**
  * DuckDB-specific transaction options.
  */
-export interface DuckDbTransactionOptions extends SqlTransactionOptions {
+export interface DuckDbTransactionOptions
+  extends SqlTransactionOptions, SqlOptions {
   // DuckDB uses standard isolation levels, no custom options needed
 }
 
 export class DuckDbTransactionImpl implements SqlTransaction {
   readonly #conn: DuckDBConnection;
+  readonly #options?: DuckDbTransactionOptions;
   #finished = false;
 
-  private constructor(conn: DuckDBConnection) {
+  private constructor(
+    conn: DuckDBConnection,
+    options?: DuckDbTransactionOptions,
+  ) {
     this.#conn = conn;
+    this.#options = options;
   }
 
   /**
@@ -26,26 +36,41 @@ export class DuckDbTransactionImpl implements SqlTransaction {
    */
   static async begin(
     conn: DuckDBConnection,
-    _options?: DuckDbTransactionOptions,
+    options?: DuckDbTransactionOptions,
   ): Promise<DuckDbTransactionImpl> {
     try {
       // DuckDB uses "BEGIN TRANSACTION" and doesn't support
       // isolation level syntax in BEGIN statement directly.
       // It operates with snapshot isolation by default.
       await conn.run("BEGIN TRANSACTION");
-      return new DuckDbTransactionImpl(conn);
+      return new DuckDbTransactionImpl(conn, options);
     } catch (error) {
       throw convertDuckDbError(error);
     }
+  }
+
+  /**
+   * Determine if errors should be thrown based on options and transaction config.
+   * Priority: request option > transaction config > default (false)
+   */
+  #shouldThrow(options?: SqlOptions): boolean {
+    return options?.throwOnError ?? this.#options?.throwOnError ?? false;
   }
 
   // deno-lint-ignore no-explicit-any
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-  ): Promise<SqlQueryResult<T>> {
+    options?: SqlOptions,
+  ): Promise<SqlQueryResultType<T>> {
     if (this.#finished) {
-      throw convertDuckDbError(new Error("Transaction is already finished"));
+      const error = convertDuckDbError(
+        new Error("Transaction is already finished"),
+      );
+      if (this.#shouldThrow(options)) {
+        throw error;
+      }
+      return createSqlQueryFailure(error, 0);
     }
 
     const startTime = performance.now();
@@ -109,7 +134,6 @@ export class DuckDbTransactionImpl implements SqlTransaction {
 
       if (isSelect) {
         return new SqlQueryResult<T>({
-          ok: true,
           rows: rows as T[],
           rowCount: rows.length,
           duration,
@@ -117,14 +141,24 @@ export class DuckDbTransactionImpl implements SqlTransaction {
       } else {
         // For INSERT/UPDATE/DELETE, rows will be empty
         return new SqlQueryResult<T>({
-          ok: true,
           rows: [],
           rowCount: rows.length,
           duration,
         });
       }
     } catch (error) {
-      throw convertDuckDbError(error);
+      const duration = performance.now() - startTime;
+      const sqlError = convertDuckDbError(error);
+
+      // TimeoutError and AbortError should always be thrown
+      if (error instanceof TimeoutError || error instanceof AbortError) {
+        throw error;
+      }
+
+      if (this.#shouldThrow(options)) {
+        throw sqlError;
+      }
+      return createSqlQueryFailure(sqlError, duration);
     }
   }
 
@@ -132,8 +166,12 @@ export class DuckDbTransactionImpl implements SqlTransaction {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
+    const result = await this.query<T>(sql, params, options);
+    if (!result.ok) {
+      throw result.error;
+    }
     return result.rows.first();
   }
 

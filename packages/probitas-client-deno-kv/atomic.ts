@@ -1,5 +1,8 @@
 import { getLogger } from "@probitas/logger";
-import type { DenoKvAtomicResult } from "./results.ts";
+import type { DenoKvAtomicOptions, DenoKvClientConfig } from "./types.ts";
+import type { DenoKvAtomicResultType } from "./results.ts";
+import { createDenoKvAtomicFailure } from "./results.ts";
+import { DenoKvError } from "./errors.ts";
 
 const logger = getLogger("probitas", "client", "deno-kv");
 
@@ -56,8 +59,15 @@ export interface DenoKvAtomicBuilder {
 
   /**
    * Commit the atomic operation.
+   *
+   * @param options - Options for the commit operation
+   * @returns Promise that resolves to the result of the atomic operation.
+   *          Returns ok: true with versionstamp on success.
+   *          Returns ok: false (without error) on version check failure.
+   *          Returns ok: false with error on actual errors (when throwOnError is false).
+   *          Throws DenoKvError on actual errors (when throwOnError is true).
    */
-  commit(): Promise<DenoKvAtomicResult>;
+  commit(options?: DenoKvAtomicOptions): Promise<DenoKvAtomicResultType>;
 }
 
 /**
@@ -65,11 +75,13 @@ export interface DenoKvAtomicBuilder {
  */
 export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
   readonly #atomic: Deno.AtomicOperation;
+  readonly #config: DenoKvClientConfig;
   readonly #checks: Deno.AtomicCheck[] = [];
   #operationCount: number = 0;
 
-  constructor(kv: Deno.Kv) {
+  constructor(kv: Deno.Kv, config: DenoKvClientConfig) {
     this.#atomic = kv.atomic();
+    this.#config = config;
   }
 
   check(...checks: Deno.AtomicCheck[]): this {
@@ -141,11 +153,13 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
     return this;
   }
 
-  async commit(): Promise<DenoKvAtomicResult> {
+  async commit(options?: DenoKvAtomicOptions): Promise<DenoKvAtomicResultType> {
+    const shouldThrow = options?.throwOnError ?? this.#config.throwOnError ??
+      false;
     const start = performance.now();
 
     // Log atomic commit start
-    logger.info("Deno KV atomic commit starting", {
+    logger.debug("Deno KV atomic commit starting", {
       operationCount: this.#operationCount,
       checkCount: this.#checks.length,
     });
@@ -155,7 +169,7 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
       const duration = performance.now() - start;
 
       // Log atomic commit result
-      logger.info("Deno KV atomic commit completed", {
+      logger.debug("Deno KV atomic commit completed", {
         operationCount: this.#operationCount,
         checkCount: this.#checks.length,
         success: result.ok,
@@ -170,15 +184,16 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
       if (result.ok) {
         return {
           kind: "deno-kv:atomic",
-          ok: true,
+          ok: true as const,
           versionstamp: result.versionstamp,
           duration,
         };
       }
 
+      // Version check failure - not an error, expected behavior
       return {
         kind: "deno-kv:atomic",
-        ok: false,
+        ok: false as const,
         duration,
       };
     } catch (error) {
@@ -189,7 +204,15 @@ export class DenoKvAtomicBuilderImpl implements DenoKvAtomicBuilder {
         duration: `${duration.toFixed(2)}ms`,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+      const kvError = new DenoKvError(
+        error instanceof Error ? error.message : String(error),
+        "kv",
+        { cause: error },
+      );
+      if (shouldThrow) {
+        throw kvError;
+      }
+      return createDenoKvAtomicFailure(kvError, duration);
     }
   }
 }

@@ -57,6 +57,7 @@ Deno.test({
         const result = await kv.get(["integration", "nonexistent"]);
 
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.value, null);
 
         assertEquals(result.key, ["integration", "nonexistent"]);
@@ -80,12 +81,14 @@ Deno.test({
         const setResult = await kv.set(testKey, testValue);
 
         assertEquals(setResult.ok, true);
+        if (!setResult.ok) throw new Error("Expected ok");
         assertExists(setResult.versionstamp);
         assertLess(setResult.duration, 5000);
 
         const getResult = await kv.get<typeof testValue>(testKey);
 
         assertEquals(getResult.ok, true);
+        if (!getResult.ok) throw new Error("Expected ok");
         assertExists(getResult.value);
         assertEquals(getResult.value, testValue);
         assertExists(getResult.versionstamp);
@@ -110,9 +113,11 @@ Deno.test({
         const deleteResult = await kv.delete(testKey);
 
         assertEquals(deleteResult.ok, true);
+        if (!deleteResult.ok) throw new Error("Expected ok");
         assertLess(deleteResult.duration, 5000);
 
         const getResult = await kv.get(testKey);
+        if (!getResult.ok) throw new Error("Expected ok");
         assertEquals(getResult.value, null);
       } finally {
         await kv.close();
@@ -137,6 +142,9 @@ Deno.test({
         ]);
 
         assertEquals(results.length, 3);
+        if (!results[0].ok) throw new Error("Expected ok");
+        if (!results[1].ok) throw new Error("Expected ok");
+        if (!results[2].ok) throw new Error("Expected ok");
         assertEquals(results[0].value, "value1");
         assertEquals(results[1].value, "value2");
         assertEquals(results[2].value, null);
@@ -161,6 +169,7 @@ Deno.test({
         const result = await kv.list<{ order: number }>({ prefix });
 
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertGreater(result.entries.length, 0);
         assertEquals(result.entries.length, 3);
 
@@ -188,10 +197,12 @@ Deno.test({
         const result = await kv.list<number>({ prefix }, { limit: 2 });
 
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.entries.length, 2);
 
         // Clean up - list all to get keys for deletion
         const allEntries = await kv.list<number>({ prefix });
+        if (!allEntries.ok) throw new Error("Expected ok");
         for (const entry of allEntries.entries) {
           await kv.delete(entry.key);
         }
@@ -212,6 +223,7 @@ Deno.test({
         const result = await kv.list<string>({ prefix }, { reverse: true });
 
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.entries.length, 3);
 
         assertEquals(result.entries.first()?.value, "third");
@@ -239,11 +251,14 @@ Deno.test({
           .commit();
 
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertExists(result.versionstamp);
 
         const get1 = await kv.get<number>(key1);
         const get2 = await kv.get<{ created: boolean }>(key2);
 
+        if (!get1.ok) throw new Error("Expected ok");
+        if (!get2.ok) throw new Error("Expected ok");
         assertEquals(get1.value, 42);
         assertEquals(get2.value?.created, true);
 
@@ -262,6 +277,7 @@ Deno.test({
 
         await kv.set(key, "initial");
         const entry = await kv.get(key);
+        if (!entry.ok) throw new Error("Expected ok");
 
         const result = await kv.atomic()
           .check({ key, versionstamp: entry.versionstamp })
@@ -269,9 +285,11 @@ Deno.test({
           .commit();
 
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertExists(result.versionstamp);
 
         const updated = await kv.get<string>(key);
+        if (!updated.ok) throw new Error("Expected ok");
         assertEquals(updated.value, "updated");
 
         // Clean up
@@ -292,6 +310,7 @@ Deno.test({
 
         await kv.set(key, "initial");
         const entry = await kv.get(key);
+        if (!entry.ok) throw new Error("Expected ok");
 
         // Simulate concurrent modification
         await kv.set(key, "modified_by_other");
@@ -303,10 +322,13 @@ Deno.test({
           .commit();
 
         assertEquals(result.ok, false);
-        assertEquals(result.versionstamp, undefined);
+        if (result.ok) throw new Error("Expected not ok");
+        // Check that it's a version check failure (no error property)
+        assertEquals("error" in result, false);
 
         // Value should remain as modified by other
         const current = await kv.get<string>(key);
+        if (!current.ok) throw new Error("Expected ok");
         assertEquals(current.value, "modified_by_other");
 
         // Clean up
@@ -334,6 +356,7 @@ Deno.test({
         assertEquals(result.ok, true);
 
         const getResult = await kv.get(key);
+        if (!getResult.ok) throw new Error("Expected ok");
         assertEquals(getResult.value, null);
       } finally {
         await kv.close();
@@ -354,6 +377,7 @@ Deno.test({
           .commit();
 
         const result = await kv.get<Deno.KvU64>(key);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.value?.value, 15n);
 
         // Clean up
@@ -377,6 +401,7 @@ Deno.test({
         ];
         await kv.set(testKey, "test");
         const result = await kv.get(testKey);
+        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.value, "test");
 
         // Clean up
@@ -402,6 +427,7 @@ Deno.test({
 
         // Standard assertions
         assertEquals(result.ok, true);
+        if (!result.ok) throw new Error("Expected ok");
         assertExists(result.value);
         assertEquals(result.value?.name, "Bob");
         assertExists(result.versionstamp);

@@ -1,4 +1,5 @@
-import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
+import type { CommonConnectionConfig } from "@probitas/client";
+import type { SqlOptions } from "@probitas/client-sql";
 
 /**
  * TLS/SSL configuration for MySQL connections.
@@ -74,7 +75,7 @@ export interface MySqlConnectionConfig extends CommonConnectionConfig {
 /**
  * Configuration for creating a MySQL client.
  */
-export interface MySqlClientConfig extends CommonOptions {
+export interface MySqlClientConfig extends SqlOptions {
   /**
    * Connection URL or configuration.
    *
