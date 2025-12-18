@@ -1,4 +1,4 @@
-import { ClientError } from "@probitas/client";
+import { AbortError, ClientError, TimeoutError } from "@probitas/client";
 import type { GraphqlErrorItem, GraphqlResponse } from "./types.ts";
 
 /**
@@ -87,3 +87,21 @@ function formatGraphqlErrorDetail(errors: readonly GraphqlErrorItem[]): string {
     .map((line) => `  ${line}`)
     .join("\n");
 }
+
+/**
+ * Error types that indicate an operation was processed by the server.
+ * These errors occur after the GraphQL request reaches the server.
+ */
+export type GraphqlOperationError =
+  | GraphqlValidationError
+  | GraphqlExecutionError
+  | GraphqlError;
+
+/**
+ * Error types that indicate the operation was not processed.
+ * These are errors that occur before the request reaches the GraphQL server.
+ */
+export type GraphqlFailureError =
+  | GraphqlNetworkError
+  | AbortError
+  | TimeoutError;

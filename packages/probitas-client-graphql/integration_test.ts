@@ -8,8 +8,10 @@
  */
 
 import {
+  assert,
   assertEquals,
   assertExists,
+  assertFalse,
   assertInstanceOf,
   assertLess,
 } from "@std/assert";
@@ -44,7 +46,7 @@ Deno.test({
         "{ __typename }",
       );
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 200);
       assertExists(res.data());
 
@@ -56,7 +58,7 @@ Deno.test({
         __schema: { queryType: { name: string } };
       }>("{ __schema { queryType { name } } }");
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertExists(res.data());
 
       assertEquals(res.data()?.__schema.queryType.name, "Query");
@@ -72,7 +74,7 @@ Deno.test({
         { message: "Hello, Probitas!" },
       );
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertExists(res.data());
       assertEquals(res.data()?.echo, "Hello, Probitas!");
     });
@@ -89,7 +91,7 @@ Deno.test({
       );
       const elapsed = Date.now() - start;
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertExists(res.data());
       assertEquals(res.data()?.echoWithDelay, "Delayed message");
 
@@ -116,7 +118,7 @@ Deno.test({
         { message: "This should fail" },
       );
 
-      assertEquals(res.ok, false);
+      assertFalse(res.ok);
 
       await clientNoThrow.close();
     });
@@ -147,7 +149,7 @@ Deno.test({
           { messages: ["success", "error", "also success"] },
         );
 
-        assertEquals(res.ok, true);
+        assert(res.ok);
         assertExists(res.data());
         const results = res.data()?.echoPartialError;
         // First and third should succeed, second should have error
@@ -172,7 +174,7 @@ Deno.test({
         { operationName: "FirstQuery" },
       );
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
     });
 
     await t.step("includes duration in response", async () => {
@@ -198,7 +200,7 @@ Deno.test({
       await using c = createGraphqlClient({ url: GRAPHQL_URL });
 
       const res = await c.query("{ __typename }");
-      assertEquals(res.ok, true);
+      assert(res.ok);
     });
 
     await t.step("default headers from config", async () => {
@@ -211,7 +213,7 @@ Deno.test({
       });
 
       const res = await clientWithHeaders.query("{ __typename }");
-      assertEquals(res.ok, true);
+      assert(res.ok);
 
       await clientWithHeaders.close();
     });
@@ -228,7 +230,7 @@ Deno.test({
         { headers: { "X-Header": "from-request" } },
       );
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
 
       await clientWithHeaders.close();
     });
@@ -237,13 +239,19 @@ Deno.test({
       "throws GraphqlNetworkError on validation error (HTTP 422)",
       async () => {
         // echo-graphql returns HTTP 422 for invalid queries
+        // Use throwOnError: true to test throwing behavior
+        const throwingClient = createGraphqlClient({
+          url: GRAPHQL_URL,
+          throwOnError: true,
+        });
         try {
-          await client.query("{ nonExistentField }");
+          await throwingClient.query("{ nonExistentField }");
           throw new Error("Expected GraphqlNetworkError");
         } catch (error) {
           assertInstanceOf(error, GraphqlNetworkError);
           assertEquals(error.message.includes("422"), true);
         }
+        await throwingClient.close();
       },
     );
 
@@ -264,7 +272,7 @@ Deno.test({
           { message: "This triggers an error" },
         );
 
-        assertEquals(res.ok, false);
+        assertFalse(res.ok);
 
         await clientNoThrow.close();
       },
@@ -273,7 +281,7 @@ Deno.test({
     await t.step("execute() works for queries", async () => {
       const res = await client.execute("query { __typename }");
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
     });
 
     await t.step("mutation - createMessage", async () => {
@@ -292,7 +300,7 @@ Deno.test({
         { text: "Hello from integration test" },
       );
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertExists(res.data());
 
       const message = res.data()?.createMessage;
@@ -304,7 +312,7 @@ Deno.test({
     await t.step("standard assertion chaining", async () => {
       const res = await client.query<{ __typename: string }>("{ __typename }");
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 200);
       assertExists(res.data());
       assertEquals(res.data()?.__typename, "Query");
@@ -325,7 +333,7 @@ Deno.test({
           { message: "Hello" },
         );
 
-        assertEquals(res.ok, true);
+        assert(res.ok);
         assertExists(res.data());
         assertEquals(res.data()?.echoWithExtensions, "Hello");
         // Server includes timing and tracing extensions
@@ -367,7 +375,7 @@ Deno.test({
         { id: messageId, text: "Updated text" },
       );
 
-      assertEquals(updateRes.ok, true);
+      assert(updateRes.ok);
       assertExists(updateRes.data());
       assertEquals(updateRes.data()?.updateMessage.id, messageId);
       assertEquals(updateRes.data()?.updateMessage.text, "Updated text");
@@ -402,7 +410,7 @@ Deno.test({
         { id: messageId },
       );
 
-      assertEquals(deleteRes.ok, true);
+      assert(deleteRes.ok);
       assertExists(deleteRes.data());
       assertEquals(deleteRes.data()?.deleteMessage, true);
     });
@@ -425,7 +433,7 @@ Deno.test({
             { from: 3 },
           )
         ) {
-          assertEquals(res.ok, true);
+          assert(res.ok);
           assertExists(res.data());
           numbers.push(res.data()?.countdown ?? -1);
         }
@@ -466,7 +474,7 @@ Deno.test({
           { headers: { "X-Request-Id": "req-789" } },
         );
 
-        assertEquals(res.ok, true);
+        assert(res.ok);
         assertExists(res.data());
 
         const headers = res.data()?.echoHeaders;

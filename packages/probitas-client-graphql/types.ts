@@ -1,5 +1,10 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
-import type { GraphqlResponse } from "./response.ts";
+import type {
+  GraphqlResponse,
+  GraphqlResponseError,
+  GraphqlResponseFailure,
+  GraphqlResponseSuccess,
+} from "./response.ts";
 
 /**
  * GraphQL error item as per GraphQL specification.
@@ -19,7 +24,12 @@ export interface GraphqlErrorItem {
   readonly extensions?: Record<string, unknown>;
 }
 
-export type { GraphqlResponse };
+export type {
+  GraphqlResponse,
+  GraphqlResponseError,
+  GraphqlResponseFailure,
+  GraphqlResponseSuccess,
+};
 
 /**
  * Options for individual GraphQL requests.
@@ -32,8 +42,8 @@ export interface GraphqlOptions extends CommonOptions {
   readonly operationName?: string;
 
   /**
-   * Whether to throw GraphqlError when response contains errors.
-   * @default true (inherited from client config if not specified)
+   * Whether to throw GraphqlError when response contains errors or request fails.
+   * @default false (inherited from client config if not specified)
    */
   readonly throwOnError?: boolean;
 }
@@ -92,9 +102,9 @@ export interface GraphqlClientConfig extends CommonOptions {
   readonly fetch?: typeof fetch;
 
   /**
-   * Whether to throw GraphqlError when response contains errors.
+   * Whether to throw GraphqlError when response contains errors or request fails.
    * Can be overridden per-request via GraphqlOptions.
-   * @default true
+   * @default false
    */
   readonly throwOnError?: boolean;
 }
