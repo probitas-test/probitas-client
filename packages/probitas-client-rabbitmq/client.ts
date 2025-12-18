@@ -493,7 +493,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:exchange",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
@@ -526,7 +528,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:exchange",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
@@ -593,7 +597,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:queue",
+        processed: true,
         ok: true,
+        error: null,
         queue: result.queue,
         messageCount: result.messageCount,
         consumerCount: result.consumerCount,
@@ -630,7 +636,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:queue",
+        processed: true,
         ok: true,
+        error: null,
         queue: name,
         messageCount: result.messageCount,
         consumerCount: 0,
@@ -667,7 +675,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:queue",
+        processed: true,
         ok: true,
+        error: null,
         queue: name,
         messageCount: result.messageCount,
         consumerCount: 0,
@@ -711,7 +721,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:exchange",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
@@ -752,7 +764,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:exchange",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
@@ -821,7 +835,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:publish",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
@@ -865,7 +881,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
         });
         return {
           kind: "rabbitmq:consume",
+          processed: true,
           ok: true,
+          error: null,
           message: null,
           duration,
         };
@@ -888,7 +906,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:consume",
+        processed: true,
         ok: true,
+        error: null,
         message,
         duration,
       };
@@ -1008,7 +1028,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return Promise.resolve({
         kind: "rabbitmq:ack",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       });
     } catch (error) {
@@ -1056,7 +1078,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return Promise.resolve({
         kind: "rabbitmq:ack",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       });
     } catch (error) {
@@ -1103,7 +1127,9 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return Promise.resolve({
         kind: "rabbitmq:ack",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       });
     } catch (error) {

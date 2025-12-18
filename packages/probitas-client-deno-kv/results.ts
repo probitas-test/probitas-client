@@ -12,6 +12,20 @@ export interface DenoKvGetResult<T> extends ClientResult {
   readonly kind: "deno-kv:get";
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful get operations.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful get operations.
+   */
+  readonly error: null;
+
+  /**
    * The key that was requested.
    */
   readonly key: Deno.KvKey;
@@ -39,6 +53,20 @@ export interface DenoKvSetResult extends ClientResult {
   readonly kind: "deno-kv:set";
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful set operations.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful set operations.
+   */
+  readonly error: null;
+
+  /**
    * Version identifier for the newly written value.
    *
    * Use this for subsequent conditional updates.
@@ -56,6 +84,20 @@ export interface DenoKvDeleteResult extends ClientResult {
    * Always `"deno-kv:delete"` for KV delete operations.
    */
   readonly kind: "deno-kv:delete";
+
+  /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful delete operations.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful delete operations.
+   */
+  readonly error: null;
 }
 
 /**
@@ -145,6 +187,20 @@ export interface DenoKvListResult<T> extends ClientResult {
   readonly kind: "deno-kv:list";
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful list operations.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful list operations.
+   */
+  readonly error: null;
+
+  /**
    * Array of entries matching the list selector.
    *
    * Includes helper methods like first(), last(), etc.
@@ -162,6 +218,20 @@ export interface DenoKvAtomicResult extends ClientResult {
    * Always `"deno-kv:atomic"` for KV atomic operations.
    */
   readonly kind: "deno-kv:atomic";
+
+  /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for atomic operations (even if the check fails).
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for atomic operations (check failures are not errors).
+   */
+  readonly error: null;
 
   /**
    * Version identifier for the atomic commit (present only if ok is true).

@@ -14,7 +14,9 @@ Deno.test("ConnectRpcResponse - ok status", () => {
     duration: 100,
   });
 
+  assertEquals(response.processed, true);
   assertEquals(response.ok, true);
+  assertEquals(response.error, null);
   assertEquals(response.statusCode, 0);
   assertEquals(response.statusMessage, null);
   assertEquals(response.duration, 100);
@@ -29,7 +31,9 @@ Deno.test("ConnectRpcResponse - error status", () => {
     duration: 50,
   });
 
+  assertEquals(response.processed, true);
   assertEquals(response.ok, false);
+  assertEquals(response.error, error);
   assertEquals(response.statusCode, 5);
   assertEquals(response.statusMessage, "Not found");
 });

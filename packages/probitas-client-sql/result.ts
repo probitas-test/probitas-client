@@ -38,11 +38,25 @@ export class SqlQueryResult<T = Record<string, any>> implements ClientResult {
   readonly kind = "sql" as const;
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for SqlQueryResult since it represents a successful server response.
+   */
+  readonly processed = true as const;
+
+  /**
    * Whether the query succeeded.
    *
    * Inherited from ClientResult. Always true for successful queries.
    */
   readonly ok: boolean;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for SqlQueryResult since it represents a successful response.
+   */
+  readonly error = null;
 
   /**
    * Query result rows.

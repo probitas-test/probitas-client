@@ -310,7 +310,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:get",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -381,7 +383,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:set",
+        processed: true,
         ok: result === "OK",
+        error: null,
         value: "OK",
         duration,
       };
@@ -422,7 +426,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count,
         duration,
       };
@@ -463,7 +469,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -504,7 +512,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -558,7 +568,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:get",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -613,7 +625,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count,
         duration,
       };
@@ -662,7 +676,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:hash",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -706,7 +722,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count,
         duration,
       };
@@ -753,7 +771,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count,
         duration,
       };
@@ -798,7 +818,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count,
         duration,
       };
@@ -840,7 +862,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:get",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -881,7 +905,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:get",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -937,7 +963,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:array",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -980,7 +1008,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -1026,7 +1056,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count,
         duration,
       };
@@ -1071,7 +1103,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count,
         duration,
       };
@@ -1120,7 +1154,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:array",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -1167,7 +1203,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:common",
+        processed: true,
         ok: true,
+        error: null,
         value: result === 1,
         duration,
       };
@@ -1221,7 +1259,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count as number,
         duration,
       };
@@ -1278,7 +1318,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:array",
+        processed: true,
         ok: true,
+        error: null,
         value,
         duration,
       };
@@ -1327,7 +1369,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:common",
+        processed: true,
         ok: true,
+        error: null,
         value: value !== null ? parseFloat(value) : null,
         duration,
       };
@@ -1375,7 +1419,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:count",
+        processed: true,
         ok: true,
+        error: null,
         value: count,
         duration,
       };
@@ -1530,7 +1576,9 @@ class RedisClientImpl implements RedisClient {
       });
       return {
         kind: "redis:common",
+        processed: true,
         ok: true,
+        error: null,
         value: value as T,
         duration,
       };
@@ -1730,7 +1778,9 @@ class RedisTransactionImpl implements RedisTransaction {
       });
       return {
         kind: "redis:array",
+        processed: true,
         ok: true,
+        error: null,
         value: values,
         duration,
       };

@@ -15,10 +15,25 @@ export interface HttpResponse extends ClientResult {
    */
   readonly kind: "http";
 
+  /**
+   * Whether the request was processed by the server.
+   *
+   * Always `true` for HttpResponse (server responded).
+   * Will be `false` in HttpResponseFailure for network errors.
+   */
+  readonly processed: true;
+
   // --- Web standard Response compatible properties ---
 
   /** Whether the response was successful (status 200-299) */
   readonly ok: boolean;
+
+  /**
+   * Error that occurred during the operation (null for 2xx responses).
+   *
+   * Contains HttpError for non-2xx responses when available.
+   */
+  readonly error: Error | null;
 
   /** HTTP status code */
   readonly status: number;
@@ -67,7 +82,9 @@ export interface HttpResponse extends ClientResult {
  */
 class HttpResponseImpl implements HttpResponse {
   readonly kind = "http" as const;
+  readonly processed = true as const;
   readonly ok: boolean;
+  readonly error: Error | null;
   readonly status: number;
   readonly statusText: string;
   readonly headers: Headers;
@@ -84,8 +101,10 @@ class HttpResponseImpl implements HttpResponse {
     raw: globalThis.Response,
     body: Uint8Array | null,
     duration: number,
+    error: Error | null = null,
   ) {
     this.ok = raw.ok;
+    this.error = error;
     this.status = raw.status;
     this.statusText = raw.statusText;
     this.headers = raw.headers;

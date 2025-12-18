@@ -130,19 +130,26 @@ export interface CommonOptions {
  * type MyResult = HttpResponse | SqlQueryResult;
  *
  * function handleResult(result: MyResult) {
- *   switch (result.kind) {
- *     case "http":
- *       // TypeScript narrows to HttpResponse
- *       console.log(result.status);
- *       break;
- *     case "sql":
- *       // TypeScript narrows to SqlQueryResult
- *       console.log(result.rowCount);
- *       break;
+ *   // Check if request reached the server
+ *   if (!result.processed) {
+ *     console.error("Network failure:", result.error);
+ *     return;
  *   }
  *
- *   if (result.ok) {
- *     console.log(`Success in ${result.duration}ms`);
+ *   // Check if operation succeeded
+ *   if (!result.ok) {
+ *     console.error("Operation failed:", result.error);
+ *     return;
+ *   }
+ *
+ *   // Type narrowing by kind
+ *   switch (result.kind) {
+ *     case "http":
+ *       console.log(`HTTP ${result.status} in ${result.duration}ms`);
+ *       break;
+ *     case "sql":
+ *       console.log(`${result.rowCount} rows in ${result.duration}ms`);
+ *       break;
  *   }
  * }
  * ```
@@ -158,12 +165,31 @@ export interface ClientResult {
   readonly kind: string;
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * - `true`: Server received and processed the request (success or error response)
+   * - `false`: Request failed before reaching the server (network error, timeout, etc.)
+   *
+   * Use this to distinguish between "server returned an error" and "couldn't reach server".
+   */
+  readonly processed: boolean;
+
+  /**
    * Whether the operation succeeded.
    *
    * For HTTP responses, this corresponds to status 200-299.
    * For database operations, this indicates successful execution.
+   * Always `false` when `processed` is `false`.
    */
   readonly ok: boolean;
+
+  /**
+   * Error that occurred during the operation (null if successful).
+   *
+   * Contains the error when `ok` is `false`. The specific error type depends
+   * on the client kind (e.g., HttpError, GraphqlError, SqlError).
+   */
+  readonly error: Error | null;
 
   /**
    * Operation duration in milliseconds.

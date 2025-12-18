@@ -21,12 +21,27 @@ export interface ConnectRpcResponse extends ClientResult {
   readonly kind: "connectrpc";
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for ConnectRpcResponse since the existence of this response
+   * means the server received and processed the request (whether success or error).
+   */
+  readonly processed: true;
+
+  /**
    * Whether the request was successful (statusCode === 0).
    *
    * Inherited from ClientResult. True when statusCode is 0 (OK),
    * false for any error code.
    */
   readonly ok: boolean;
+
+  /**
+   * Error that occurred during the operation (null if successful).
+   *
+   * Contains the ConnectError when ok is false, null otherwise.
+   */
+  readonly error: Error | null;
 
   /**
    * ConnectRPC/gRPC status code.
@@ -94,7 +109,9 @@ export interface ConnectRpcResponseParams<T = unknown> {
  */
 export class ConnectRpcResponseImpl<T = unknown> implements ConnectRpcResponse {
   readonly kind = "connectrpc" as const;
+  readonly processed = true as const;
   readonly ok: boolean;
+  readonly error: Error | null;
   readonly statusCode: ConnectRpcStatusCode;
   readonly statusMessage: string | null;
   readonly headers: Headers;
@@ -113,10 +130,12 @@ export class ConnectRpcResponseImpl<T = unknown> implements ConnectRpcResponse {
 
     if (params.error) {
       this.ok = false;
+      this.error = params.error;
       this.statusCode = params.error.code as ConnectRpcStatusCode;
       this.statusMessage = params.error.rawMessage || params.error.message;
     } else {
       this.ok = true;
+      this.error = null;
       this.statusCode = 0;
       this.statusMessage = null;
     }

@@ -15,6 +15,13 @@ export interface GraphqlResponse<T = any> extends ClientResult {
   readonly kind: "graphql";
 
   /**
+   * Whether the request was processed by the server.
+   *
+   * Always `true` for GraphqlResponse (server responded).
+   */
+  readonly processed: true;
+
+  /**
    * Whether the request was successful (no errors).
    *
    * Inherited from ClientResult. True when error is null,
@@ -87,6 +94,7 @@ export interface GraphqlResponseOptions<T> {
  */
 class GraphqlResponseImpl<T> implements GraphqlResponse<T> {
   readonly kind = "graphql" as const;
+  readonly processed = true as const;
   readonly ok: boolean;
   readonly error: GraphqlError | null;
   readonly extensions?: Record<string, unknown>;

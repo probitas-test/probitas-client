@@ -8,6 +8,20 @@ interface RedisResultBase<T = unknown> extends ClientResult {
   readonly kind: string;
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful Redis results.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful Redis results.
+   */
+  readonly error: null;
+
+  /**
    * The value returned by the Redis operation.
    *
    * Type varies based on the specific operation (string, number, array, etc.).

@@ -137,7 +137,9 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return {
         kind: "deno-kv:get",
+        processed: true,
         ok: true,
+        error: null,
         key: entry.key,
         value: entry.value,
         versionstamp: entry.versionstamp,
@@ -185,7 +187,9 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return entries.map((entry) => ({
         kind: "deno-kv:get" as const,
+        processed: true as const,
         ok: true,
+        error: null,
         key: entry.key,
         value: entry.value,
         versionstamp: entry.versionstamp,
@@ -235,7 +239,9 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return {
         kind: "deno-kv:set",
+        processed: true,
         ok: result.ok,
+        error: null,
         versionstamp: result.versionstamp,
         duration,
       };
@@ -273,7 +279,9 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return {
         kind: "deno-kv:delete",
+        processed: true,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
@@ -348,7 +356,9 @@ class DenoKvClientImpl implements DenoKvClient {
 
       return {
         kind: "deno-kv:list",
+        processed: true,
         ok: true,
+        error: null,
         entries: createDenoKvEntries(entries),
         duration,
       };

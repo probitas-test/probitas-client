@@ -14,6 +14,20 @@ export interface MongoFindResult<T = Document> extends ClientResult {
   readonly kind: "mongo:find";
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful results.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful results.
+   */
+  readonly error: null;
+
+  /**
    * Array of documents matching the query.
    *
    * Includes helper methods like first(), last(), etc.
@@ -33,6 +47,20 @@ export interface MongoInsertOneResult extends ClientResult {
   readonly kind: "mongo:insert-one";
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful results.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful results.
+   */
+  readonly error: null;
+
+  /**
    * ID of the inserted document.
    *
    * Serialized as string for consistency.
@@ -50,6 +78,20 @@ export interface MongoInsertManyResult extends ClientResult {
    * Always `"mongo:insert-many"` for batch inserts.
    */
   readonly kind: "mongo:insert-many";
+
+  /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful results.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful results.
+   */
+  readonly error: null;
 
   /**
    * Array of IDs for inserted documents.
@@ -74,6 +116,20 @@ export interface MongoUpdateResult extends ClientResult {
    * Always `"mongo:update"` for update operations.
    */
   readonly kind: "mongo:update";
+
+  /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful results.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful results.
+   */
+  readonly error: null;
 
   /**
    * Number of documents matching the filter.
@@ -105,6 +161,20 @@ export interface MongoDeleteResult extends ClientResult {
   readonly kind: "mongo:delete";
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful results.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful results.
+   */
+  readonly error: null;
+
+  /**
    * Number of documents deleted.
    */
   readonly deletedCount: number;
@@ -122,6 +192,20 @@ export interface MongoFindOneResult<T = Document> extends ClientResult {
   readonly kind: "mongo:find-one";
 
   /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful results.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful results.
+   */
+  readonly error: null;
+
+  /**
    * The found document (undefined if not found).
    */
   readonly doc: T | undefined;
@@ -137,6 +221,20 @@ export interface MongoCountResult extends ClientResult {
    * Always `"mongo:count"` for count operations.
    */
   readonly kind: "mongo:count";
+
+  /**
+   * Whether the operation was processed by the server.
+   *
+   * Always `true` for successful results.
+   */
+  readonly processed: true;
+
+  /**
+   * Error that occurred during the operation.
+   *
+   * Always `null` for successful results.
+   */
+  readonly error: null;
 
   /**
    * Number of documents matching the filter.

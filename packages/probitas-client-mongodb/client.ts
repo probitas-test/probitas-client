@@ -547,7 +547,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:find",
+        processed: true,
         ok: true,
+        error: null,
         docs: createMongoDocs(docs),
         duration,
       };
@@ -592,7 +594,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:find-one",
+        processed: true,
         ok: true,
+        error: null,
         doc: (doc ?? undefined) as T | undefined,
         duration,
       };
@@ -635,7 +639,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:insert-one",
+        processed: true,
         ok: result.acknowledged,
+        error: null,
         insertedId: String(result.insertedId),
         duration,
       };
@@ -679,7 +685,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:insert-many",
+        processed: true,
         ok: result.acknowledged,
+        error: null,
         insertedIds: Object.values(result.insertedIds).map(String),
         insertedCount: result.insertedCount,
         duration,
@@ -730,7 +738,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:update",
+        processed: true,
         ok: result.acknowledged,
+        error: null,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
         upsertedId: result.upsertedId ? String(result.upsertedId) : undefined,
@@ -786,7 +796,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:update",
+        processed: true,
         ok: result.acknowledged,
+        error: null,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
         upsertedId: result.upsertedId ? String(result.upsertedId) : undefined,
@@ -832,7 +844,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:delete",
+        processed: true,
         ok: result.acknowledged,
+        error: null,
         deletedCount: result.deletedCount,
         duration,
       };
@@ -876,7 +890,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:delete",
+        processed: true,
         ok: result.acknowledged,
+        error: null,
         deletedCount: result.deletedCount,
         duration,
       };
@@ -923,7 +939,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:find",
+        processed: true,
         ok: true,
+        error: null,
         docs: createMongoDocs(docs),
         duration,
       };
@@ -966,7 +984,9 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
 
       return {
         kind: "mongo:count",
+        processed: true,
         ok: true,
+        error: null,
         count,
         duration,
       };

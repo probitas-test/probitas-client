@@ -486,7 +486,9 @@ class SqsClientImpl implements SqsClient {
 
       return {
         kind: "sqs:send",
+        processed: true as const,
         ok: true,
+        error: null,
         messageId: response.MessageId!,
         md5OfBody: response.MD5OfMessageBody!,
         sequenceNumber: response.SequenceNumber,
@@ -573,7 +575,9 @@ class SqsClientImpl implements SqsClient {
 
       return {
         kind: "sqs:send-batch",
+        processed: true as const,
         ok: failed.length === 0,
+        error: null,
         successful,
         failed,
         duration,
@@ -657,7 +661,9 @@ class SqsClientImpl implements SqsClient {
 
       return {
         kind: "sqs:receive",
+        processed: true as const,
         ok: true,
+        error: null,
         messages: createSqsMessages(messages),
         duration,
       };
@@ -707,7 +713,9 @@ class SqsClientImpl implements SqsClient {
 
       return {
         kind: "sqs:delete",
+        processed: true as const,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
@@ -770,7 +778,9 @@ class SqsClientImpl implements SqsClient {
 
       return {
         kind: "sqs:delete-batch",
+        processed: true as const,
         ok: failed.length === 0,
+        error: null,
         successful,
         failed,
         duration,
@@ -818,7 +828,9 @@ class SqsClientImpl implements SqsClient {
 
       return {
         kind: "sqs:delete",
+        processed: true as const,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
@@ -875,7 +887,9 @@ class SqsClientImpl implements SqsClient {
 
       return {
         kind: "sqs:ensure-queue",
+        processed: true as const,
         ok: true,
+        error: null,
         queueUrl,
         duration,
       };
@@ -924,7 +938,9 @@ class SqsClientImpl implements SqsClient {
 
       return {
         kind: "sqs:delete-queue",
+        processed: true as const,
         ok: true,
+        error: null,
         duration,
       };
     } catch (error) {
