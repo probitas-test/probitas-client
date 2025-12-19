@@ -15,13 +15,13 @@ export interface GraphqlErrorItem {
   readonly message: string;
 
   /** Location(s) in the GraphQL document where the error occurred */
-  readonly locations?: readonly { line: number; column: number }[];
+  readonly locations: readonly { line: number; column: number }[] | null;
 
   /** Path to the field that caused the error */
-  readonly path?: readonly (string | number)[];
+  readonly path: readonly (string | number)[] | null;
 
   /** Additional error metadata */
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
 }
 
 export type {
@@ -36,7 +36,7 @@ export type {
  */
 export interface GraphqlOptions extends CommonOptions {
   /** Additional request headers */
-  readonly headers?: Record<string, string>;
+  readonly headers?: HeadersInit;
 
   /** Operation name (for documents with multiple operations) */
   readonly operationName?: string;
@@ -93,7 +93,7 @@ export interface GraphqlClientConfig extends CommonOptions {
   readonly url: string | GraphqlConnectionConfig;
 
   /** Default headers for all requests */
-  readonly headers?: Record<string, string>;
+  readonly headers?: HeadersInit;
 
   /** WebSocket endpoint URL (for subscriptions) */
   readonly wsEndpoint?: string;

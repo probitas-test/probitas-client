@@ -455,7 +455,7 @@ Deno.test("GraphqlClient network errors", async (t) => {
       assertFalse(response.ok);
       assertEquals(response.processed, false);
       assertInstanceOf(response.error, GraphqlNetworkError);
-      assertEquals(response.error?.message.includes("Network error"), true);
+      assertEquals(response.error?.message, "fetch failed");
       assertEquals(response.status, null);
       assertEquals(response.headers, null);
       assertEquals(response.data(), null);
@@ -481,7 +481,7 @@ Deno.test("GraphqlClient network errors", async (t) => {
         GraphqlNetworkError,
       );
       assertInstanceOf(error, GraphqlNetworkError);
-      assertEquals(error.message.includes("Network error"), true);
+      assertEquals(error.message, "fetch failed");
       await client.close();
     },
   );

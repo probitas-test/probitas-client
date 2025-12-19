@@ -1,9 +1,5 @@
 import type { ClientResult } from "@probitas/client";
-import type {
-  GraphqlError,
-  GraphqlExecutionError,
-  GraphqlFailureError,
-} from "./errors.ts";
+import type { GraphqlExecutionError, GraphqlFailureError } from "./errors.ts";
 
 /**
  * Base interface for all GraphQL response types.
@@ -41,14 +37,14 @@ interface GraphqlResponseBase<T = any> extends ClientResult {
    * - GraphqlExecutionError for GraphQL errors
    * - GraphqlNetworkError/AbortError/TimeoutError for failures
    */
-  readonly error: GraphqlError | GraphqlFailureError | null;
+  readonly error: GraphqlExecutionError | GraphqlFailureError | null;
 
   /**
    * Response extensions (only available when processed).
    *
    * Custom metadata added by the GraphQL server (tracing, metrics, etc.).
    */
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
 
   /**
    * Response time in milliseconds.
@@ -90,7 +86,7 @@ export interface GraphqlResponseSuccess<T = any>
   readonly headers: Headers;
 
   /** Response extensions. */
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
 
   raw(): globalThis.Response;
 }
@@ -114,7 +110,7 @@ export interface GraphqlResponseError<T = any> extends GraphqlResponseBase<T> {
   readonly headers: Headers;
 
   /** Response extensions. */
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
 
   raw(): globalThis.Response;
 }
@@ -130,6 +126,9 @@ export interface GraphqlResponseFailure<T = any>
   readonly processed: false;
   readonly ok: false;
   readonly error: GraphqlFailureError;
+
+  /** Response extensions (always null for failures). */
+  readonly extensions: null;
 
   /** HTTP status code (null for network failures). */
   readonly status: null;
@@ -163,7 +162,7 @@ export type GraphqlResponse<T = any> =
 export interface GraphqlResponseSuccessParams<T> {
   readonly url: string;
   readonly data: T | null;
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
   readonly duration: number;
   readonly status: number;
   readonly raw: globalThis.Response;
@@ -176,7 +175,7 @@ export interface GraphqlResponseErrorParams<T> {
   readonly url: string;
   readonly data: T | null;
   readonly error: GraphqlExecutionError;
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
   readonly duration: number;
   readonly status: number;
   readonly raw: globalThis.Response;
@@ -193,13 +192,15 @@ export interface GraphqlResponseFailureParams {
 
 /**
  * Implementation of GraphqlResponseSuccess.
+ * @internal
  */
-class GraphqlResponseSuccessImpl<T> implements GraphqlResponseSuccess<T> {
+export class GraphqlResponseSuccessImpl<T>
+  implements GraphqlResponseSuccess<T> {
   readonly kind = "graphql" as const;
   readonly processed = true as const;
   readonly ok = true as const;
   readonly error = null;
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
   readonly duration: number;
   readonly url: string;
   readonly status: number;
@@ -229,13 +230,14 @@ class GraphqlResponseSuccessImpl<T> implements GraphqlResponseSuccess<T> {
 
 /**
  * Implementation of GraphqlResponseError.
+ * @internal
  */
-class GraphqlResponseErrorImpl<T> implements GraphqlResponseError<T> {
+export class GraphqlResponseErrorImpl<T> implements GraphqlResponseError<T> {
   readonly kind = "graphql" as const;
   readonly processed = true as const;
   readonly ok = false as const;
   readonly error: GraphqlExecutionError;
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
   readonly duration: number;
   readonly url: string;
   readonly status: number;
@@ -266,12 +268,15 @@ class GraphqlResponseErrorImpl<T> implements GraphqlResponseError<T> {
 
 /**
  * Implementation of GraphqlResponseFailure.
+ * @internal
  */
-class GraphqlResponseFailureImpl<T> implements GraphqlResponseFailure<T> {
+export class GraphqlResponseFailureImpl<T>
+  implements GraphqlResponseFailure<T> {
   readonly kind = "graphql" as const;
   readonly processed = false as const;
   readonly ok = false as const;
   readonly error: GraphqlFailureError;
+  readonly extensions = null;
   readonly status = null;
   readonly headers = null;
   readonly duration: number;
@@ -290,31 +295,4 @@ class GraphqlResponseFailureImpl<T> implements GraphqlResponseFailure<T> {
   raw(): null {
     return null;
   }
-}
-
-/**
- * Create a successful GraphQL response.
- */
-export function createGraphqlResponseSuccess<T>(
-  params: GraphqlResponseSuccessParams<T>,
-): GraphqlResponseSuccess<T> {
-  return new GraphqlResponseSuccessImpl(params);
-}
-
-/**
- * Create a GraphQL response with execution errors.
- */
-export function createGraphqlResponseError<T>(
-  params: GraphqlResponseErrorParams<T>,
-): GraphqlResponseError<T> {
-  return new GraphqlResponseErrorImpl(params);
-}
-
-/**
- * Create a failed GraphQL response.
- */
-export function createGraphqlResponseFailure<T>(
-  params: GraphqlResponseFailureParams,
-): GraphqlResponseFailure<T> {
-  return new GraphqlResponseFailureImpl(params);
 }

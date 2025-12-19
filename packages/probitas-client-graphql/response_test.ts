@@ -5,18 +5,18 @@ import {
   assertInstanceOf,
 } from "@std/assert";
 import {
-  createGraphqlResponseError,
-  createGraphqlResponseFailure,
-  createGraphqlResponseSuccess,
+  GraphqlResponseErrorImpl,
+  GraphqlResponseFailureImpl,
+  GraphqlResponseSuccessImpl,
 } from "./response.ts";
 import { GraphqlExecutionError, GraphqlNetworkError } from "./errors.ts";
 
-Deno.test("createGraphqlResponseSuccess", async (t) => {
+Deno.test("GraphqlResponseSuccessImpl", async (t) => {
   await t.step("creates success response with data", () => {
-    const response = createGraphqlResponseSuccess({
+    const response = new GraphqlResponseSuccessImpl({
       url: "http://localhost:4000/graphql",
       data: { user: { id: 1, name: "John" } },
-      extensions: undefined,
+      extensions: null,
       duration: 100,
       status: 200,
       raw: new Response(),
@@ -33,7 +33,7 @@ Deno.test("createGraphqlResponseSuccess", async (t) => {
   });
 
   await t.step("includes extensions", () => {
-    const response = createGraphqlResponseSuccess({
+    const response = new GraphqlResponseSuccessImpl({
       url: "http://localhost:4000/graphql",
       data: { test: true },
       extensions: { tracing: { duration: 123 } },
@@ -47,10 +47,10 @@ Deno.test("createGraphqlResponseSuccess", async (t) => {
 
   await t.step("includes raw response", () => {
     const rawResponse = new Response();
-    const response = createGraphqlResponseSuccess({
+    const response = new GraphqlResponseSuccessImpl({
       url: "http://localhost:4000/graphql",
       data: null,
-      extensions: undefined,
+      extensions: null,
       duration: 10,
       status: 200,
       raw: rawResponse,
@@ -63,10 +63,10 @@ Deno.test("createGraphqlResponseSuccess", async (t) => {
     const rawResponse = new Response(null, {
       headers: { "X-Custom-Header": "test-value" },
     });
-    const response = createGraphqlResponseSuccess({
+    const response = new GraphqlResponseSuccessImpl({
       url: "http://localhost:4000/graphql",
       data: null,
-      extensions: undefined,
+      extensions: null,
       duration: 10,
       status: 200,
       raw: rawResponse,
@@ -81,10 +81,10 @@ Deno.test("createGraphqlResponseSuccess", async (t) => {
       id: number;
       name: string;
     }
-    const response = createGraphqlResponseSuccess({
+    const response = new GraphqlResponseSuccessImpl({
       url: "http://localhost:4000/graphql",
       data: { user: { id: 1, name: "John" } },
-      extensions: undefined,
+      extensions: null,
       duration: 100,
       status: 200,
       raw: new Response(),
@@ -96,14 +96,16 @@ Deno.test("createGraphqlResponseSuccess", async (t) => {
   });
 });
 
-Deno.test("createGraphqlResponseError", async (t) => {
+Deno.test("GraphqlResponseErrorImpl", async (t) => {
   await t.step("creates error response", () => {
-    const error = new GraphqlExecutionError([{ message: "Not found" }]);
-    const response = createGraphqlResponseError({
+    const error = new GraphqlExecutionError([
+      { message: "Not found", locations: null, path: null, extensions: null },
+    ]);
+    const response = new GraphqlResponseErrorImpl({
       url: "http://localhost:4000/graphql",
       data: null,
       error,
-      extensions: undefined,
+      extensions: null,
       duration: 50,
       status: 200,
       raw: new Response(),
@@ -118,12 +120,14 @@ Deno.test("createGraphqlResponseError", async (t) => {
   });
 
   await t.step("allows partial data with errors", () => {
-    const error = new GraphqlExecutionError([{ message: "Field error" }]);
-    const response = createGraphqlResponseError({
+    const error = new GraphqlExecutionError([
+      { message: "Field error", locations: null, path: null, extensions: null },
+    ]);
+    const response = new GraphqlResponseErrorImpl({
       url: "http://localhost:4000/graphql",
       data: { user: { id: 1 }, posts: null },
       error,
-      extensions: undefined,
+      extensions: null,
       duration: 50,
       status: 200,
       raw: new Response(),
@@ -135,12 +139,14 @@ Deno.test("createGraphqlResponseError", async (t) => {
 
   await t.step("includes raw response", () => {
     const rawResponse = new Response();
-    const error = new GraphqlExecutionError([{ message: "Error" }]);
-    const response = createGraphqlResponseError({
+    const error = new GraphqlExecutionError([
+      { message: "Error", locations: null, path: null, extensions: null },
+    ]);
+    const response = new GraphqlResponseErrorImpl({
       url: "http://localhost:4000/graphql",
       data: null,
       error,
-      extensions: undefined,
+      extensions: null,
       duration: 10,
       status: 200,
       raw: rawResponse,
@@ -150,10 +156,10 @@ Deno.test("createGraphqlResponseError", async (t) => {
   });
 });
 
-Deno.test("createGraphqlResponseFailure", async (t) => {
+Deno.test("GraphqlResponseFailureImpl", async (t) => {
   await t.step("creates failure response", () => {
     const error = new GraphqlNetworkError("Connection refused");
-    const response = createGraphqlResponseFailure({
+    const response = new GraphqlResponseFailureImpl({
       url: "http://localhost:4000/graphql",
       error,
       duration: 10,
@@ -169,7 +175,7 @@ Deno.test("createGraphqlResponseFailure", async (t) => {
 
   await t.step("status is null", () => {
     const error = new GraphqlNetworkError("Network error");
-    const response = createGraphqlResponseFailure({
+    const response = new GraphqlResponseFailureImpl({
       url: "http://localhost:4000/graphql",
       error,
       duration: 5,
@@ -180,7 +186,7 @@ Deno.test("createGraphqlResponseFailure", async (t) => {
 
   await t.step("headers is null", () => {
     const error = new GraphqlNetworkError("Network error");
-    const response = createGraphqlResponseFailure({
+    const response = new GraphqlResponseFailureImpl({
       url: "http://localhost:4000/graphql",
       error,
       duration: 5,
@@ -191,7 +197,7 @@ Deno.test("createGraphqlResponseFailure", async (t) => {
 
   await t.step("data() returns null", () => {
     const error = new GraphqlNetworkError("Network error");
-    const response = createGraphqlResponseFailure({
+    const response = new GraphqlResponseFailureImpl({
       url: "http://localhost:4000/graphql",
       error,
       duration: 5,
@@ -202,7 +208,7 @@ Deno.test("createGraphqlResponseFailure", async (t) => {
 
   await t.step("raw() returns null", () => {
     const error = new GraphqlNetworkError("Network error");
-    const response = createGraphqlResponseFailure({
+    const response = new GraphqlResponseFailureImpl({
       url: "http://localhost:4000/graphql",
       error,
       duration: 5,
