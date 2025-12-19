@@ -1,6 +1,7 @@
 ---
 paths: "packages/**/*, deno.jsonc"
 ---
+
 # Package Structure
 
 ## Layout

@@ -1,6 +1,7 @@
 ---
 paths: "packages/**/*.ts"
 ---
+
 # Design Philosophy
 
 ## Principles
@@ -35,7 +36,7 @@ export class ClientError extends Error {
 
 Client methods return fluent assertion chains:
 
-```ts
+```ts ignore
 const result = await client.get("/api/users");
 result.expectStatus(200);
 result.expectJsonContains({ name: "Alice" });

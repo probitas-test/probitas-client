@@ -1,6 +1,7 @@
 ---
 paths: "**/*.ts"
 ---
+
 # Deno/TypeScript Rules
 
 ## Module Organization
@@ -14,7 +15,7 @@ paths: "**/*.ts"
 Use `_internal` namespace for testing internal functions (don't re-export from
 mod.ts):
 
-```ts
+```ts ignore
 export const _internal = { parseValue };
 ```
 

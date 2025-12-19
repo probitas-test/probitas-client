@@ -18,12 +18,12 @@ version management.
 
 ### Version Bump Rules
 
-| Commit Type                                              | Version Bump  | Example                                              |
-| -------------------------------------------------------- | ------------- | ---------------------------------------------------- |
-| `feat:`                                                  | minor (0.x.0) | `feat(@probitas/client-http): add retry option`      |
-| `fix:`, `perf:`, `docs:`, `refactor:`, `test:`, `chore:` | patch (0.0.x) | `fix(@probitas/client-redis): handle timeout errors` |
+| Commit Type                                              | Version Bump  | Example                                                |
+| -------------------------------------------------------- | ------------- | ------------------------------------------------------ |
+| `feat:`                                                  | minor (0.x.0) | `feat(@probitas/client-http): add retry option`        |
+| `fix:`, `perf:`, `docs:`, `refactor:`, `test:`, `chore:` | patch (0.0.x) | `fix(@probitas/client-redis): handle timeout errors`   |
 | `BREAKING:`                                              | major (x.0.0) | `BREAKING(@probitas/client-sql): change API signature` |
-| Any type with `/unstable` scope                          | patch (0.0.x) | `feat(@probitas/client-http/unstable): experimental` |
+| Any type with `/unstable` scope                          | patch (0.0.x) | `feat(@probitas/client-http/unstable): experimental`   |
 
 ### Scope Convention
 

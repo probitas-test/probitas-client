@@ -1,6 +1,7 @@
 ---
 paths: "**/*.ts"
 ---
+
 # Development Patterns
 
 ## Testing Strategy
@@ -28,7 +29,7 @@ async function isServiceAvailable(): Promise<boolean> {
 Deno.test({
   name: "Integration: ServiceName",
   ignore: !(await isServiceAvailable()),
-  fn() { /* ... */ },
+  fn() {/* ... */},
 });
 ```
 
