@@ -22,7 +22,7 @@ version management.
 | -------------------------------------------------------- | ------------- | ---------------------------------------------------- |
 | `feat:`                                                  | minor (0.x.0) | `feat(@probitas/client-http): add retry option`      |
 | `fix:`, `perf:`, `docs:`, `refactor:`, `test:`, `chore:` | patch (0.0.x) | `fix(@probitas/client-redis): handle timeout errors` |
-| `BREAKING:` or `!` suffix                                | major (x.0.0) | `feat(@probitas/client-sql)!: change API signature`  |
+| `BREAKING:`                                              | major (x.0.0) | `BREAKING(@probitas/client-sql): change API signature` |
 | Any type with `/unstable` scope                          | patch (0.0.x) | `feat(@probitas/client-http/unstable): experimental` |
 
 ### Scope Convention
@@ -49,6 +49,7 @@ BREAKING(@probitas/client-http/unstable): change unstable API signature  # Still
 
 ### Important Notes
 
+- **Do NOT use `!` suffix** (e.g., `feat!:`) - use `BREAKING:` type instead
 - **All conventional commit types trigger version bumps** (including `docs:`)
 - **Scopes determine affected packages** - bump-workspaces uses commit message
   scopes, not file paths
