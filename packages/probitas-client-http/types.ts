@@ -24,9 +24,9 @@ export type QueryValue = string | number | boolean;
 export type BodyInit =
   | string
   | Uint8Array
-  | Record<string, unknown>
   | FormData
-  | URLSearchParams;
+  | URLSearchParams
+  | unknown;
 
 /**
  * Redirect handling mode.
@@ -37,14 +37,21 @@ export type BodyInit =
 export type RedirectMode = "follow" | "manual" | "error";
 
 /**
+ * Query parameters type - accepts URLSearchParams or plain object.
+ */
+export type QueryParams =
+  | URLSearchParams
+  | Record<string, QueryValue | QueryValue[]>;
+
+/**
  * Options for individual HTTP requests.
  */
 export interface HttpOptions extends CommonOptions {
   /** Query parameters (arrays for multi-value params) */
-  readonly query?: Record<string, QueryValue | QueryValue[]>;
+  readonly query?: QueryParams;
 
   /** Additional request headers */
-  readonly headers?: Record<string, string>;
+  readonly headers?: HeadersInit;
 
   /**
    * Redirect handling mode.
@@ -55,9 +62,17 @@ export interface HttpOptions extends CommonOptions {
   /**
    * Whether to throw HttpError for non-2xx responses.
    * When false, non-2xx responses are returned as HttpResponse.
-   * @default true (inherited from client config if not specified)
+   * @default false (inherited from client config if not specified)
    */
   readonly throwOnError?: boolean;
+}
+
+/**
+ * Options for HTTP requests that may include a body.
+ */
+export interface HttpRequestOptions extends HttpOptions {
+  /** Request body */
+  readonly body?: BodyInit;
 }
 
 /**
@@ -122,7 +137,7 @@ export interface HttpClientConfig extends CommonOptions {
   readonly url: string | HttpConnectionConfig;
 
   /** Default headers for all requests */
-  readonly headers?: Record<string, string>;
+  readonly headers?: HeadersInit;
 
   /** Custom fetch implementation (for testing/mocking) */
   readonly fetch?: typeof fetch;
@@ -137,7 +152,7 @@ export interface HttpClientConfig extends CommonOptions {
   /**
    * Whether to throw HttpError for non-2xx responses.
    * Can be overridden per-request via HttpOptions.
-   * @default true
+   * @default false
    */
   readonly throwOnError?: boolean;
 
@@ -160,35 +175,29 @@ export interface HttpClient extends AsyncDisposable {
   /** Send GET request */
   get(path: string, options?: HttpOptions): Promise<HttpResponse>;
 
+  /** Send HEAD request */
+  head(path: string, options?: HttpOptions): Promise<HttpResponse>;
+
   /** Send POST request */
-  post(
-    path: string,
-    body?: BodyInit,
-    options?: HttpOptions,
-  ): Promise<HttpResponse>;
+  post(path: string, options?: HttpRequestOptions): Promise<HttpResponse>;
 
   /** Send PUT request */
-  put(
-    path: string,
-    body?: BodyInit,
-    options?: HttpOptions,
-  ): Promise<HttpResponse>;
+  put(path: string, options?: HttpRequestOptions): Promise<HttpResponse>;
 
   /** Send PATCH request */
-  patch(
-    path: string,
-    body?: BodyInit,
-    options?: HttpOptions,
-  ): Promise<HttpResponse>;
+  patch(path: string, options?: HttpRequestOptions): Promise<HttpResponse>;
 
   /** Send DELETE request */
-  delete(path: string, options?: HttpOptions): Promise<HttpResponse>;
+  delete(path: string, options?: HttpRequestOptions): Promise<HttpResponse>;
+
+  /** Send OPTIONS request */
+  options(path: string, options?: HttpOptions): Promise<HttpResponse>;
 
   /** Send request with arbitrary method */
   request(
     method: string,
     path: string,
-    options?: HttpOptions & { body?: BodyInit },
+    options?: HttpRequestOptions,
   ): Promise<HttpResponse>;
 
   /**

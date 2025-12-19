@@ -5,51 +5,24 @@ import type {
   HttpClientConfig,
   HttpConnectionConfig,
   HttpOptions,
-  QueryValue,
+  HttpRequestOptions,
+  QueryParams,
 } from "./types.ts";
 import type { HttpResponse } from "./response.ts";
 import {
-  HttpBadRequestError,
-  HttpConflictError,
   HttpError,
   type HttpFailureError,
-  HttpForbiddenError,
-  HttpInternalServerError,
   HttpNetworkError,
-  HttpNotFoundError,
-  HttpTooManyRequestsError,
-  HttpUnauthorizedError,
 } from "./errors.ts";
 import {
-  createHttpResponseError,
-  createHttpResponseFailure,
-  createHttpResponseSuccess,
+  HttpResponseErrorImpl,
+  HttpResponseFailureImpl,
+  HttpResponseSuccessImpl,
 } from "./response.ts";
+import { CookieJar, parseSetCookie } from "./cookie.ts";
 import { getLogger } from "@probitas/logger";
 
 const logger = getLogger("probitas", "client", "http");
-
-/**
- * Format request/response body for logging preview (truncated for large bodies).
- */
-function formatBodyPreview(body: unknown): string | undefined {
-  if (!body) return undefined;
-  if (typeof body === "string") {
-    return body.length > 500 ? body.slice(0, 500) + "..." : body;
-  }
-  if (body instanceof Uint8Array) {
-    return `<binary ${body.length} bytes>`;
-  }
-  if (body instanceof FormData || body instanceof URLSearchParams) {
-    return `<${body.constructor.name}>`;
-  }
-  try {
-    const str = JSON.stringify(body);
-    return str.length > 500 ? str.slice(0, 500) + "..." : str;
-  } catch {
-    return "<unserializable>";
-  }
-}
 
 /**
  * Resolve URL from string or HttpConnectionConfig.
@@ -69,28 +42,39 @@ function resolveBaseUrl(url: string | HttpConnectionConfig): string {
 }
 
 /**
+ * Convert QueryParams to URLSearchParams.
+ */
+function toURLSearchParams(query: QueryParams): URLSearchParams {
+  if (query instanceof URLSearchParams) {
+    return query;
+  }
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        params.append(key, String(v));
+      }
+    } else {
+      params.append(key, String(value));
+    }
+  }
+  return params;
+}
+
+/**
  * Build URL with query parameters.
  */
 function buildUrl(
   baseUrl: string,
   path: string,
-  query?: Record<string, QueryValue | QueryValue[]>,
+  query?: QueryParams,
 ): string {
-  const url = new URL(path, baseUrl);
-
-  if (query) {
-    for (const [key, value] of Object.entries(query)) {
-      if (Array.isArray(value)) {
-        for (const v of value) {
-          url.searchParams.append(key, String(v));
-        }
-      } else {
-        url.searchParams.set(key, String(value));
-      }
-    }
+  const url = new URL(path, baseUrl).toString();
+  if (!query) {
+    return url;
   }
-
-  return url.toString();
+  const q = toURLSearchParams(query).toString();
+  return q ? `${url}?${q}` : url;
 }
 
 /**
@@ -120,96 +104,21 @@ function prepareBody(
 
 /**
  * Merge headers from multiple sources.
+ * Returns Headers instance to properly support multi-value headers.
  */
 function mergeHeaders(
-  ...sources: (Record<string, string> | undefined)[]
-): Record<string, string> {
-  const result: Record<string, string> = {};
+  ...sources: (HeadersInit | undefined)[]
+): Headers {
+  const result = new Headers();
   for (const source of sources) {
     if (source) {
-      Object.assign(result, source);
+      const headers = new Headers(source);
+      for (const [key, value] of headers) {
+        result.set(key, value);
+      }
     }
   }
   return result;
-}
-
-/**
- * Serialize cookies to Cookie header value.
- */
-function serializeCookies(cookies: Record<string, string>): string {
-  return Object.entries(cookies)
-    .map(([name, value]) => `${name}=${value}`)
-    .join("; ");
-}
-
-/**
- * Parse Set-Cookie header value and extract cookie name/value.
- * Only extracts the name=value pair, ignoring attributes.
- */
-function parseSetCookie(
-  setCookie: string,
-): { name: string; value: string } | null {
-  const match = setCookie.match(/^([^=]+)=([^;]*)/);
-  if (!match) return null;
-  return { name: match[1].trim(), value: match[2].trim() };
-}
-
-/**
- * Format body detail for error message.
- */
-function formatBodyDetail(bodyText: string | null): string {
-  if (!bodyText) {
-    return "";
-  }
-
-  // Try to parse as JSON and format with Deno.inspect
-  let detail = bodyText;
-  try {
-    const parsed = JSON.parse(bodyText);
-    detail = Deno.inspect(parsed, {
-      compact: false,
-      sorted: true,
-      trailingComma: true,
-    });
-  } catch {
-    // Not JSON, skip.
-  }
-  const indented = detail
-    .split("\n")
-    .map((line) => `  ${line}`)
-    .join("\n");
-  return `\n\n${indented}`;
-}
-
-/**
- * Create appropriate HttpError based on status code.
- */
-function createHttpError(
-  status: number,
-  statusText: string,
-  bodyText: string | null,
-): HttpError {
-  const detail = formatBodyDetail(bodyText);
-  const message = `${status}: ${statusText}${detail}`;
-
-  switch (status) {
-    case 400:
-      return new HttpBadRequestError(message);
-    case 401:
-      return new HttpUnauthorizedError(message);
-    case 403:
-      return new HttpForbiddenError(message);
-    case 404:
-      return new HttpNotFoundError(message);
-    case 409:
-      return new HttpConflictError(message);
-    case 429:
-      return new HttpTooManyRequestsError(message);
-    case 500:
-      return new HttpInternalServerError(message);
-    default:
-      return new HttpError(message, status, statusText);
-  }
 }
 
 /**
@@ -219,36 +128,12 @@ function convertFetchError(error: unknown): HttpFailureError {
   if (error instanceof AbortError || error instanceof TimeoutError) {
     return error;
   }
-  if (error instanceof HttpNetworkError) {
-    return error;
-  }
   if (error instanceof Error) {
-    // AbortError from AbortSignal
     if (error.name === "AbortError") {
-      return new AbortError("Request was aborted", { cause: error });
+      return new AbortError(error.message, { cause: error });
     }
-    // TimeoutError (DOMException with TimeoutError name)
-    if (error.name === "TimeoutError") {
-      return new TimeoutError("Request timed out", 0, { cause: error });
-    }
-    // TypeError from fetch usually indicates network error
-    if (error instanceof TypeError) {
-      return new HttpNetworkError(
-        `Connection failed: ${error.message}`,
-        { cause: error },
-      );
-    }
-    // DOMException for network errors
-    if (error.name === "NetworkError") {
-      return new HttpNetworkError(
-        `Network error: ${error.message}`,
-        { cause: error },
-      );
-    }
-    // Wrap other errors in HttpNetworkError
     return new HttpNetworkError(error.message, { cause: error });
   }
-  // Unknown error type
   return new HttpNetworkError(String(error));
 }
 
@@ -258,89 +143,87 @@ function convertFetchError(error: unknown): HttpFailureError {
 class HttpClientImpl implements HttpClient {
   readonly config: HttpClientConfig;
   readonly #baseUrl: string;
-  readonly #cookieJar: Map<string, string>;
-  readonly #cookiesEnabled: boolean;
+  readonly #baseUrlObj: URL;
+  readonly #cookieJar?: CookieJar;
 
   constructor(config: HttpClientConfig) {
     this.config = config;
     this.#baseUrl = resolveBaseUrl(config.url);
-    // Cookies are enabled by default
-    this.#cookiesEnabled = !(config.cookies?.disabled ?? false);
-    this.#cookieJar = new Map();
+    this.#baseUrlObj = new URL(this.#baseUrl);
 
-    // Log client creation
+    // Cookies are enabled by default
+    if (!config.cookies?.disabled) {
+      this.#cookieJar = new CookieJar();
+      // Initialize with initial cookies if provided
+      if (config.cookies?.initial) {
+        const domain = this.#baseUrlObj.hostname;
+        for (const [name, value] of Object.entries(config.cookies.initial)) {
+          this.#cookieJar.setCookie(name, value, domain);
+        }
+        logger.debug("Initial cookies set", {
+          count: Object.keys(config.cookies.initial).length,
+        });
+      }
+    }
+
     logger.debug("HTTP client created", {
       url: this.#baseUrl,
-      cookiesEnabled: this.#cookiesEnabled,
+      cookiesEnabled: !!this.#cookieJar,
       redirect: config.redirect ?? "follow",
     });
-
-    // Initialize with initial cookies if provided
-    if (config.cookies?.initial) {
-      for (const [name, value] of Object.entries(config.cookies.initial)) {
-        this.#cookieJar.set(name, value);
-      }
-      logger.debug("Initial cookies set", {
-        count: Object.keys(config.cookies.initial).length,
-      });
-    }
   }
 
   get(path: string, options?: HttpOptions): Promise<HttpResponse> {
     return this.#request("GET", path, undefined, options);
   }
 
-  post(
-    path: string,
-    body?: BodyInit,
-    options?: HttpOptions,
-  ): Promise<HttpResponse> {
-    return this.#request("POST", path, body, options);
+  head(path: string, options?: HttpOptions): Promise<HttpResponse> {
+    return this.#request("HEAD", path, undefined, options);
   }
 
-  put(
-    path: string,
-    body?: BodyInit,
-    options?: HttpOptions,
-  ): Promise<HttpResponse> {
-    return this.#request("PUT", path, body, options);
+  post(path: string, options?: HttpRequestOptions): Promise<HttpResponse> {
+    return this.#request("POST", path, options?.body, options);
   }
 
-  patch(
-    path: string,
-    body?: BodyInit,
-    options?: HttpOptions,
-  ): Promise<HttpResponse> {
-    return this.#request("PATCH", path, body, options);
+  put(path: string, options?: HttpRequestOptions): Promise<HttpResponse> {
+    return this.#request("PUT", path, options?.body, options);
   }
 
-  delete(path: string, options?: HttpOptions): Promise<HttpResponse> {
-    return this.#request("DELETE", path, undefined, options);
+  patch(path: string, options?: HttpRequestOptions): Promise<HttpResponse> {
+    return this.#request("PATCH", path, options?.body, options);
+  }
+
+  delete(path: string, options?: HttpRequestOptions): Promise<HttpResponse> {
+    return this.#request("DELETE", path, options?.body, options);
+  }
+
+  options(path: string, options?: HttpOptions): Promise<HttpResponse> {
+    return this.#request("OPTIONS", path, undefined, options);
   }
 
   request(
     method: string,
     path: string,
-    options?: HttpOptions & { body?: BodyInit },
+    options?: HttpRequestOptions,
   ): Promise<HttpResponse> {
     return this.#request(method, path, options?.body, options);
   }
 
   getCookies(): Record<string, string> {
-    return Object.fromEntries(this.#cookieJar);
+    return this.#cookieJar?.getAll() ?? {};
   }
 
   setCookie(name: string, value: string): void {
-    if (!this.#cookiesEnabled) {
+    if (!this.#cookieJar) {
       throw new Error(
         "Cookie handling is disabled. Remove cookies.disabled: true from HttpClientConfig.",
       );
     }
-    this.#cookieJar.set(name, value);
+    this.#cookieJar.setCookie(name, value, this.#baseUrlObj.hostname);
   }
 
   clearCookies(): void {
-    this.#cookieJar.clear();
+    this.#cookieJar?.clear();
   }
 
   async #request(
@@ -350,6 +233,7 @@ class HttpClientImpl implements HttpClient {
     options?: HttpOptions,
   ): Promise<HttpResponse> {
     const url = buildUrl(this.#baseUrl, path, options?.query);
+    const urlObj = new URL(url);
     const prepared = prepareBody(body);
     const headers = mergeHeaders(
       this.config.headers,
@@ -357,22 +241,29 @@ class HttpClientImpl implements HttpClient {
       options?.headers,
     );
 
-    // Add Cookie header if cookies are enabled and jar is not empty
-    if (this.#cookiesEnabled && this.#cookieJar.size > 0) {
-      headers["Cookie"] = serializeCookies(Object.fromEntries(this.#cookieJar));
+    // Add Cookie header if cookies are enabled
+    if (this.#cookieJar) {
+      const cookieHeader = this.#cookieJar.getCookieHeader(urlObj);
+      if (cookieHeader) {
+        headers.set("Cookie", cookieHeader);
+      }
     }
 
     // Log request start
     logger.info("HTTP request starting", {
       method,
       url,
-      headers: Object.keys(headers),
+      headers: [...headers.keys()],
       hasBody: prepared.body !== undefined,
-      queryParams: options?.query ? Object.keys(options.query) : [],
+      queryParams: options?.query
+        ? (options.query instanceof URLSearchParams
+          ? [...options.query.keys()]
+          : Object.keys(options.query))
+        : [],
     });
     logger.trace("HTTP request details", {
-      headers,
-      bodyPreview: formatBodyPreview(prepared.body),
+      headers: Object.fromEntries(headers),
+      body: prepared.body,
     });
 
     const fetchFn = this.config.fetch ?? globalThis.fetch;
@@ -401,39 +292,35 @@ class HttpClientImpl implements HttpClient {
       if (shouldThrow) {
         throw error;
       }
-      return createHttpResponseFailure(url, duration, error);
+      return new HttpResponseFailureImpl(url, duration, error);
     }
 
     const duration = performance.now() - startTime;
 
-    // Read body first (needed for both success/error response and error message)
+    // Read body (needed for both success/error response and error message)
+    // Distinguish between "no body" (null) and "empty body" (empty Uint8Array)
     let responseBody: Uint8Array | null = null;
     if (rawResponse.body !== null) {
       const arrayBuffer = await rawResponse.arrayBuffer();
-      if (arrayBuffer.byteLength > 0) {
-        responseBody = new Uint8Array(arrayBuffer);
-      }
+      // Use empty Uint8Array for zero-length body to distinguish from null (no body)
+      responseBody = new Uint8Array(arrayBuffer);
     }
 
     // Create appropriate response type based on status
     let response: HttpResponse;
     if (rawResponse.ok) {
-      response = createHttpResponseSuccess(rawResponse, responseBody, duration);
-    } else {
-      const bodyText = responseBody
-        ? new TextDecoder().decode(responseBody)
-        : null;
-      const httpError = createHttpError(
-        rawResponse.status,
-        rawResponse.statusText,
-        bodyText,
-      );
-      response = createHttpResponseError(
+      response = new HttpResponseSuccessImpl(
         rawResponse,
         responseBody,
         duration,
-        httpError,
       );
+    } else {
+      const httpError = new HttpError(
+        rawResponse.status,
+        rawResponse.statusText,
+        { body: responseBody, headers: rawResponse.headers },
+      );
+      response = new HttpResponseErrorImpl(rawResponse, duration, httpError);
     }
 
     // Log response
@@ -448,24 +335,28 @@ class HttpClientImpl implements HttpClient {
     });
     logger.trace("HTTP response details", {
       headers: Object.fromEntries(rawResponse.headers.entries()),
-      bodyPreview: response.body ? formatBodyPreview(response.text) : undefined,
+      body: response.body,
     });
 
     // Store cookies from Set-Cookie headers if cookies are enabled
-    if (this.#cookiesEnabled) {
+    // Note: For redirect: "follow", cookies from intermediate responses are not accessible
+    // via the fetch API. Only cookies from the final response are stored.
+    if (this.#cookieJar) {
       // Use getSetCookie() if available (modern API), otherwise fallback to get()
       const setCookies = rawResponse.headers.getSetCookie?.() ??
         (rawResponse.headers.get("set-cookie")?.split(/,(?=\s*\w+=)/) ?? []);
-      const parsedCount = setCookies.length;
+      const responseUrl = new URL(rawResponse.url || url);
+      let storedCount = 0;
       for (const cookieStr of setCookies) {
-        const parsed = parseSetCookie(cookieStr.trim());
+        const parsed = parseSetCookie(cookieStr.trim(), responseUrl);
         if (parsed) {
-          this.#cookieJar.set(parsed.name, parsed.value);
+          this.#cookieJar.set(parsed, responseUrl);
+          storedCount++;
         }
       }
-      if (parsedCount > 0) {
+      if (storedCount > 0) {
         logger.debug("Cookies received and stored", {
-          count: parsedCount,
+          count: storedCount,
         });
       }
     }

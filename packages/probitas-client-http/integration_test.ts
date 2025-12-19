@@ -13,11 +13,7 @@ import {
   assertFalse,
   assertInstanceOf,
 } from "@std/assert";
-import {
-  createHttpClient,
-  HttpNetworkError,
-  HttpNotFoundError,
-} from "./mod.ts";
+import { createHttpClient, HttpError, HttpNetworkError } from "./mod.ts";
 
 const ECHO_HTTP_URL = Deno.env.get("ECHO_HTTP_URL") ?? "http://localhost:18080";
 
@@ -63,7 +59,7 @@ Deno.test({
 
     await t.step("POST /post with JSON body", async () => {
       const payload = { name: "John", email: "john@example.com" };
-      const res = await client.post("/post", payload);
+      const res = await client.post("/post", { body: payload });
 
       assert(res.processed);
       assert(res.ok);
@@ -84,7 +80,7 @@ Deno.test({
         username: "alice",
         password: "secret",
       });
-      const res = await client.post("/post", params);
+      const res = await client.post("/post", { body: params });
 
       assert(res.ok);
       assertEquals(res.status, 200);
@@ -95,7 +91,7 @@ Deno.test({
     });
 
     await t.step("PUT /put", async () => {
-      const res = await client.put("/put", { updated: true });
+      const res = await client.put("/put", { body: { updated: true } });
 
       assert(res.ok);
       assertEquals(res.status, 200);
@@ -105,7 +101,7 @@ Deno.test({
     });
 
     await t.step("PATCH /patch", async () => {
-      const res = await client.patch("/patch", { patched: "value" });
+      const res = await client.patch("/patch", { body: { patched: "value" } });
 
       assert(res.ok);
       assertEquals(res.status, 200);
@@ -128,20 +124,23 @@ Deno.test({
       assertEquals(res.status, 201);
     });
 
-    await t.step("GET /status/404 throws HttpNotFoundError", async () => {
-      // Use throwOnError: true to test throwing behavior
-      const throwingClient = createHttpClient({
-        url: ECHO_HTTP_URL,
-        throwOnError: true,
-      });
-      try {
-        await throwingClient.get("/status/404");
-        throw new Error("Expected HttpNotFoundError");
-      } catch (error) {
-        assertInstanceOf(error, HttpNotFoundError);
-        assertEquals(error.status, 404);
-      }
-    });
+    await t.step(
+      "GET /status/404 throws HttpError with status 404",
+      async () => {
+        // Use throwOnError: true to test throwing behavior
+        const throwingClient = createHttpClient({
+          url: ECHO_HTTP_URL,
+          throwOnError: true,
+        });
+        try {
+          await throwingClient.get("/status/404");
+          throw new Error("Expected HttpError");
+        } catch (error) {
+          assertInstanceOf(error, HttpError);
+          assertEquals(error.status, 404);
+        }
+      },
+    );
 
     await t.step("GET /headers returns request headers", async () => {
       const res = await client.get("/headers", {

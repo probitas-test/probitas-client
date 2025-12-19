@@ -1,16 +1,68 @@
 import { AbortError, ClientError, TimeoutError } from "@probitas/client";
-import type { HttpResponse } from "./types.ts";
+import { HttpBody } from "./body.ts";
 
 /**
- * Options for HttpError constructor.
+ * Format error message with status and body detail.
+ * JSON bodies are pretty-printed with Deno.inspect for readability.
  */
-export interface HttpErrorOptions extends ErrorOptions {
-  /** Associated HTTP response */
-  readonly response?: HttpResponse;
+function formatErrorMessage(
+  status: number,
+  statusText: string,
+  body: HttpBody,
+): string {
+  const text = body.text();
+  if (text === null) {
+    return `${status}: ${statusText}`;
+  }
+  // Try to parse as JSON for pretty-printing, otherwise use text as-is
+  let detail: string;
+  try {
+    const json = body.json();
+    detail = Deno.inspect(json, {
+      compact: false,
+      sorted: true,
+      trailingComma: true,
+    });
+  } catch {
+    detail = text;
+  }
+  const indented = detail
+    .split("\n")
+    .map((line) => `  ${line}`)
+    .join("\n");
+  return `${status}: ${statusText}\n\n${indented}`;
 }
 
 /**
- * Base HTTP error class.
+ * Options for creating an HttpError.
+ */
+export interface HttpErrorOptions extends ErrorOptions {
+  /** Response body as raw bytes */
+  readonly body?: Uint8Array | null;
+  /** Response headers */
+  readonly headers?: Headers | null;
+}
+
+/**
+ * HTTP error class for non-2xx responses.
+ *
+ * This error is thrown (or returned in response.error) when the server
+ * responds with a 4xx or 5xx status code. It includes the response body
+ * for inspecting error details.
+ *
+ * @example Check status code and body
+ * ```ts
+ * import { createHttpClient, HttpError } from "@probitas/client-http";
+ *
+ * const http = createHttpClient({ url: "http://localhost:3000", throwOnError: true });
+ * try {
+ *   await http.get("/not-found");
+ * } catch (error) {
+ *   if (error instanceof HttpError && error.status === 404) {
+ *     console.log("Not found:", error.text());
+ *   }
+ * }
+ * ```
  */
 export class HttpError extends ClientError {
   override readonly name: string = "HttpError";
@@ -22,110 +74,54 @@ export class HttpError extends ClientError {
   /** HTTP status text */
   readonly statusText: string;
 
-  /** Associated HTTP response (if available) */
-  readonly response?: HttpResponse;
+  /** Response headers (null if not available) */
+  readonly headers: Headers | null;
+
+  readonly #body: HttpBody;
 
   constructor(
-    message: string,
     status: number,
     statusText: string,
     options?: HttpErrorOptions,
   ) {
+    const headers = options?.headers ?? null;
+    const body = new HttpBody(options?.body ?? null, headers);
+    const message = formatErrorMessage(status, statusText, body);
     super(message, "http", options);
     this.status = status;
     this.statusText = statusText;
-    this.response = options?.response;
+    this.headers = headers;
+    this.#body = body;
   }
-}
 
-/**
- * HTTP 400 Bad Request error.
- */
-export class HttpBadRequestError extends HttpError {
-  override readonly name = "HttpBadRequestError";
-  override readonly status = 400 as const;
-  override readonly statusText = "Bad Request";
-
-  constructor(message: string, options?: HttpErrorOptions) {
-    super(message, 400, "Bad Request", options);
+  /** Response body as raw bytes (null if no body) */
+  get body(): Uint8Array | null {
+    return this.#body.bytes;
   }
-}
 
-/**
- * HTTP 401 Unauthorized error.
- */
-export class HttpUnauthorizedError extends HttpError {
-  override readonly name = "HttpUnauthorizedError";
-  override readonly status = 401 as const;
-  override readonly statusText = "Unauthorized";
-
-  constructor(message: string, options?: HttpErrorOptions) {
-    super(message, 401, "Unauthorized", options);
+  /** Get body as ArrayBuffer (null if no body) */
+  arrayBuffer(): ArrayBuffer | null {
+    return this.#body.arrayBuffer();
   }
-}
 
-/**
- * HTTP 403 Forbidden error.
- */
-export class HttpForbiddenError extends HttpError {
-  override readonly name = "HttpForbiddenError";
-  override readonly status = 403 as const;
-  override readonly statusText = "Forbidden";
-
-  constructor(message: string, options?: HttpErrorOptions) {
-    super(message, 403, "Forbidden", options);
+  /** Get body as Blob (null if no body) */
+  blob(): Blob | null {
+    return this.#body.blob();
   }
-}
 
-/**
- * HTTP 404 Not Found error.
- */
-export class HttpNotFoundError extends HttpError {
-  override readonly name = "HttpNotFoundError";
-  override readonly status = 404 as const;
-  override readonly statusText = "Not Found";
-
-  constructor(message: string, options?: HttpErrorOptions) {
-    super(message, 404, "Not Found", options);
+  /** Get body as text (null if no body) */
+  text(): string | null {
+    return this.#body.text();
   }
-}
 
-/**
- * HTTP 409 Conflict error.
- */
-export class HttpConflictError extends HttpError {
-  override readonly name = "HttpConflictError";
-  override readonly status = 409 as const;
-  override readonly statusText = "Conflict";
-
-  constructor(message: string, options?: HttpErrorOptions) {
-    super(message, 409, "Conflict", options);
-  }
-}
-
-/**
- * HTTP 429 Too Many Requests error.
- */
-export class HttpTooManyRequestsError extends HttpError {
-  override readonly name = "HttpTooManyRequestsError";
-  override readonly status = 429 as const;
-  override readonly statusText = "Too Many Requests";
-
-  constructor(message: string, options?: HttpErrorOptions) {
-    super(message, 429, "Too Many Requests", options);
-  }
-}
-
-/**
- * HTTP 500 Internal Server Error.
- */
-export class HttpInternalServerError extends HttpError {
-  override readonly name = "HttpInternalServerError";
-  override readonly status = 500 as const;
-  override readonly statusText = "Internal Server Error";
-
-  constructor(message: string, options?: HttpErrorOptions) {
-    super(message, 500, "Internal Server Error", options);
+  /**
+   * Get body as parsed JSON (null if no body).
+   * @template T - defaults to any for test convenience
+   * @throws SyntaxError if body is not valid JSON
+   */
+  // deno-lint-ignore no-explicit-any
+  json<T = any>(): T | null {
+    return this.#body.json<T>();
   }
 }
 
@@ -143,20 +139,6 @@ export class HttpNetworkError extends ClientError {
     super(message, "network", options);
   }
 }
-
-/**
- * Error types that indicate an operation was processed by the server.
- * These errors occur after the HTTP request reaches the server.
- */
-export type HttpOperationError =
-  | HttpBadRequestError
-  | HttpUnauthorizedError
-  | HttpForbiddenError
-  | HttpNotFoundError
-  | HttpConflictError
-  | HttpTooManyRequestsError
-  | HttpInternalServerError
-  | HttpError;
 
 /**
  * Error types that indicate the operation was not processed.

@@ -8,7 +8,7 @@ import {
 } from "@std/assert";
 import { AbortError } from "@probitas/client";
 import { createHttpClient } from "./client.ts";
-import { HttpNetworkError, HttpNotFoundError } from "./errors.ts";
+import { HttpError, HttpNetworkError } from "./errors.ts";
 
 function createMockFetch(
   handler: (req: Request) => Response | Promise<Response>,
@@ -149,6 +149,31 @@ Deno.test("HttpClient.get", async (t) => {
   });
 });
 
+Deno.test("HttpClient.head", async (t) => {
+  await t.step("sends HEAD request", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response(null, {
+        status: 200,
+        headers: { "Content-Length": "1234" },
+      });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    const response = await client.head("/users/1");
+    await client.close();
+
+    assertEquals(capturedRequest?.method, "HEAD");
+    assertEquals(capturedRequest?.url, "http://localhost:3000/users/1");
+    assertEquals(response.headers?.get("Content-Length"), "1234");
+  });
+});
+
 Deno.test("HttpClient.post", async (t) => {
   await t.step("sends POST request with JSON body", async () => {
     let capturedRequest: Request | undefined;
@@ -162,7 +187,9 @@ Deno.test("HttpClient.post", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.post("/users", { name: "John", email: "john@example.com" });
+    await client.post("/users", {
+      body: { name: "John", email: "john@example.com" },
+    });
     await client.close();
 
     assertEquals(capturedRequest?.method, "POST");
@@ -186,7 +213,7 @@ Deno.test("HttpClient.post", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.post("/text", "plain text body");
+    await client.post("/text", { body: "plain text body" });
     await client.close();
 
     assertEquals(capturedRequest?.method, "POST");
@@ -207,7 +234,7 @@ Deno.test("HttpClient.post", async (t) => {
     });
 
     const binary = new Uint8Array([1, 2, 3, 4, 5]);
-    await client.post("/upload", binary);
+    await client.post("/upload", { body: binary });
     await client.close();
 
     assertEquals(capturedRequest?.method, "POST");
@@ -228,12 +255,30 @@ Deno.test("HttpClient.post", async (t) => {
     });
 
     const params = new URLSearchParams({ foo: "bar", baz: "qux" });
-    await client.post("/form", params);
+    await client.post("/form", { body: params });
     await client.close();
 
     assertEquals(capturedRequest?.method, "POST");
     const body = await capturedRequest?.text();
     assertEquals(body, "foo=bar&baz=qux");
+  });
+
+  await t.step("sends POST request without body", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response("ok", { status: 200 });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    await client.post("/action");
+    await client.close();
+
+    assertEquals(capturedRequest?.method, "POST");
   });
 });
 
@@ -250,11 +295,13 @@ Deno.test("HttpClient.put", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.put("/users/1", { name: "Updated" });
+    await client.put("/users/1", { body: { name: "Updated" } });
     await client.close();
 
     assertEquals(capturedRequest?.method, "PUT");
     assertEquals(capturedRequest?.url, "http://localhost:3000/users/1");
+    const body = await capturedRequest?.json();
+    assertEquals(body, { name: "Updated" });
   });
 });
 
@@ -271,11 +318,13 @@ Deno.test("HttpClient.patch", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.patch("/users/1", { name: "Patched" });
+    await client.patch("/users/1", { body: { name: "Patched" } });
     await client.close();
 
     assertEquals(capturedRequest?.method, "PATCH");
     assertEquals(capturedRequest?.url, "http://localhost:3000/users/1");
+    const body = await capturedRequest?.json();
+    assertEquals(body, { name: "Patched" });
   });
 });
 
@@ -298,6 +347,51 @@ Deno.test("HttpClient.delete", async (t) => {
     assertEquals(capturedRequest?.method, "DELETE");
     assertEquals(capturedRequest?.url, "http://localhost:3000/users/1");
   });
+
+  await t.step("sends DELETE request with body", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response(null, { status: 200 });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    await client.delete("/users/1", { body: { reason: "cleanup" } });
+    await client.close();
+
+    assertEquals(capturedRequest?.method, "DELETE");
+    const body = await capturedRequest?.json();
+    assertEquals(body, { reason: "cleanup" });
+  });
+});
+
+Deno.test("HttpClient.options", async (t) => {
+  await t.step("sends OPTIONS request", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response(null, {
+        status: 204,
+        headers: { "Allow": "GET, POST, PUT, DELETE" },
+      });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    const response = await client.options("/resource");
+    await client.close();
+
+    assertEquals(capturedRequest?.method, "OPTIONS");
+    assertEquals(capturedRequest?.url, "http://localhost:3000/resource");
+    assertEquals(response.headers?.get("Allow"), "GET, POST, PUT, DELETE");
+  });
 });
 
 Deno.test("HttpClient.request", async (t) => {
@@ -313,10 +407,10 @@ Deno.test("HttpClient.request", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.request("OPTIONS", "/resource");
+    await client.request("CUSTOM", "/resource");
     await client.close();
 
-    assertEquals(capturedRequest?.method, "OPTIONS");
+    assertEquals(capturedRequest?.method, "CUSTOM");
     assertEquals(capturedRequest?.url, "http://localhost:3000/resource");
   });
 
@@ -343,7 +437,7 @@ Deno.test("HttpClient.request", async (t) => {
 
 Deno.test("HttpClient error handling", async (t) => {
   await t.step(
-    "throws HttpNotFoundError for 404 when throwOnError: true",
+    "throws HttpError for 404 when throwOnError: true",
     async () => {
       const mockFetch = createMockFetch(() => {
         return new Response("Not Found", {
@@ -360,9 +454,9 @@ Deno.test("HttpClient error handling", async (t) => {
 
       const error = await assertRejects(
         () => client.get("/missing"),
-        HttpNotFoundError,
+        HttpError,
       );
-      assertInstanceOf(error, HttpNotFoundError);
+      assertInstanceOf(error, HttpError);
       assertEquals(error.status, 404);
       await client.close();
     },
@@ -407,7 +501,7 @@ Deno.test("HttpClient throwOnError option", async (t) => {
 
     assertFalse(response.ok);
     assertEquals(response.status, 404);
-    assertInstanceOf(response.error, HttpNotFoundError);
+    assertInstanceOf(response.error, HttpError);
   });
 
   await t.step(
@@ -473,7 +567,7 @@ Deno.test("HttpClient throwOnError option", async (t) => {
 
       await assertRejects(
         () => client.get("/missing", { throwOnError: true }),
-        HttpNotFoundError,
+        HttpError,
       );
       await client.close();
     },
@@ -510,7 +604,8 @@ Deno.test("HttpClient throwOnError option", async (t) => {
       fetch: mockFetch,
     });
 
-    const response = await client.post("/data", { invalid: "data" }, {
+    const response = await client.post("/data", {
+      body: { invalid: "data" },
       throwOnError: false,
     });
     await client.close();

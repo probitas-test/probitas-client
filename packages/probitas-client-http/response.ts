@@ -1,5 +1,6 @@
 import type { ClientResult } from "@probitas/client";
-import type { HttpFailureError } from "./errors.ts";
+import { HttpBody } from "./body.ts";
+import { HttpError, type HttpFailureError } from "./errors.ts";
 
 /**
  * Base interface for all HTTP response types.
@@ -34,12 +35,15 @@ interface HttpResponseBase extends ClientResult {
   /** Get body as Blob (null if no body or failure). */
   blob(): Blob | null;
 
-  /** Get body as text (null if no body or failure). */
+  /**
+   * Get body as text (null if no body or failure).
+   */
   text(): string | null;
 
   /**
    * Get body as parsed JSON (null if no body or failure).
    * @template T - defaults to any for test convenience
+   * @throws SyntaxError if body is not valid JSON
    */
   // deno-lint-ignore no-explicit-any
   json<T = any>(): T | null;
@@ -90,7 +94,7 @@ export interface HttpResponseError extends HttpResponseBase {
   readonly ok: false;
 
   /** Error describing the HTTP error. */
-  readonly error: Error;
+  readonly error: HttpError;
 
   /** HTTP status code (4xx/5xx). */
   readonly status: number;
@@ -141,7 +145,7 @@ export interface HttpResponseFailure extends HttpResponseBase {
  * HTTP response union type representing all possible response states.
  *
  * - **Success (2xx)**: `processed: true, ok: true, error: null`
- * - **Error (4xx/5xx)**: `processed: true, ok: false, error: Error`
+ * - **Error (4xx/5xx)**: `processed: true, ok: false, error: HttpError`
  * - **Failure (network error)**: `processed: false, ok: false, error: Error`
  *
  * @example Type narrowing by ok
@@ -181,8 +185,9 @@ export type HttpResponse =
 
 /**
  * Implementation of HttpResponseSuccess.
+ * @internal
  */
-class HttpResponseSuccessImpl implements HttpResponseSuccess {
+export class HttpResponseSuccessImpl implements HttpResponseSuccess {
   readonly kind = "http" as const;
   readonly processed = true as const;
   readonly ok = true as const;
@@ -191,13 +196,10 @@ class HttpResponseSuccessImpl implements HttpResponseSuccess {
   readonly statusText: string;
   readonly headers: Headers;
   readonly url: string;
-  readonly body: Uint8Array | null;
   readonly duration: number;
 
-  #raw: globalThis.Response;
-  #textCache: string | null | undefined;
-  #jsonCache: unknown | undefined;
-  #jsonParsed = false;
+  readonly #raw: globalThis.Response;
+  readonly #body: HttpBody;
 
   constructor(
     raw: globalThis.Response,
@@ -208,141 +210,101 @@ class HttpResponseSuccessImpl implements HttpResponseSuccess {
     this.statusText = raw.statusText;
     this.headers = raw.headers;
     this.url = raw.url;
-    this.body = body;
     this.duration = duration;
     this.#raw = raw;
+    this.#body = new HttpBody(body, raw.headers);
+  }
+
+  get body(): Uint8Array | null {
+    return this.#body.bytes;
+  }
+
+  arrayBuffer(): ArrayBuffer | null {
+    return this.#body.arrayBuffer();
+  }
+
+  blob(): Blob | null {
+    return this.#body.blob();
+  }
+
+  text(): string | null {
+    return this.#body.text();
+  }
+
+  // deno-lint-ignore no-explicit-any
+  json<T = any>(): T | null {
+    return this.#body.json<T>();
   }
 
   raw(): globalThis.Response {
     return this.#raw;
   }
-
-  arrayBuffer(): ArrayBuffer | null {
-    if (this.body === null) {
-      return null;
-    }
-    const buffer = new ArrayBuffer(this.body.byteLength);
-    new Uint8Array(buffer).set(this.body);
-    return buffer;
-  }
-
-  blob(): Blob | null {
-    if (this.body === null) {
-      return null;
-    }
-    const contentType = this.headers.get("content-type") ?? "";
-    return new Blob([this.arrayBuffer()!], { type: contentType });
-  }
-
-  text(): string | null {
-    if (this.body === null) {
-      return null;
-    }
-    if (this.#textCache === undefined) {
-      this.#textCache = new TextDecoder().decode(this.body);
-    }
-    return this.#textCache;
-  }
-
-  // deno-lint-ignore no-explicit-any
-  json<T = any>(): T | null {
-    if (this.body === null) {
-      return null;
-    }
-    if (!this.#jsonParsed) {
-      const textValue = this.text();
-      this.#jsonCache = textValue !== null ? JSON.parse(textValue) : null;
-      this.#jsonParsed = true;
-    }
-    return this.#jsonCache as T;
-  }
 }
 
 /**
  * Implementation of HttpResponseError.
+ * Proxies body methods to the HttpError instance.
+ * @internal
  */
-class HttpResponseErrorImpl implements HttpResponseError {
+export class HttpResponseErrorImpl implements HttpResponseError {
   readonly kind = "http" as const;
   readonly processed = true as const;
   readonly ok = false as const;
-  readonly error: Error;
+  readonly error: HttpError;
   readonly status: number;
   readonly statusText: string;
   readonly headers: Headers;
   readonly url: string;
-  readonly body: Uint8Array | null;
   readonly duration: number;
 
-  #raw: globalThis.Response;
-  #textCache: string | null | undefined;
-  #jsonCache: unknown | undefined;
-  #jsonParsed = false;
+  readonly #raw: globalThis.Response;
 
   constructor(
     raw: globalThis.Response,
-    body: Uint8Array | null,
     duration: number,
-    error: Error,
+    error: HttpError,
   ) {
     this.error = error;
     this.status = raw.status;
     this.statusText = raw.statusText;
     this.headers = raw.headers;
     this.url = raw.url;
-    this.body = body;
     this.duration = duration;
     this.#raw = raw;
+  }
+
+  // Proxy body access to error
+  get body(): Uint8Array | null {
+    return this.error.body;
+  }
+
+  arrayBuffer(): ArrayBuffer | null {
+    return this.error.arrayBuffer();
+  }
+
+  blob(): Blob | null {
+    return this.error.blob();
+  }
+
+  text(): string | null {
+    return this.error.text();
+  }
+
+  // deno-lint-ignore no-explicit-any
+  json<T = any>(): T | null {
+    return this.error.json<T>();
   }
 
   raw(): globalThis.Response {
     return this.#raw;
   }
-
-  arrayBuffer(): ArrayBuffer | null {
-    if (this.body === null) {
-      return null;
-    }
-    const buffer = new ArrayBuffer(this.body.byteLength);
-    new Uint8Array(buffer).set(this.body);
-    return buffer;
-  }
-
-  blob(): Blob | null {
-    if (this.body === null) {
-      return null;
-    }
-    const contentType = this.headers.get("content-type") ?? "";
-    return new Blob([this.arrayBuffer()!], { type: contentType });
-  }
-
-  text(): string | null {
-    if (this.body === null) {
-      return null;
-    }
-    if (this.#textCache === undefined) {
-      this.#textCache = new TextDecoder().decode(this.body);
-    }
-    return this.#textCache;
-  }
-
-  // deno-lint-ignore no-explicit-any
-  json<T = any>(): T | null {
-    if (this.body === null) {
-      return null;
-    }
-    if (!this.#jsonParsed) {
-      const textValue = this.text();
-      this.#jsonCache = textValue !== null ? JSON.parse(textValue) : null;
-      this.#jsonParsed = true;
-    }
-    return this.#jsonCache as T;
-  }
 }
 
 /**
  * Implementation of HttpResponseFailure.
+ * @internal
  */
-class HttpResponseFailureImpl implements HttpResponseFailure {
+export class HttpResponseFailureImpl implements HttpResponseFailure {
   readonly kind = "http" as const;
   readonly processed = false as const;
   readonly ok = false as const;
@@ -358,10 +320,6 @@ class HttpResponseFailureImpl implements HttpResponseFailure {
     this.url = url;
     this.duration = duration;
     this.error = error;
-  }
-
-  raw(): null {
-    return null;
   }
 
   arrayBuffer(): null {
@@ -380,66 +338,8 @@ class HttpResponseFailureImpl implements HttpResponseFailure {
   json<T = any>(): T | null {
     return null;
   }
-}
 
-/**
- * Create HttpResponseSuccess with pre-loaded body.
- */
-export function createHttpResponseSuccess(
-  raw: globalThis.Response,
-  body: Uint8Array | null,
-  duration: number,
-): HttpResponseSuccess {
-  return new HttpResponseSuccessImpl(raw, body, duration);
-}
-
-/**
- * Create HttpResponseError with pre-loaded body.
- *
- * Use this when body is already consumed (e.g., for error message construction).
- */
-export function createHttpResponseError(
-  raw: globalThis.Response,
-  body: Uint8Array | null,
-  duration: number,
-  error: Error,
-): HttpResponseError {
-  return new HttpResponseErrorImpl(raw, body, duration, error);
-}
-
-/**
- * Create HttpResponseFailure for network errors.
- *
- * Used when the request could not reach the server.
- */
-export function createHttpResponseFailure(
-  url: string,
-  duration: number,
-  error: HttpFailureError,
-): HttpResponseFailure {
-  return new HttpResponseFailureImpl(url, duration, error);
-}
-
-/**
- * @deprecated Use createHttpResponseSuccess or createHttpResponseError instead.
- * This function is kept for backward compatibility.
- */
-export async function createHttpResponse(
-  raw: globalThis.Response,
-  duration: number,
-): Promise<HttpResponse> {
-  let body: Uint8Array | null = null;
-
-  if (raw.body !== null) {
-    const arrayBuffer = await raw.arrayBuffer();
-    if (arrayBuffer.byteLength > 0) {
-      body = new Uint8Array(arrayBuffer);
-    }
+  raw(): null {
+    return null;
   }
-
-  if (raw.ok) {
-    return new HttpResponseSuccessImpl(raw, body, duration);
-  }
-  const error = new Error(`HTTP ${raw.status}: ${raw.statusText}`);
-  return createHttpResponseError(raw, body, duration, error);
 }
