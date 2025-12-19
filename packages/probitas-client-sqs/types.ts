@@ -1,52 +1,24 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
 import type {
   SqsDeleteBatchResult,
-  SqsDeleteBatchResultFailure,
-  SqsDeleteBatchResultType,
   SqsDeleteQueueResult,
-  SqsDeleteQueueResultFailure,
-  SqsDeleteQueueResultType,
   SqsDeleteResult,
-  SqsDeleteResultFailure,
-  SqsDeleteResultType,
   SqsEnsureQueueResult,
-  SqsEnsureQueueResultFailure,
-  SqsEnsureQueueResultType,
   SqsReceiveResult,
-  SqsReceiveResultFailure,
-  SqsReceiveResultType,
   SqsResult,
   SqsSendBatchResult,
-  SqsSendBatchResultFailure,
-  SqsSendBatchResultType,
   SqsSendResult,
-  SqsSendResultFailure,
-  SqsSendResultType,
 } from "./result.ts";
 
 export type {
   SqsDeleteBatchResult,
-  SqsDeleteBatchResultFailure,
-  SqsDeleteBatchResultType,
   SqsDeleteQueueResult,
-  SqsDeleteQueueResultFailure,
-  SqsDeleteQueueResultType,
   SqsDeleteResult,
-  SqsDeleteResultFailure,
-  SqsDeleteResultType,
   SqsEnsureQueueResult,
-  SqsEnsureQueueResultFailure,
-  SqsEnsureQueueResultType,
   SqsReceiveResult,
-  SqsReceiveResultFailure,
-  SqsReceiveResultType,
   SqsResult,
   SqsSendBatchResult,
-  SqsSendBatchResultFailure,
-  SqsSendBatchResultType,
   SqsSendResult,
-  SqsSendResultFailure,
-  SqsSendResultType,
 };
 
 /**
@@ -92,12 +64,6 @@ export interface SqsClientConfig extends CommonOptions {
    * Optional for real AWS (uses default endpoint), required for LocalStack.
    */
   readonly url?: string | SqsConnectionConfig;
-  /**
-   * Whether to throw errors instead of returning failure results.
-   * Can be overridden per-operation via options.
-   * @default false
-   */
-  readonly throwOnError?: boolean;
 }
 
 /**
@@ -147,11 +113,6 @@ export interface SqsSendOptions extends CommonOptions {
   readonly messageGroupId?: string;
   /** Message deduplication ID (required for FIFO queues without content-based deduplication) */
   readonly messageDeduplicationId?: string;
-  /**
-   * Whether to throw errors instead of returning failure results.
-   * Overrides the client-level throwOnError setting.
-   */
-  readonly throwOnError?: boolean;
 }
 
 /**
@@ -178,11 +139,6 @@ export interface SqsReceiveOptions extends CommonOptions {
   readonly attributeNames?: readonly string[];
   /** Message attribute names to retrieve */
   readonly messageAttributeNames?: readonly string[];
-  /**
-   * Whether to throw errors instead of returning failure results.
-   * Overrides the client-level throwOnError setting.
-   */
-  readonly throwOnError?: boolean;
 }
 
 /**
@@ -210,36 +166,6 @@ export interface SqsEnsureQueueOptions extends CommonOptions {
   readonly attributes?: Record<string, string>;
   /** Queue tags */
   readonly tags?: Record<string, string>;
-  /**
-   * Whether to throw errors instead of returning failure results.
-   * Overrides the client-level throwOnError setting.
-   */
-  readonly throwOnError?: boolean;
-}
-
-/**
- * Common options for SQS operations with throwOnError support.
- *
- * Extends CommonOptions with the throwOnError option for operations
- * that don't have specific option types.
- */
-export interface SqsCommonOptions extends CommonOptions {
-  /**
-   * Whether to throw errors instead of returning failure results.
-   * Overrides the client-level throwOnError setting.
-   */
-  readonly throwOnError?: boolean;
-}
-
-/**
- * Options for batch operations.
- */
-export interface SqsBatchOptions extends CommonOptions {
-  /**
-   * Whether to throw errors instead of returning failure results.
-   * Overrides the client-level throwOnError setting.
-   */
-  readonly throwOnError?: boolean;
 }
 
 /**
@@ -266,54 +192,51 @@ export interface SqsClient extends AsyncDisposable {
   ensureQueue(
     queueName: string,
     options?: SqsEnsureQueueOptions,
-  ): Promise<SqsEnsureQueueResultType>;
+  ): Promise<SqsEnsureQueueResult>;
 
   /**
    * Delete a queue by URL.
    */
   deleteQueue(
     queueUrl: string,
-    options?: SqsCommonOptions,
-  ): Promise<SqsDeleteQueueResultType>;
+    options?: CommonOptions,
+  ): Promise<SqsDeleteQueueResult>;
 
   /**
    * Send a message to the queue.
    */
-  send(body: string, options?: SqsSendOptions): Promise<SqsSendResultType>;
+  send(body: string, options?: SqsSendOptions): Promise<SqsSendResult>;
 
   /**
    * Send multiple messages to the queue in a single request.
    */
-  sendBatch(
-    messages: SqsBatchMessage[],
-    options?: SqsBatchOptions,
-  ): Promise<SqsSendBatchResultType>;
+  sendBatch(messages: SqsBatchMessage[]): Promise<SqsSendBatchResult>;
 
   /**
    * Receive messages from the queue.
    */
-  receive(options?: SqsReceiveOptions): Promise<SqsReceiveResultType>;
+  receive(options?: SqsReceiveOptions): Promise<SqsReceiveResult>;
 
   /**
    * Delete a message from the queue.
    */
   delete(
     receiptHandle: string,
-    options?: SqsCommonOptions,
-  ): Promise<SqsDeleteResultType>;
+    options?: CommonOptions,
+  ): Promise<SqsDeleteResult>;
 
   /**
    * Delete multiple messages from the queue in a single request.
    */
   deleteBatch(
     receiptHandles: string[],
-    options?: SqsBatchOptions,
-  ): Promise<SqsDeleteBatchResultType>;
+    options?: CommonOptions,
+  ): Promise<SqsDeleteBatchResult>;
 
   /**
    * Purge all messages from the queue.
    */
-  purge(options?: SqsCommonOptions): Promise<SqsDeleteResultType>;
+  purge(options?: CommonOptions): Promise<SqsDeleteResult>;
 
   /**
    * Close the client and release resources.

@@ -63,8 +63,6 @@ When adding a new integration test:
 | client-graphql      | echo-graphql    | `ghcr.io/jsr-probitas/echo-graphql`    | 14000      | 14000   |
 | client-sql-postgres | postgres        | `postgres:16`                          | 15432      | 15432   |
 | client-sql-mysql    | mysql           | `mysql:8.0`                            | 13306      | 13306   |
-| client-sql-sqlite   | (local)         | N/A                                    | N/A        | N/A     |
-| client-sql-duckdb   | (local)         | N/A                                    | N/A        | N/A     |
 | client-deno-kv      | denokv          | `ghcr.io/denoland/denokv`              | 4512       | 4512    |
 | client-redis        | redis           | `redis:7`                              | 16379      | 16379   |
 | client-mongodb      | mongodb         | `mongo:7`                              | 27017      | 27017   |

@@ -1,5 +1,4 @@
 import type { ClientResult } from "@probitas/client";
-import type { GraphqlError } from "./errors.ts";
 import type { GraphqlErrorItem } from "./types.ts";
 
 /**
@@ -125,71 +124,4 @@ export function createGraphqlResponse<T>(
   options: GraphqlResponseOptions<T>,
 ): GraphqlResponse<T> {
   return new GraphqlResponseImpl(options);
-}
-
-/**
- * GraphQL response failure result.
- *
- * Represents a failure to complete a GraphQL request due to network errors,
- * connection failures, or other issues that prevented the request from
- * reaching the server or receiving a response.
- *
- * Note: GraphQL execution errors are NOT represented by this type.
- * Those are successful GraphQL responses with errors and are
- * represented by `GraphqlResponse` with `ok: false`.
- */
-export interface GraphqlResponseFailure {
-  /** Result kind discriminator */
-  readonly kind: "graphql";
-
-  /** Always false for failure results */
-  readonly ok: false;
-
-  /** The error that caused the failure */
-  readonly error: GraphqlError;
-
-  /** Response time in milliseconds until failure */
-  readonly duration: number;
-}
-
-/**
- * Union type for GraphQL response results.
- *
- * Use type narrowing with the `status` property:
- * ```ts
- * import { createGraphqlClient } from "@probitas/client-graphql";
- *
- * const client = createGraphqlClient({ url: "http://localhost:4000/graphql" });
- * const result = await client.query("{ __typename }");
- * if ("status" in result) {
- *   // result is GraphqlResponse - request completed
- *   console.log(result.status, result.data());
- * } else {
- *   // result is GraphqlResponseFailure - request failed
- *   console.error(result.error.message);
- * }
- * await client.close();
- * ```
- */
-// deno-lint-ignore no-explicit-any
-export type GraphqlResponseType<T = any> =
-  | GraphqlResponse<T>
-  | GraphqlResponseFailure;
-
-/**
- * Create a GraphQL response failure result.
- *
- * @param error - The error that caused the failure
- * @param duration - Time in milliseconds until failure
- */
-export function createGraphqlResponseFailure(
-  error: GraphqlError,
-  duration: number,
-): GraphqlResponseFailure {
-  return {
-    kind: "graphql",
-    ok: false as const,
-    error,
-    duration,
-  };
 }

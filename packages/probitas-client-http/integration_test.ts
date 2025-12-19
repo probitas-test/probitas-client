@@ -8,7 +8,7 @@
  */
 
 import { assert, assertEquals, assertInstanceOf } from "@std/assert";
-import { createHttpClient, HttpError, HttpNotFoundError } from "./mod.ts";
+import { createHttpClient, HttpNotFoundError } from "./mod.ts";
 
 const ECHO_HTTP_URL = Deno.env.get("ECHO_HTTP_URL") ?? "http://localhost:18080";
 
@@ -36,12 +36,11 @@ Deno.test({
         headers: { "X-Custom-Header": "test-value" },
       });
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
       assert(res.headers.get("content-type")?.match(/^application\/json/));
 
-      const data = res.json<{
+      const data = res.data<{
         args: Record<string, string>;
         headers: Record<string, string>;
         url: string;
@@ -56,12 +55,11 @@ Deno.test({
       const payload = { name: "John", email: "john@example.com" };
       const res = await client.post("/post", payload);
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
       assert(res.headers.get("content-type")?.match(/^application\/json/));
 
-      const data = res.json<{
+      const data = res.data<{
         json: typeof payload;
         headers: Record<string, string>;
       }>();
@@ -77,11 +75,10 @@ Deno.test({
       });
       const res = await client.post("/post", params);
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
 
-      const data = res.json<{ form: Record<string, string> }>();
+      const data = res.data<{ form: Record<string, string> }>();
       assertEquals(data?.form.username, "alice");
       assertEquals(data?.form.password, "secret");
     });
@@ -89,29 +86,26 @@ Deno.test({
     await t.step("PUT /put", async () => {
       const res = await client.put("/put", { updated: true });
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
 
-      const data = res.json<{ json: { updated: boolean } }>();
+      const data = res.data<{ json: { updated: boolean } }>();
       assertEquals(data?.json.updated, true);
     });
 
     await t.step("PATCH /patch", async () => {
       const res = await client.patch("/patch", { patched: "value" });
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
 
-      const data = res.json<{ json: { patched: string } }>();
+      const data = res.data<{ json: { patched: string } }>();
       assertEquals(data?.json.patched, "value");
     });
 
     await t.step("DELETE /delete", async () => {
       const res = await client.delete("/delete");
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
     });
@@ -119,14 +113,13 @@ Deno.test({
     await t.step("GET /status/201 returns custom status", async () => {
       const res = await client.request("GET", "/status/201");
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 201);
     });
 
     await t.step("GET /status/404 throws HttpNotFoundError", async () => {
       try {
-        await client.get("/status/404", { throwOnError: true });
+        await client.get("/status/404");
         throw new Error("Expected HttpNotFoundError");
       } catch (error) {
         assertInstanceOf(error, HttpNotFoundError);
@@ -141,10 +134,9 @@ Deno.test({
         },
       });
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
 
-      const data = res.json<{ headers: Record<string, string> }>();
+      const data = res.data<{ headers: Record<string, string> }>();
       // Verify Accept header was sent (echo-http echoes back headers)
       assertEquals(data?.headers["Accept"], "application/json");
     });
@@ -152,7 +144,6 @@ Deno.test({
     await t.step("GET /delay/1 measures duration", async () => {
       const res = await client.get("/delay/1");
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       // Should take at least 1 second
       assertEquals(
@@ -165,15 +156,14 @@ Deno.test({
     await t.step("response body can be read multiple times", async () => {
       const res = await client.get("/get");
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       // Read as text
       const text1 = res.text();
       const text2 = res.text();
       assertEquals(text1, text2);
 
       // Read as JSON
-      const json1 = res.json();
-      const json2 = res.json();
+      const json1 = res.data();
+      const json2 = res.data();
       assertEquals(json1, json2);
 
       // Body bytes are also available
@@ -190,8 +180,7 @@ Deno.test({
       });
 
       const res = await clientWithHeaders.get("/headers");
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
-      const data = res.json<{ headers: Record<string, string> }>();
+      const data = res.data<{ headers: Record<string, string> }>();
 
       assertEquals(data?.headers["Authorization"], "Bearer token123");
       assertEquals(data?.headers["X-Api-Version"], "v1");
@@ -208,8 +197,7 @@ Deno.test({
       const res = await clientWithHeaders.get("/headers", {
         headers: { "X-Header": "from-request" },
       });
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
-      const data = res.json<{ headers: Record<string, string> }>();
+      const data = res.data<{ headers: Record<string, string> }>();
 
       assertEquals(data?.headers["X-Header"], "from-request");
 
@@ -219,11 +207,10 @@ Deno.test({
     await t.step("redirect: follow (default) follows redirects", async () => {
       const res = await client.get("/redirect/3");
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
 
-      const data = res.json<{ redirected: boolean }>();
+      const data = res.data<{ redirected: boolean }>();
       assertEquals(data?.redirected, true);
     });
 
@@ -233,7 +220,6 @@ Deno.test({
         throwOnError: false,
       });
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       // Should return the redirect response without following
       assertEquals(res.status, 302);
       assertEquals(res.ok, false);
@@ -245,12 +231,12 @@ Deno.test({
       try {
         await client.get("/redirect/1", {
           redirect: "error",
-          throwOnError: true,
+          throwOnError: false,
         });
         throw new Error("Expected fetch to throw on redirect");
       } catch (error) {
-        // fetch throws TypeError when redirect is "error", which is wrapped in HttpError
-        assertInstanceOf(error, HttpError);
+        // fetch throws TypeError when redirect is "error" and response is redirect
+        assertInstanceOf(error, TypeError);
       }
     });
 
@@ -262,7 +248,6 @@ Deno.test({
       });
 
       const res = await clientManual.get("/redirect/1");
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.status, 302);
 
       await clientManual.close();
@@ -276,7 +261,6 @@ Deno.test({
 
       // Override manual with follow
       const res = await clientManual.get("/redirect/1", { redirect: "follow" });
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
       assertEquals(res.status, 200);
 
@@ -299,9 +283,8 @@ Deno.test({
 
       const res = await client.get("/cookies");
 
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.ok, true);
-      const data = res.json<{ cookies: Record<string, string> }>();
+      const data = res.data<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.session, "test123");
       assertEquals(data?.cookies.user, "alice");
 
@@ -319,7 +302,6 @@ Deno.test({
         redirect: "manual",
         throwOnError: false,
       });
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
       assertEquals(res.status, 302);
 
       // Verify cookies were stored in jar from Set-Cookie header
@@ -344,8 +326,7 @@ Deno.test({
 
       // Second request should send the cookie back
       const res = await client.get("/cookies");
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
-      const data = res.json<{ cookies: Record<string, string> }>();
+      const data = res.data<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.auth, "bearer-token");
 
       await client.close();
@@ -359,8 +340,7 @@ Deno.test({
 
       // Verify initial cookie is sent
       let res = await client.get("/cookies");
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
-      let data = res.json<{ cookies: Record<string, string> }>();
+      let data = res.data<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.initial, "value");
 
       // Clear cookies
@@ -368,8 +348,7 @@ Deno.test({
 
       // Verify no cookies are sent
       res = await client.get("/cookies");
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
-      data = res.json<{ cookies: Record<string, string> }>();
+      data = res.data<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.initial, undefined);
 
       await client.close();
@@ -385,8 +364,7 @@ Deno.test({
 
       // Verify it's sent
       const res = await client.get("/cookies");
-      if (!("status" in res)) throw new Error("Expected HttpResponse");
-      const data = res.json<{ cookies: Record<string, string> }>();
+      const data = res.data<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.manual, "cookie-value");
 
       await client.close();

@@ -1,11 +1,7 @@
 import type mysql from "mysql2/promise";
-import { AbortError, TimeoutError } from "@probitas/client";
 import {
-  createSqlQueryFailure,
   type SqlIsolationLevel,
-  type SqlOptions,
   SqlQueryResult,
-  type SqlQueryResultType,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -45,24 +41,12 @@ const ISOLATION_LEVEL_MAP: Record<SqlIsolationLevel, string> = {
 // deno-lint-ignore no-explicit-any
 type AnyPoolConnection = mysql.PoolConnection | any;
 
-/**
- * MySQL-specific transaction options.
- */
-export interface MySqlTransactionOptions
-  extends SqlTransactionOptions, SqlOptions {
-}
-
 export class MySqlTransactionImpl implements MySqlTransaction {
   readonly #connection: AnyPoolConnection;
-  readonly #options?: MySqlTransactionOptions;
   #finished = false;
 
-  private constructor(
-    connection: AnyPoolConnection,
-    options?: MySqlTransactionOptions,
-  ) {
+  private constructor(connection: AnyPoolConnection) {
     this.#connection = connection;
-    this.#options = options;
   }
 
   /**
@@ -70,7 +54,7 @@ export class MySqlTransactionImpl implements MySqlTransaction {
    */
   static async begin(
     connection: AnyPoolConnection,
-    options?: MySqlTransactionOptions,
+    options?: SqlTransactionOptions,
   ): Promise<MySqlTransactionImpl> {
     try {
       if (options?.isolationLevel) {
@@ -81,35 +65,20 @@ export class MySqlTransactionImpl implements MySqlTransaction {
         );
       }
       await connection.beginTransaction();
-      return new MySqlTransactionImpl(connection, options);
+      return new MySqlTransactionImpl(connection);
     } catch (error) {
       connection.release();
       throw convertMySqlError(error);
     }
   }
 
-  /**
-   * Determine if errors should be thrown based on options and transaction config.
-   * Priority: request option > transaction config > default (false)
-   */
-  #shouldThrow(options?: SqlOptions): boolean {
-    return options?.throwOnError ?? this.#options?.throwOnError ?? false;
-  }
-
   // deno-lint-ignore no-explicit-any
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>> {
+  ): Promise<SqlQueryResult<T>> {
     if (this.#finished) {
-      const error = convertMySqlError(
-        new Error("Transaction is already finished"),
-      );
-      if (this.#shouldThrow(options)) {
-        throw error;
-      }
-      return createSqlQueryFailure(error, 0);
+      throw convertMySqlError(new Error("Transaction is already finished"));
     }
 
     const startTime = performance.now();
@@ -121,6 +90,7 @@ export class MySqlTransactionImpl implements MySqlTransaction {
       // Handle SELECT queries
       if (Array.isArray(rows)) {
         return new SqlQueryResult<T>({
+          ok: true,
           rows: rows as unknown as T[],
           rowCount: rows.length,
           duration,
@@ -131,6 +101,7 @@ export class MySqlTransactionImpl implements MySqlTransaction {
       // deno-lint-ignore no-explicit-any
       const resultHeader = rows as any;
       return new SqlQueryResult<T>({
+        ok: true,
         rows: [],
         rowCount: resultHeader.affectedRows,
         duration,
@@ -142,18 +113,7 @@ export class MySqlTransactionImpl implements MySqlTransaction {
           : undefined,
       });
     } catch (error) {
-      const duration = performance.now() - startTime;
-      const sqlError = convertMySqlError(error);
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
-      if (this.#shouldThrow(options)) {
-        throw sqlError;
-      }
-      return createSqlQueryFailure(sqlError, duration);
+      throw convertMySqlError(error);
     }
   }
 
@@ -161,12 +121,8 @@ export class MySqlTransactionImpl implements MySqlTransaction {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params, options);
-    if (!result.ok) {
-      throw result.error;
-    }
+    const result = await this.query<T>(sql, params);
     return result.rows.first();
   }
 

@@ -275,10 +275,8 @@ Deno.test("RedisClient.get", async (t) => {
     });
 
     const result = await client.get("key");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
+    assertEquals(result.ok, true);
     assertEquals(result.value, "test-value");
     assertEquals(typeof result.duration, "number");
   });
@@ -295,10 +293,8 @@ Deno.test("RedisClient.get", async (t) => {
     });
 
     const result = await client.get("non-existent");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
+    assertEquals(result.ok, true);
     assertEquals(result.value, null);
   });
 
@@ -349,10 +345,8 @@ Deno.test("RedisClient.set", async (t) => {
     });
 
     const result = await client.set("key", "value");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
+    assertEquals(result.ok, true);
     assertEquals(result.value, "OK");
   });
 
@@ -434,10 +428,8 @@ Deno.test("RedisClient.del", async (t) => {
     });
 
     const result = await client.del("key1", "key2", "key3");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
+    assertEquals(result.ok, true);
     assertEquals(result.value, 3);
   });
 
@@ -453,9 +445,6 @@ Deno.test("RedisClient.del", async (t) => {
     });
 
     const result = await client.del("non-existent");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 0);
   });
@@ -474,9 +463,6 @@ Deno.test("RedisClient.incr and decr", async (t) => {
     });
 
     const result = await client.incr("counter");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 11);
   });
@@ -493,9 +479,6 @@ Deno.test("RedisClient.incr and decr", async (t) => {
     });
 
     const result = await client.decr("counter");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 9);
   });
@@ -514,9 +497,6 @@ Deno.test("RedisClient hash commands", async (t) => {
     });
 
     const result = await client.hget("hash", "field");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, "field-value");
   });
@@ -533,9 +513,6 @@ Deno.test("RedisClient hash commands", async (t) => {
     });
 
     const result = await client.hget("hash", "non-existent");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, null);
   });
@@ -552,9 +529,6 @@ Deno.test("RedisClient hash commands", async (t) => {
     });
 
     const result = await client.hset("hash", "field", "value");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 1);
   });
@@ -571,9 +545,6 @@ Deno.test("RedisClient hash commands", async (t) => {
     });
 
     const result = await client.hgetall("hash");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, { field1: "value1", field2: "value2" });
   });
@@ -590,9 +561,6 @@ Deno.test("RedisClient hash commands", async (t) => {
     });
 
     const result = await client.hdel("hash", "field1", "field2");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 2);
   });
@@ -611,9 +579,6 @@ Deno.test("RedisClient list commands", async (t) => {
     });
 
     const result = await client.lpush("list", "a", "b", "c");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 3);
   });
@@ -630,9 +595,6 @@ Deno.test("RedisClient list commands", async (t) => {
     });
 
     const result = await client.rpush("list", "d", "e");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 5);
   });
@@ -649,9 +611,6 @@ Deno.test("RedisClient list commands", async (t) => {
     });
 
     const result = await client.lpop("list");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, "first");
   });
@@ -668,9 +627,6 @@ Deno.test("RedisClient list commands", async (t) => {
     });
 
     const result = await client.rpop("list");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, "last");
   });
@@ -687,9 +643,6 @@ Deno.test("RedisClient list commands", async (t) => {
     });
 
     const result = await client.lrange("list", 0, -1);
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, ["a", "b", "c"]);
   });
@@ -706,9 +659,6 @@ Deno.test("RedisClient list commands", async (t) => {
     });
 
     const result = await client.llen("list");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 5);
   });
@@ -727,9 +677,6 @@ Deno.test("RedisClient set commands", async (t) => {
     });
 
     const result = await client.sadd("set", "a", "b", "c");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 3);
   });
@@ -746,9 +693,6 @@ Deno.test("RedisClient set commands", async (t) => {
     });
 
     const result = await client.srem("set", "a", "b");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 2);
   });
@@ -765,9 +709,6 @@ Deno.test("RedisClient set commands", async (t) => {
     });
 
     const result = await client.smembers("set");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, ["a", "b", "c"]);
   });
@@ -784,9 +725,6 @@ Deno.test("RedisClient set commands", async (t) => {
     });
 
     const result = await client.sismember("set", "a");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, true);
   });
@@ -803,9 +741,6 @@ Deno.test("RedisClient set commands", async (t) => {
     });
 
     const result = await client.sismember("set", "x");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, false);
   });
@@ -828,9 +763,6 @@ Deno.test("RedisClient sorted set commands", async (t) => {
       { score: 1, member: "a" },
       { score: 2, member: "b" },
     );
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 2);
   });
@@ -847,9 +779,6 @@ Deno.test("RedisClient sorted set commands", async (t) => {
     });
 
     const result = await client.zrange("zset", 0, -1);
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, ["a", "b", "c"]);
   });
@@ -866,9 +795,6 @@ Deno.test("RedisClient sorted set commands", async (t) => {
     });
 
     const result = await client.zscore("zset", "b");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 2.5);
   });
@@ -885,9 +811,6 @@ Deno.test("RedisClient sorted set commands", async (t) => {
     });
 
     const result = await client.zscore("zset", "x");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, null);
   });
@@ -906,9 +829,6 @@ Deno.test("RedisClient pub/sub", async (t) => {
     });
 
     const result = await client.publish("channel", "message");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, 3);
   });
@@ -1043,10 +963,8 @@ Deno.test("RedisClient transaction", async (t) => {
     tx.incr("key");
     tx.get("key");
     const result = await tx.exec();
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
+    assertEquals(result.ok, true);
     assertEquals(result.value, ["OK", 2, "value"]);
   });
 });
@@ -1064,9 +982,6 @@ Deno.test("RedisClient.command (raw)", async (t) => {
     });
 
     const result = await client.command("PING");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, "PONG");
   });
@@ -1083,9 +998,6 @@ Deno.test("RedisClient.command (raw)", async (t) => {
     });
 
     const result = await client.command("GET", "key");
-    if (!result.ok) {
-      throw new Error(`Expected ok but got error: ${result.error.message}`);
-    }
 
     assertEquals(result.value, "test-value");
   });

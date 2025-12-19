@@ -1,4 +1,4 @@
-import type { SqlOptions, SqlQueryResultType } from "./result.ts";
+import type { SqlQueryResult } from "./result.ts";
 
 /**
  * Transaction isolation level.
@@ -26,26 +26,22 @@ export interface SqlTransaction {
    * Execute a query within the transaction.
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
-  ): Promise<SqlQueryResultType<T>>;
+  ): Promise<SqlQueryResult<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    * @param sql - SQL query string
    * @param params - Optional query parameters
-   * @param options - Optional query options (e.g., throwOnError)
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
-    options?: SqlOptions,
   ): Promise<T | undefined>;
 
   /**

@@ -1,9 +1,9 @@
-import type { SqlOptions } from "@probitas/client-sql";
+import type { CommonOptions } from "@probitas/client";
 
 /**
  * Configuration for creating a SQLite client.
  */
-export interface SqliteClientConfig extends SqlOptions {
+export interface SqliteClientConfig extends CommonOptions {
   /**
    * Database file path.
    * Use ":memory:" for an in-memory database.

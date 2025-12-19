@@ -1,4 +1,4 @@
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 
 /**
  * Check if DuckDB native library is available.
@@ -50,7 +50,7 @@ Deno.test({
           "SELECT 1 as value",
         );
 
-        if (!result.ok) throw new Error("Expected ok");
+        assertEquals(result.ok, true);
         assertEquals(result.rows.first(), { value: 1 });
         assertEquals(result.rowCount, 1);
       } finally {
@@ -67,7 +67,6 @@ Deno.test({
           [42, "hello"],
         );
 
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.first(), { a: 42, b: "hello" });
       } finally {
         await client.close();
@@ -91,7 +90,7 @@ Deno.test({
           [1, "Alice", "alice@example.com"],
         );
 
-        if (!insertResult.ok) throw new Error("Expected ok");
+        assertEquals(insertResult.ok, true);
 
         const selectResult = await client.query<
           { id: number; name: string; email: string }
@@ -100,7 +99,6 @@ Deno.test({
           [1],
         );
 
-        if (!selectResult.ok) throw new Error("Expected ok");
         assertEquals(selectResult.rows.first(), {
           id: 1,
           name: "Alice",
@@ -140,8 +138,8 @@ Deno.test({
       }
     });
 
-    await t.step("handles syntax errors with throwOnError", async () => {
-      const client = await createDuckDbClient({ throwOnError: true });
+    await t.step("handles syntax errors", async () => {
+      const client = await createDuckDbClient({});
 
       try {
         await assertRejects(
@@ -153,87 +151,34 @@ Deno.test({
       }
     });
 
-    await t.step(
-      "returns failure result for syntax errors by default",
-      async () => {
-        const client = await createDuckDbClient({});
+    await t.step("handles constraint violations", async () => {
+      const client = await createDuckDbClient({});
 
-        try {
-          const result = await client.query("SELEC * FROM users");
-          assertEquals(result.ok, false);
-          if (!result.ok) {
-            assertInstanceOf(result.error, QuerySyntaxError);
-          }
-        } finally {
-          await client.close();
-        }
-      },
-    );
-
-    await t.step(
-      "handles constraint violations with throwOnError",
-      async () => {
-        const client = await createDuckDbClient({ throwOnError: true });
-
-        try {
-          await client.query(`
+      try {
+        await client.query(`
           CREATE TABLE unique_test (
             id INTEGER PRIMARY KEY,
             code VARCHAR UNIQUE
           )
         `);
 
-          await client.query(
-            "INSERT INTO unique_test (id, code) VALUES ($1, $2)",
-            [1, "ABC"],
-          );
+        await client.query(
+          "INSERT INTO unique_test (id, code) VALUES ($1, $2)",
+          [1, "ABC"],
+        );
 
-          await assertRejects(
-            () =>
-              client.query(
-                "INSERT INTO unique_test (id, code) VALUES ($1, $2)",
-                [2, "ABC"],
-              ),
-            ConstraintError,
-          );
-        } finally {
-          await client.close();
-        }
-      },
-    );
-
-    await t.step(
-      "returns failure result for constraint violations by default",
-      async () => {
-        const client = await createDuckDbClient({});
-
-        try {
-          await client.query(`
-          CREATE TABLE unique_test2 (
-            id INTEGER PRIMARY KEY,
-            code VARCHAR UNIQUE
-          )
-        `);
-
-          await client.query(
-            "INSERT INTO unique_test2 (id, code) VALUES ($1, $2)",
-            [1, "ABC"],
-          );
-
-          const result = await client.query(
-            "INSERT INTO unique_test2 (id, code) VALUES ($1, $2)",
-            [2, "ABC"],
-          );
-
-          assertEquals(result.ok, false);
-          if (!result.ok) {
-            assertInstanceOf(result.error, ConstraintError);
-          }
-        } finally {
-          await client.close();
-        }
-      },
-    );
+        await assertRejects(
+          () =>
+            client.query(
+              "INSERT INTO unique_test (id, code) VALUES ($1, $2)",
+              [2, "ABC"],
+            ),
+          ConstraintError,
+        );
+      } finally {
+        await client.close();
+      }
+    });
 
     await t.step("transaction commits on success", async () => {
       const client = await createDuckDbClient({});
@@ -258,7 +203,6 @@ Deno.test({
           "SELECT * FROM tx_test ORDER BY id",
         );
 
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 2);
         assertEquals(result.rows[0].value, "one");
         assertEquals(result.rows[1].value, "two");
@@ -291,7 +235,6 @@ Deno.test({
           "SELECT * FROM rollback_test",
         );
 
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 0);
       } finally {
         await client.close();
@@ -302,13 +245,11 @@ Deno.test({
       let clientRef: DuckDbClient | undefined;
 
       {
-        await using client = await createDuckDbClient({
-          throwOnError: true,
-        });
+        await using client = await createDuckDbClient({});
         clientRef = client;
 
         const result = await client.query("SELECT 1 as value");
-        if (!result.ok) throw new Error("Expected ok");
+        assertEquals(result.ok, true);
       }
 
       // After the block, client should be closed
@@ -348,7 +289,7 @@ Deno.test({
             "SELECT * FROM sample_test ORDER BY id",
           );
 
-          if (!result.ok) throw new Error("Expected ok");
+          assertEquals(result.ok, true);
           assertEquals(result.rows.length > 0, true);
           assertEquals(result.rows.length, 2);
           assertEquals(
@@ -394,7 +335,6 @@ Deno.test({
            ORDER BY total DESC`,
         );
 
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 2);
         assertEquals(result.rows[0].product, "Widget");
       } finally {
@@ -430,7 +370,6 @@ Deno.test({
            ORDER BY id`,
         );
 
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 3);
         assertEquals(result.rows[0].running_total, 10n);
         assertEquals(result.rows[1].running_total, 30n);
@@ -456,7 +395,7 @@ Deno.test({
           value: number;
         }>(csvPath);
 
-        if (!result.ok) throw new Error("Expected ok");
+        assertEquals(result.ok, true);
         assertEquals(result.rows.length, 2);
         assertEquals(result.rows[0].name, "Alice");
         assertEquals(result.rows[1].name, "Bob");
@@ -495,7 +434,7 @@ Deno.test({
             value: number;
           }>(parquetPath);
 
-          if (!result.ok) throw new Error("Expected ok");
+          assertEquals(result.ok, true);
           assertEquals(result.rows.length, 2);
           assertEquals(result.rows[0].name, "Alice");
           assertEquals(result.rows[1].name, "Bob");
@@ -527,7 +466,6 @@ Deno.test({
           [1],
         );
 
-        if (!result.ok) throw new Error("Expected ok");
         assertEquals(result.rows.length, 1);
         const parsed = JSON.parse(result.rows[0].data);
         assertEquals(parsed.name, "Alice");
@@ -557,7 +495,6 @@ Deno.test({
           SELECT n, fact as factorial FROM factorial
         `);
 
-          if (!result.ok) throw new Error("Expected ok");
           assertEquals(result.rows.length, 5);
           // DuckDB may return number or bigint depending on the computation
           assertEquals(Number(result.rows[4].factorial), 120); // 5! = 120

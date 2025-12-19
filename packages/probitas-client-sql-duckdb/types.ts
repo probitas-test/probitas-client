@@ -1,9 +1,9 @@
-import type { SqlOptions } from "@probitas/client-sql";
+import type { CommonOptions } from "@probitas/client";
 
 /**
  * Configuration for creating a DuckDB client.
  */
-export interface DuckDbClientConfig extends SqlOptions {
+export interface DuckDbClientConfig extends CommonOptions {
   /**
    * Database file path.
    * Use `:memory:` or omit for an in-memory database.

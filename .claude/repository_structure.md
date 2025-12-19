@@ -16,8 +16,6 @@ probitas-client/
 │   ├── probitas-client-sql/      # @probitas/client-sql - SQL base client
 │   ├── probitas-client-sql-postgres/ # @probitas/client-sql-postgres - PostgreSQL
 │   ├── probitas-client-sql-mysql/ # @probitas/client-sql-mysql - MySQL
-│   ├── probitas-client-sql-sqlite/ # @probitas/client-sql-sqlite - SQLite
-│   ├── probitas-client-sql-duckdb/ # @probitas/client-sql-duckdb - DuckDB
 │   ├── probitas-client-redis/    # @probitas/client-redis - Redis client
 │   ├── probitas-client-mongodb/  # @probitas/client-mongodb - MongoDB client
 │   ├── probitas-client-deno-kv/  # @probitas/client-deno-kv - Deno KV client
@@ -42,8 +40,6 @@ graph TD
     client --> sqs[client-sqs]
     sql --> postgres[client-sql-postgres]
     sql --> mysql[client-sql-mysql]
-    sql --> sqlite[client-sql-sqlite]
-    sql --> duckdb[client-sql-duckdb]
 ```
 
 ## Dependency Management

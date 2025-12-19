@@ -24,7 +24,7 @@ import {
   ServerReflectionClient,
 } from "@lambdalisue/connectrpc-grpcreflect/client";
 import { getLogger } from "@probitas/logger";
-import { AbortError, ConnectionError, TimeoutError } from "@probitas/client";
+import { ConnectionError } from "@probitas/client";
 import type {
   ConnectProtocol,
   ConnectRpcClientConfig,
@@ -36,39 +36,11 @@ import type {
   ServiceInfo,
   TlsConfig,
 } from "./types.ts";
-import { ConnectRpcError, fromConnectError } from "./errors.ts";
-import type { ConnectRpcResponseType } from "./response.ts";
-import {
-  ConnectRpcResponseImpl,
-  createConnectRpcResponseFailure,
-} from "./response.ts";
+import { fromConnectError } from "./errors.ts";
+import type { ConnectRpcResponse } from "./response.ts";
+import { ConnectRpcResponseImpl } from "./response.ts";
 
 const logger = getLogger("probitas", "client", "connectrpc");
-
-/**
- * Convert an error to ConnectRpcError.
- *
- * Used for network errors, connection failures, and other non-RPC errors.
- */
-function toConnectRpcError(error: unknown): ConnectRpcError {
-  // Already a ConnectRpcError, return as-is
-  if (error instanceof ConnectRpcError) {
-    return error;
-  }
-
-  // ConnectError from @connectrpc/connect
-  if (error instanceof ConnectError) {
-    return fromConnectError(error);
-  }
-
-  if (error instanceof Error) {
-    return new ConnectRpcError(error.message, 2, "Network Error", {
-      cause: error,
-    });
-  }
-
-  return new ConnectRpcError(String(error), 2, "Network Error");
-}
 
 /**
  * Reflection API for ConnectRPC client.
@@ -130,7 +102,7 @@ export interface ConnectRpcClient extends AsyncDisposable {
     methodName: string,
     request: TRequest,
     options?: ConnectRpcOptions,
-  ): Promise<ConnectRpcResponseType>;
+  ): Promise<ConnectRpcResponse>;
 
   /**
    * Make a server streaming RPC call.
@@ -144,7 +116,7 @@ export interface ConnectRpcClient extends AsyncDisposable {
     methodName: string,
     request: TRequest,
     options?: ConnectRpcOptions,
-  ): AsyncIterable<ConnectRpcResponseType>;
+  ): AsyncIterable<ConnectRpcResponse>;
 
   /**
    * Make a client streaming RPC call.
@@ -158,7 +130,7 @@ export interface ConnectRpcClient extends AsyncDisposable {
     methodName: string,
     requests: AsyncIterable<TRequest>,
     options?: ConnectRpcOptions,
-  ): Promise<ConnectRpcResponseType>;
+  ): Promise<ConnectRpcResponse>;
 
   /**
    * Make a bidirectional streaming RPC call.
@@ -172,7 +144,7 @@ export interface ConnectRpcClient extends AsyncDisposable {
     methodName: string,
     requests: AsyncIterable<TRequest>,
     options?: ConnectRpcOptions,
-  ): AsyncIterable<ConnectRpcResponseType>;
+  ): AsyncIterable<ConnectRpcResponse>;
 
   /**
    * Close the client connection.
@@ -296,9 +268,7 @@ function toMethodInfo(
  *   "echo",
  *   { message: "Hello!" }
  * );
- * if ("statusCode" in response) {
- *   console.log(response.data());
- * }
+ * console.log(response.data());
  *
  * await client.close();
  * ```
@@ -682,8 +652,8 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     methodName: string,
     request: TRequest,
     options?: ConnectRpcOptions,
-  ): Promise<ConnectRpcResponseType> {
-    logger.debug("ConnectRPC unary call", {
+  ): Promise<ConnectRpcResponse> {
+    logger.info("ConnectRPC unary call", {
       service: serviceName,
       method: methodName,
     });
@@ -703,10 +673,6 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
         trailers = t;
       },
     };
-
-    // Determine whether to throw on error (request option > config > default false)
-    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-      false;
 
     const startTime = performance.now();
     try {
@@ -726,13 +692,10 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       });
     } catch (error) {
       const duration = performance.now() - startTime;
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
       if (error instanceof ConnectError) {
+        const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+          true;
+
         if (shouldThrow) {
           // Merge headers and trailers for error metadata
           const metadata = new Headers(headers);
@@ -750,15 +713,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
           duration,
         });
       }
-
-      // Convert other errors to ConnectRpcError
-      const connectRpcError = toConnectRpcError(error);
-
-      if (shouldThrow) {
-        throw connectRpcError;
-      }
-
-      return createConnectRpcResponseFailure(connectRpcError, duration);
+      throw error;
     }
   }
 
@@ -767,8 +722,8 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     methodName: string,
     request: TRequest,
     options?: ConnectRpcOptions,
-  ): AsyncIterable<ConnectRpcResponseType> {
-    logger.debug("ConnectRPC server stream", {
+  ): AsyncIterable<ConnectRpcResponse> {
+    logger.info("ConnectRPC server stream", {
       service: serviceName,
       method: methodName,
     });
@@ -788,10 +743,6 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
         trailers = t;
       },
     };
-
-    // Determine whether to throw on error (request option > config > default false)
-    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-      false;
 
     const startTime = performance.now();
     const stream = dynamicClient.serverStream(
@@ -813,13 +764,10 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       }
     } catch (error) {
       const duration = performance.now() - startTime;
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
       if (error instanceof ConnectError) {
+        const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+          true;
+
         if (shouldThrow) {
           const metadata = new Headers(headers);
           trailers.forEach((value, key) => {
@@ -837,15 +785,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
         });
         return;
       }
-
-      // Convert other errors to ConnectRpcError
-      const connectRpcError = toConnectRpcError(error);
-
-      if (shouldThrow) {
-        throw connectRpcError;
-      }
-
-      yield createConnectRpcResponseFailure(connectRpcError, duration);
+      throw error;
     }
   }
 
@@ -854,8 +794,8 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     methodName: string,
     requests: AsyncIterable<TRequest>,
     options?: ConnectRpcOptions,
-  ): Promise<ConnectRpcResponseType> {
-    logger.debug("ConnectRPC client stream", {
+  ): Promise<ConnectRpcResponse> {
+    logger.info("ConnectRPC client stream", {
       service: serviceName,
       method: methodName,
     });
@@ -875,10 +815,6 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
         trailers = t;
       },
     };
-
-    // Determine whether to throw on error (request option > config > default false)
-    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-      false;
 
     const startTime = performance.now();
     try {
@@ -898,13 +834,10 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       });
     } catch (error) {
       const duration = performance.now() - startTime;
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
       if (error instanceof ConnectError) {
+        const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+          true;
+
         if (shouldThrow) {
           const metadata = new Headers(headers);
           trailers.forEach((value, key) => {
@@ -921,15 +854,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
           duration,
         });
       }
-
-      // Convert other errors to ConnectRpcError
-      const connectRpcError = toConnectRpcError(error);
-
-      if (shouldThrow) {
-        throw connectRpcError;
-      }
-
-      return createConnectRpcResponseFailure(connectRpcError, duration);
+      throw error;
     }
   }
 
@@ -938,8 +863,8 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
     methodName: string,
     requests: AsyncIterable<TRequest>,
     options?: ConnectRpcOptions,
-  ): AsyncIterable<ConnectRpcResponseType> {
-    logger.debug("ConnectRPC bidirectional stream", {
+  ): AsyncIterable<ConnectRpcResponse> {
+    logger.info("ConnectRPC bidirectional stream", {
       service: serviceName,
       method: methodName,
     });
@@ -959,10 +884,6 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
         trailers = t;
       },
     };
-
-    // Determine whether to throw on error (request option > config > default false)
-    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-      false;
 
     const startTime = performance.now();
     const stream = dynamicClient.bidiStream(
@@ -984,13 +905,10 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
       }
     } catch (error) {
       const duration = performance.now() - startTime;
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
       if (error instanceof ConnectError) {
+        const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+          true;
+
         if (shouldThrow) {
           const metadata = new Headers(headers);
           trailers.forEach((value, key) => {
@@ -1008,15 +926,7 @@ class ConnectRpcClientImpl implements ConnectRpcClient {
         });
         return;
       }
-
-      // Convert other errors to ConnectRpcError
-      const connectRpcError = toConnectRpcError(error);
-
-      if (shouldThrow) {
-        throw connectRpcError;
-      }
-
-      yield createConnectRpcResponseFailure(connectRpcError, duration);
+      throw error;
     }
   }
 

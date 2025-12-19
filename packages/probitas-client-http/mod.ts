@@ -31,21 +31,17 @@
  *
  * // GET request
  * const res = await http.get("/users/123");
- * if ("status" in res) {
- *   console.log("Status:", res.status);
+ * console.log("Status:", res.status);
  *
- *   // Extract typed data
- *   const user = res.json<User>();
+ * // Extract typed data
+ * const user = res.data<User>();
  *
- *   // POST request
- *   const created = await http.post("/users", {
- *     headers: { "Content-Type": "application/json" },
- *     body: JSON.stringify({ name: "Jane" }),
- *   });
- *   if ("status" in created) {
- *     console.log("Created:", created.status);
- *   }
- * }
+ * // POST request
+ * const created = await http.post("/users", {
+ *   headers: { "Content-Type": "application/json" },
+ *   body: JSON.stringify({ name: "Jane" }),
+ * });
+ * console.log("Created:", created.status);
  *
  * await http.close();
  * ```

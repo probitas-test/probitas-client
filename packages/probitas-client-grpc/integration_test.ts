@@ -188,9 +188,6 @@ Deno.test({
         { message: "Hello gRPC!" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected GrpcResponse");
-      }
       assertEquals(response.ok, true);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
@@ -207,9 +204,6 @@ Deno.test({
         { message: "Test message" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected GrpcResponse");
-      }
       assertEquals(response.ok, true);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
@@ -236,9 +230,6 @@ Deno.test({
         { message: "check headers" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected GrpcResponse");
-      }
       assertExists(response.headers);
       assertExists(response.trailers);
       assertEquals(typeof response.headers, "object");
@@ -265,35 +256,14 @@ Deno.test({
           { throwOnError: false },
         );
 
-        if (!("statusCode" in response)) {
-          throw new Error("Expected GrpcResponse");
-        }
         assertEquals(response.ok, false);
         assertEquals(response.statusCode, 3);
       },
     );
 
-    await t.step(
-      "throwOnError: false (default) returns error response",
-      async () => {
-        await using client = createGrpcClient({
-          url: GRPC_URL,
-        });
-
-        const response = await client.call(
-          "echo.v1.Echo",
-          "EchoError",
-          { message: "trigger error", code: 3, details: "test error" },
-        );
-
-        assertEquals(response.ok, false);
-      },
-    );
-
-    await t.step("throwOnError: true throws error", async () => {
+    await t.step("throwOnError: true (default) throws error", async () => {
       await using client = createGrpcClient({
         url: GRPC_URL,
-        throwOnError: true,
       });
 
       await assertRejects(
@@ -308,17 +278,16 @@ Deno.test({
       );
     });
 
-    await t.step("request option overrides client config", async () => {
+    await t.step("client config throwOnError: false", async () => {
       await using client = createGrpcClient({
         url: GRPC_URL,
-        throwOnError: true,
+        throwOnError: false,
       });
 
       const response = await client.call(
         "echo.v1.Echo",
         "EchoError",
         { message: "trigger error", code: 3, details: "test error" },
-        { throwOnError: false },
       );
 
       assertEquals(response.ok, false);
@@ -344,9 +313,6 @@ Deno.test({
         { message: "with metadata" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected GrpcResponse");
-      }
       assertEquals(response.ok, true);
       assertExists(response.headers);
     });
@@ -406,9 +372,6 @@ Deno.test({
         { message: "stream test", count: 3 },
       )
     ) {
-      if (!("statusCode" in response)) {
-        throw new Error("Expected GrpcResponse");
-      }
       assertEquals(response.ok, true);
       messages.push(response.data());
     }
@@ -481,9 +444,6 @@ Deno.test({
         { message: "test error", code: 3, details: "test error" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected GrpcResponse");
-      }
       assertEquals(response.ok, false);
       assertEquals(response.statusCode, 3);
       assertEquals(response.data(), null);

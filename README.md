@@ -66,9 +66,8 @@ export default scenario("example http request")
   .step("call API", (ctx) => ctx.resources.http.get("/get?hello=world"))
   .step("assert response", (ctx) => {
     const response = ctx.previous;
-    if (!("status" in response)) throw new Error("Expected HttpResponse");
     assertEquals(response.status, 200);
-    assertEquals(response.json().args.hello, "world");
+    assertEquals(response.data().args.hello, "world");
   })
   .build();
 ```

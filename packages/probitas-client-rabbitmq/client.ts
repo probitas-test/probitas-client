@@ -4,40 +4,31 @@ import { AbortError, TimeoutError } from "@probitas/client";
 import { getLogger } from "@probitas/logger";
 import type { CommonOptions } from "@probitas/client";
 import type {
-  RabbitMqAckResultType,
+  RabbitMqAckResult,
   RabbitMqChannel,
   RabbitMqClient,
   RabbitMqClientConfig,
-  RabbitMqCommonOptions,
   RabbitMqConnectionConfig,
   RabbitMqConsumeOptions,
-  RabbitMqConsumeResultType,
+  RabbitMqConsumeResult,
   RabbitMqExchangeOptions,
-  RabbitMqExchangeResultType,
+  RabbitMqExchangeResult,
   RabbitMqExchangeType,
   RabbitMqMessage,
   RabbitMqMessageFields,
   RabbitMqMessageProperties,
   RabbitMqNackOptions,
   RabbitMqPublishOptions,
-  RabbitMqPublishResultType,
+  RabbitMqPublishResult,
   RabbitMqQueueOptions,
-  RabbitMqQueueResultType,
+  RabbitMqQueueResult,
 } from "./types.ts";
 import {
   RabbitMqChannelError,
   RabbitMqConnectionError,
-  RabbitMqError,
   RabbitMqNotFoundError,
   RabbitMqPreconditionFailedError,
 } from "./errors.ts";
-import {
-  createRabbitMqAckFailure,
-  createRabbitMqConsumeFailure,
-  createRabbitMqExchangeFailure,
-  createRabbitMqPublishFailure,
-  createRabbitMqQueueFailure,
-} from "./result.ts";
 
 const logger = getLogger("probitas", "client", "rabbitmq");
 
@@ -119,15 +110,18 @@ async function withOptions<T>(
 
 /**
  * Convert amqplib errors to RabbitMQ-specific errors.
- * Returns the error instead of throwing it.
  */
-function toRabbitMqError(error: unknown, operation: string): RabbitMqError {
+function convertAmqpError(error: unknown, operation: string): never {
+  if (error instanceof TimeoutError || error instanceof AbortError) {
+    throw error;
+  }
+
   if (error instanceof Error) {
     const message = error.message;
 
     // Check for specific AMQP error codes
     if (message.includes("NOT_FOUND") || message.includes("404")) {
-      return new RabbitMqNotFoundError(message, {
+      throw new RabbitMqNotFoundError(message, {
         resource: operation,
         cause: error,
       });
@@ -136,7 +130,7 @@ function toRabbitMqError(error: unknown, operation: string): RabbitMqError {
     if (
       message.includes("PRECONDITION_FAILED") || message.includes("406")
     ) {
-      return new RabbitMqPreconditionFailedError(message, {
+      throw new RabbitMqPreconditionFailedError(message, {
         reason: operation,
         cause: error,
       });
@@ -146,20 +140,20 @@ function toRabbitMqError(error: unknown, operation: string): RabbitMqError {
       message.includes("Channel closed") ||
       message.includes("channel error")
     ) {
-      return new RabbitMqChannelError(message, { cause: error });
+      throw new RabbitMqChannelError(message, { cause: error });
     }
 
     if (
       message.includes("Connection closed") ||
       message.includes("connection error")
     ) {
-      return new RabbitMqConnectionError(message, { cause: error });
+      throw new RabbitMqConnectionError(message, { cause: error });
     }
 
-    return new RabbitMqChannelError(message, { cause: error });
+    throw new RabbitMqChannelError(message, { cause: error });
   }
 
-  return new RabbitMqChannelError(String(error));
+  throw new RabbitMqChannelError(String(error));
 }
 
 /**
@@ -328,7 +322,7 @@ function resolveRabbitMqUrl(url: string | RabbitMqConnectionConfig): string {
  * await channel.assertQueue("my-queue");
  *
  * const result = await channel.get("my-queue");
- * if (result.ok && result.message) {
+ * if (result.message) {
  *   await channel.ack(result.message);
  * }
  *
@@ -420,12 +414,9 @@ class RabbitMqClientImpl implements RabbitMqClient {
 
       logger.debug("RabbitMQ channel created");
 
-      return new RabbitMqChannelImpl(ch, this.config);
+      return new RabbitMqChannelImpl(ch);
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      throw toRabbitMqError(error, "createChannel");
+      convertAmqpError(error, "createChannel");
     }
   }
 
@@ -455,20 +446,11 @@ class RabbitMqClientImpl implements RabbitMqClient {
 
 class RabbitMqChannelImpl implements RabbitMqChannel {
   readonly #channel: amqp.Channel;
-  readonly #config: RabbitMqClientConfig;
   #closed = false;
   readonly #deliveryTagMap = new WeakMap<RabbitMqMessage, number>();
 
-  constructor(channel: amqp.Channel, config: RabbitMqClientConfig) {
+  constructor(channel: amqp.Channel) {
     this.#channel = channel;
-    this.#config = config;
-  }
-
-  /**
-   * Determine if errors should be thrown based on options and config.
-   */
-  #shouldThrow(options?: { throwOnError?: boolean }): boolean {
-    return options?.throwOnError ?? this.#config.throwOnError ?? false;
   }
 
   // Exchange
@@ -477,7 +459,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     name: string,
     type: RabbitMqExchangeType,
     options?: RabbitMqExchangeOptions,
-  ): Promise<RabbitMqExchangeResultType> {
+  ): Promise<RabbitMqExchangeResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `assertExchange(${name})`;
@@ -511,26 +493,18 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:exchange",
-        ok: true as const,
+        ok: true,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqExchangeFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
   async deleteExchange(
     name: string,
-    options?: RabbitMqCommonOptions,
-  ): Promise<RabbitMqExchangeResultType> {
+    options?: CommonOptions,
+  ): Promise<RabbitMqExchangeResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `deleteExchange(${name})`;
@@ -552,19 +526,11 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:exchange",
-        ok: true as const,
+        ok: true,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqExchangeFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
@@ -573,7 +539,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
   async assertQueue(
     name: string,
     options?: RabbitMqQueueOptions,
-  ): Promise<RabbitMqQueueResultType> {
+  ): Promise<RabbitMqQueueResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `assertQueue(${name})`;
@@ -627,29 +593,21 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:queue",
-        ok: true as const,
+        ok: true,
         queue: result.queue,
         messageCount: result.messageCount,
         consumerCount: result.consumerCount,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqQueueFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
   async deleteQueue(
     name: string,
-    options?: RabbitMqCommonOptions,
-  ): Promise<RabbitMqQueueResultType> {
+    options?: CommonOptions,
+  ): Promise<RabbitMqQueueResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `deleteQueue(${name})`;
@@ -672,29 +630,21 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:queue",
-        ok: true as const,
+        ok: true,
         queue: name,
         messageCount: result.messageCount,
         consumerCount: 0,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqQueueFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
   async purgeQueue(
     name: string,
-    options?: RabbitMqCommonOptions,
-  ): Promise<RabbitMqQueueResultType> {
+    options?: CommonOptions,
+  ): Promise<RabbitMqQueueResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `purgeQueue(${name})`;
@@ -717,22 +667,14 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:queue",
-        ok: true as const,
+        ok: true,
         queue: name,
         messageCount: result.messageCount,
         consumerCount: 0,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqQueueFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
@@ -740,8 +682,8 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     queue: string,
     exchange: string,
     routingKey: string,
-    options?: RabbitMqCommonOptions,
-  ): Promise<RabbitMqExchangeResultType> {
+    options?: CommonOptions,
+  ): Promise<RabbitMqExchangeResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `bindQueue(${queue}, ${exchange}, ${routingKey})`;
@@ -769,19 +711,11 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:exchange",
-        ok: true as const,
+        ok: true,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqExchangeFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
@@ -789,8 +723,8 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     queue: string,
     exchange: string,
     routingKey: string,
-    options?: RabbitMqCommonOptions,
-  ): Promise<RabbitMqExchangeResultType> {
+    options?: CommonOptions,
+  ): Promise<RabbitMqExchangeResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `unbindQueue(${queue}, ${exchange}, ${routingKey})`;
@@ -818,19 +752,11 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:exchange",
-        ok: true as const,
+        ok: true,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqExchangeFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
@@ -841,13 +767,13 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     routingKey: string,
     content: Uint8Array,
     options?: RabbitMqPublishOptions,
-  ): Promise<RabbitMqPublishResultType> {
+  ): Promise<RabbitMqPublishResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `publish(${exchange}, ${routingKey})`;
 
     try {
-      logger.debug("Publishing message", {
+      logger.info("Publishing message", {
         exchange,
         routingKey,
         messageSize: content.length,
@@ -881,7 +807,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       }
 
       const duration = performance.now() - startTime;
-      logger.debug("Message published", {
+      logger.info("Message published", {
         exchange,
         routingKey,
         messageSize: content.length,
@@ -895,19 +821,11 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:publish",
-        ok: true as const,
+        ok: true,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqPublishFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
@@ -915,7 +833,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     queue: string,
     content: Uint8Array,
     options?: RabbitMqPublishOptions,
-  ): Promise<RabbitMqPublishResultType> {
+  ): Promise<RabbitMqPublishResult> {
     return this.publish("", queue, content, options);
   }
 
@@ -923,14 +841,14 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
   async get(
     queue: string,
-    options?: RabbitMqCommonOptions,
-  ): Promise<RabbitMqConsumeResultType> {
+    options?: CommonOptions,
+  ): Promise<RabbitMqConsumeResult> {
     this.#ensureOpen();
     const startTime = performance.now();
     const operation = `get(${queue})`;
 
     try {
-      logger.debug("Getting message", { queue });
+      logger.info("Getting message", { queue });
 
       const msg = await withOptions(
         this.#channel.get(queue, { noAck: false }),
@@ -941,13 +859,13 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       const duration = performance.now() - startTime;
 
       if (msg === false) {
-        logger.debug("No message available", {
+        logger.info("No message available", {
           queue,
           duration: `${duration.toFixed(2)}ms`,
         });
         return {
           kind: "rabbitmq:consume",
-          ok: true as const,
+          ok: true,
           message: null,
           duration,
         };
@@ -956,7 +874,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       const message = convertMessage(msg);
       this.#deliveryTagMap.set(message, msg.fields.deliveryTag);
 
-      logger.debug("Message received", {
+      logger.info("Message received", {
         queue,
         routingKey: message.fields.routingKey,
         size: message.content.length,
@@ -970,20 +888,12 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return {
         kind: "rabbitmq:consume",
-        ok: true as const,
+        ok: true,
         message,
         duration,
       };
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      const duration = performance.now() - startTime;
-      const rabbitError = toRabbitMqError(error, operation);
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return createRabbitMqConsumeFailure(rabbitError, duration);
+      convertAmqpError(error, operation);
     }
   }
 
@@ -999,7 +909,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
     let done = false;
 
     try {
-      logger.debug("Starting consume", {
+      logger.info("Starting consume", {
         queue,
         noAck: options?.noAck,
         exclusive: options?.exclusive,
@@ -1036,7 +946,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       );
 
       consumerTag = consumeResult.consumerTag;
-      logger.debug("Consumer started", {
+      logger.info("Consumer started", {
         queue,
         consumerTag,
       });
@@ -1075,8 +985,8 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
   ack(
     message: RabbitMqMessage,
-    options?: RabbitMqCommonOptions,
-  ): Promise<RabbitMqAckResultType> {
+    _options?: CommonOptions,
+  ): Promise<RabbitMqAckResult> {
     this.#ensureOpen();
     const startTime = performance.now();
 
@@ -1086,40 +996,37 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
         throw new RabbitMqChannelError("Message delivery tag not found");
       }
 
-      logger.debug("Acknowledging message", { deliveryTag });
+      logger.info("Acknowledging message", { deliveryTag });
 
       this.#channel.ack({ fields: { deliveryTag } } as amqp.Message);
 
       const duration = performance.now() - startTime;
-      logger.debug("Message acknowledged", {
+      logger.info("Message acknowledged", {
         deliveryTag,
         duration: `${duration.toFixed(2)}ms`,
       });
 
       return Promise.resolve({
         kind: "rabbitmq:ack",
-        ok: true as const,
+        ok: true,
         duration,
       });
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
+      if (
+        error instanceof RabbitMqChannelError ||
+        error instanceof TimeoutError ||
+        error instanceof AbortError
+      ) {
         throw error;
       }
-      const duration = performance.now() - startTime;
-      const rabbitError = error instanceof RabbitMqError
-        ? error
-        : toRabbitMqError(error, "ack");
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return Promise.resolve(createRabbitMqAckFailure(rabbitError, duration));
+      convertAmqpError(error, "ack");
     }
   }
 
   nack(
     message: RabbitMqMessage,
     options?: RabbitMqNackOptions,
-  ): Promise<RabbitMqAckResultType> {
+  ): Promise<RabbitMqAckResult> {
     this.#ensureOpen();
     const startTime = performance.now();
 
@@ -1129,7 +1036,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
         throw new RabbitMqChannelError("Message delivery tag not found");
       }
 
-      logger.debug("Nacking message", {
+      logger.info("Nacking message", {
         deliveryTag,
         allUpTo: options?.allUpTo ?? false,
         requeue: options?.requeue ?? true,
@@ -1142,36 +1049,32 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       );
 
       const duration = performance.now() - startTime;
-      logger.debug("Message nacked", {
+      logger.info("Message nacked", {
         deliveryTag,
         duration: `${duration.toFixed(2)}ms`,
       });
 
       return Promise.resolve({
         kind: "rabbitmq:ack",
-        ok: true as const,
+        ok: true,
         duration,
       });
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
+      if (
+        error instanceof RabbitMqChannelError ||
+        error instanceof TimeoutError ||
+        error instanceof AbortError
+      ) {
         throw error;
       }
-      const duration = performance.now() - startTime;
-      const rabbitError = error instanceof RabbitMqError
-        ? error
-        : toRabbitMqError(error, "nack");
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return Promise.resolve(createRabbitMqAckFailure(rabbitError, duration));
+      convertAmqpError(error, "nack");
     }
   }
 
   reject(
     message: RabbitMqMessage,
     requeue?: boolean,
-    options?: RabbitMqCommonOptions,
-  ): Promise<RabbitMqAckResultType> {
+  ): Promise<RabbitMqAckResult> {
     this.#ensureOpen();
     const startTime = performance.now();
 
@@ -1181,7 +1084,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
         throw new RabbitMqChannelError("Message delivery tag not found");
       }
 
-      logger.debug("Rejecting message", {
+      logger.info("Rejecting message", {
         deliveryTag,
         requeue: requeue ?? false,
       });
@@ -1192,7 +1095,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
       );
 
       const duration = performance.now() - startTime;
-      logger.debug("Message rejected", {
+      logger.info("Message rejected", {
         deliveryTag,
         requeue: requeue ?? false,
         duration: `${duration.toFixed(2)}ms`,
@@ -1200,21 +1103,18 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       return Promise.resolve({
         kind: "rabbitmq:ack",
-        ok: true as const,
+        ok: true,
         duration,
       });
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
+      if (
+        error instanceof RabbitMqChannelError ||
+        error instanceof TimeoutError ||
+        error instanceof AbortError
+      ) {
         throw error;
       }
-      const duration = performance.now() - startTime;
-      const rabbitError = error instanceof RabbitMqError
-        ? error
-        : toRabbitMqError(error, "reject");
-      if (this.#shouldThrow(options)) {
-        throw rabbitError;
-      }
-      return Promise.resolve(createRabbitMqAckFailure(rabbitError, duration));
+      convertAmqpError(error, "reject");
     }
   }
 
@@ -1230,10 +1130,7 @@ class RabbitMqChannelImpl implements RabbitMqChannel {
 
       logger.debug("Prefetch set", { count });
     } catch (error) {
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-      throw toRabbitMqError(error, "prefetch");
+      convertAmqpError(error, "prefetch");
     }
   }
 

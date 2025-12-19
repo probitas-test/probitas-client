@@ -181,9 +181,6 @@ Deno.test({
         { message: "Hello Reflection!" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected ConnectRpcResponse");
-      }
       assertEquals(response.ok, true);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
@@ -200,9 +197,6 @@ Deno.test({
         { message: "Test message" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected ConnectRpcResponse");
-      }
       assertEquals(response.ok, true);
       assertEquals(response.statusCode, 0);
       assertExists(response.data());
@@ -229,9 +223,6 @@ Deno.test({
         { message: "check headers" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected ConnectRpcResponse");
-      }
       assertExists(response.headers);
       assertExists(response.trailers);
       assertEquals(typeof response.headers, "object");
@@ -258,35 +249,14 @@ Deno.test({
           { throwOnError: false },
         );
 
-        if (!("statusCode" in response)) {
-          throw new Error("Expected ConnectRpcResponse");
-        }
         assertEquals(response.ok, false);
         assertEquals(response.statusCode !== 0, true);
       },
     );
 
-    await t.step(
-      "throwOnError: false (default) returns error response",
-      async () => {
-        await using client = createConnectRpcClient({
-          url: CONNECTRPC_URL,
-        });
-
-        const response = await client.call(
-          "echo.v1.Echo",
-          "echoError",
-          { message: "trigger error" },
-        );
-
-        assertEquals(response.ok, false);
-      },
-    );
-
-    await t.step("throwOnError: true throws error", async () => {
+    await t.step("throwOnError: true (default) throws error", async () => {
       await using client = createConnectRpcClient({
         url: CONNECTRPC_URL,
-        throwOnError: true,
       });
 
       try {
@@ -305,17 +275,16 @@ Deno.test({
       }
     });
 
-    await t.step("request option overrides client config", async () => {
+    await t.step("client config throwOnError: false", async () => {
       await using client = createConnectRpcClient({
         url: CONNECTRPC_URL,
-        throwOnError: true,
+        throwOnError: false,
       });
 
       const response = await client.call(
         "echo.v1.Echo",
         "echoError",
         { message: "trigger error" },
-        { throwOnError: false },
       );
 
       assertEquals(response.ok, false);
@@ -341,9 +310,6 @@ Deno.test({
         { message: "with metadata" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected ConnectRpcResponse");
-      }
       assertEquals(response.ok, true);
       assertExists(response.headers);
     });
@@ -404,9 +370,6 @@ Deno.test({
         { message: "stream test", count: 3 },
       )
     ) {
-      if (!("statusCode" in response)) {
-        throw new Error("Expected ConnectRpcResponse");
-      }
       assertEquals(response.ok, true);
       messages.push(response.data());
     }
@@ -536,9 +499,6 @@ Deno.test({
         { message: "test error" },
       );
 
-      if (!("statusCode" in response)) {
-        throw new Error("Expected ConnectRpcResponse");
-      }
       assertEquals(response.ok, false);
       assertEquals(response.statusCode !== 0, true);
       assertEquals(response.data(), null);

@@ -33,9 +33,7 @@
  *   "SELECT id, name FROM users WHERE active = $1",
  *   [true]
  * );
- * if (result.ok) {
- *   console.log(result.rows);
- * }
+ * console.log(result.rows);
  *
  * // Get first row
  * const user = await client.queryOne<{ id: number; name: string }>(

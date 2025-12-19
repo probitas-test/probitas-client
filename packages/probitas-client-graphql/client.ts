@@ -1,4 +1,3 @@
-import { AbortError, TimeoutError } from "@probitas/client";
 import type {
   GraphqlClient,
   GraphqlClientConfig,
@@ -6,17 +5,9 @@ import type {
   GraphqlErrorItem,
   GraphqlOptions,
   GraphqlResponse,
-  GraphqlResponseType,
 } from "./types.ts";
-import {
-  GraphqlError,
-  GraphqlExecutionError,
-  GraphqlNetworkError,
-} from "./errors.ts";
-import {
-  createGraphqlResponse,
-  createGraphqlResponseFailure,
-} from "./response.ts";
+import { GraphqlExecutionError, GraphqlNetworkError } from "./errors.ts";
+import { createGraphqlResponse } from "./response.ts";
 import { getLogger } from "@probitas/logger";
 
 const logger = getLogger("probitas", "client", "graphql");
@@ -47,24 +38,6 @@ function mergeHeaders(
     }
   }
   return result;
-}
-
-/**
- * Convert an error to GraphqlError.
- *
- * Used for network errors, connection failures, and other non-GraphQL errors.
- */
-function toGraphqlError(error: unknown): GraphqlError {
-  // Already a GraphqlError, return as-is
-  if (error instanceof GraphqlError) {
-    return error;
-  }
-
-  if (error instanceof Error) {
-    return new GraphqlNetworkError(error.message, { cause: error });
-  }
-
-  return new GraphqlNetworkError(String(error));
 }
 
 /**
@@ -115,7 +88,7 @@ class GraphqlClientImpl implements GraphqlClient {
     query: string,
     variables?: TVariables,
     options?: GraphqlOptions,
-  ): Promise<GraphqlResponseType<TData>> {
+  ): Promise<GraphqlResponse<TData>> {
     return this.execute<TData, TVariables>(query, variables, options);
   }
 
@@ -124,7 +97,7 @@ class GraphqlClientImpl implements GraphqlClient {
     mutation: string,
     variables?: TVariables,
     options?: GraphqlOptions,
-  ): Promise<GraphqlResponseType<TData>> {
+  ): Promise<GraphqlResponse<TData>> {
     return this.execute<TData, TVariables>(mutation, variables, options);
   }
 
@@ -133,7 +106,7 @@ class GraphqlClientImpl implements GraphqlClient {
     document: string,
     variables?: TVariables,
     options?: GraphqlOptions,
-  ): Promise<GraphqlResponseType<TData>> {
+  ): Promise<GraphqlResponse<TData>> {
     const headers = mergeHeaders(
       { "Content-Type": "application/json" },
       this.config.headers,
@@ -164,93 +137,75 @@ class GraphqlClientImpl implements GraphqlClient {
     const fetchFn = this.config.fetch ?? globalThis.fetch;
     const startTime = performance.now();
 
-    // Determine whether to throw on errors (request option > config > default false)
-    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
-      false;
-
+    let rawResponse: Response;
     try {
-      let rawResponse: Response;
-      try {
-        rawResponse = await fetchFn(this.#endpointUrl, {
-          method: "POST",
-          headers,
-          body,
-          signal: options?.signal,
-        });
-      } catch (error) {
-        throw new GraphqlNetworkError(
-          `Network error: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-          { cause: error },
-        );
-      }
-
-      const duration = performance.now() - startTime;
-
-      if (!rawResponse.ok) {
-        await rawResponse.body?.cancel();
-        throw new GraphqlNetworkError(
-          `HTTP ${rawResponse.status}: ${rawResponse.statusText}`,
-        );
-      }
-
-      let responseBody: GraphqlResponseBody<TData>;
-      try {
-        responseBody = await rawResponse.json();
-      } catch (error) {
-        throw new GraphqlNetworkError("Failed to parse response JSON", {
-          cause: error,
-        });
-      }
-
-      const response = createGraphqlResponse<TData>({
-        data: responseBody.data ?? null,
-        errors: responseBody.errors ?? null,
-        extensions: responseBody.extensions,
-        duration,
-        status: rawResponse.status,
-        raw: rawResponse,
+      rawResponse = await fetchFn(this.#endpointUrl, {
+        method: "POST",
+        headers,
+        body,
+        signal: options?.signal,
       });
-
-      // Log response
-      logger.debug("GraphQL response received", {
-        endpoint: this.#endpointUrl,
-        operationName: options?.operationName,
-        status: rawResponse.status,
-        duration: `${duration.toFixed(2)}ms`,
-        hasData: responseBody.data !== undefined && responseBody.data !== null,
-        errorCount: responseBody.errors?.length ?? 0,
-        contentType: rawResponse.headers.get("content-type"),
-      });
-
-      // Trace log with response data content
-      logger.trace("GraphQL response data", {
-        data: formatData(responseBody.data),
-      });
-
-      if (!response.ok && shouldThrow && response.errors) {
-        throw new GraphqlExecutionError(response.errors, { response });
-      }
-
-      return response;
     } catch (error) {
-      const duration = performance.now() - startTime;
-
-      // TimeoutError and AbortError should always be thrown
-      if (error instanceof TimeoutError || error instanceof AbortError) {
-        throw error;
-      }
-
-      // Convert to GraphqlError
-      const graphqlError = toGraphqlError(error);
-
-      if (shouldThrow) {
-        throw graphqlError;
-      }
-
-      return createGraphqlResponseFailure(graphqlError, duration);
+      throw new GraphqlNetworkError(
+        `Network error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { cause: error },
+      );
     }
+
+    const duration = performance.now() - startTime;
+
+    if (!rawResponse.ok) {
+      await rawResponse.body?.cancel();
+      throw new GraphqlNetworkError(
+        `HTTP ${rawResponse.status}: ${rawResponse.statusText}`,
+      );
+    }
+
+    let responseBody: GraphqlResponseBody<TData>;
+    try {
+      responseBody = await rawResponse.json();
+    } catch (error) {
+      throw new GraphqlNetworkError("Failed to parse response JSON", {
+        cause: error,
+      });
+    }
+
+    const response = createGraphqlResponse<TData>({
+      data: responseBody.data ?? null,
+      errors: responseBody.errors ?? null,
+      extensions: responseBody.extensions,
+      duration,
+      status: rawResponse.status,
+      raw: rawResponse,
+    });
+
+    // Log response
+    logger.debug("GraphQL response received", {
+      endpoint: this.#endpointUrl,
+      operationName: options?.operationName,
+      status: rawResponse.status,
+      duration: `${duration.toFixed(2)}ms`,
+      hasData: responseBody.data !== undefined && responseBody.data !== null,
+      errorCount: responseBody.errors?.length ?? 0,
+      contentType: rawResponse.headers.get("content-type"),
+    });
+
+    // Trace log with response data content
+    logger.trace("GraphQL response data", {
+      data: formatData(responseBody.data),
+    });
+
+    // Determine whether to throw on errors (request option > config > default true)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      true;
+
+    if (!response.ok && shouldThrow && response.errors) {
+      throw new GraphqlExecutionError(response.errors, { response });
+    }
+
+    return response;
   }
 
   // deno-lint-ignore no-explicit-any
@@ -258,7 +213,7 @@ class GraphqlClientImpl implements GraphqlClient {
     document: string,
     variables?: TVariables,
     options?: GraphqlOptions,
-  ): AsyncIterable<GraphqlResponseType<TData>> {
+  ): AsyncIterable<GraphqlResponse<TData>> {
     const wsEndpoint = this.config.wsEndpoint;
     if (!wsEndpoint) {
       throw new GraphqlNetworkError(
@@ -430,7 +385,7 @@ class GraphqlClientImpl implements GraphqlClient {
 
           // Determine whether to throw on errors
           const shouldThrow = options?.throwOnError ??
-            this.config.throwOnError ?? false;
+            this.config.throwOnError ?? true;
 
           if (!response.ok && shouldThrow && response.errors) {
             throw new GraphqlExecutionError(response.errors, { response });
@@ -502,9 +457,7 @@ class GraphqlClientImpl implements GraphqlClient {
  *   }
  * `, { id: "123" });
  *
- * if ("status" in response) {
- *   console.log(response.data());
- * }
+ * console.log(response.data());
  * await client.close();
  * ```
  *
@@ -530,7 +483,7 @@ class GraphqlClientImpl implements GraphqlClient {
  *   }
  * `, { input: { name: "Alice", email: "alice@example.com" } });
  *
- * if ("status" in response && response.ok) {
+ * if (response.ok) {
  *   console.log("Created user:", response.data().createUser.id);
  * }
  *

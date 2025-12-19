@@ -89,7 +89,7 @@ Deno.test({
           const result = await client.send(
             JSON.stringify({ type: "TEST", value: 42 }),
           );
-          if (!result.ok) throw new Error("Expected success");
+          assertEquals(result.ok, true);
           assertExists(result.messageId);
         });
 
@@ -98,7 +98,7 @@ Deno.test({
             maxMessages: 10,
             waitTimeSeconds: 1,
           });
-          if (!result.ok) throw new Error("Expected success");
+          assertEquals(result.ok, true);
           assertEquals(result.messages.length > 0, true);
 
           const msg = result.messages.first()!;
@@ -116,7 +116,6 @@ Deno.test({
             maxMessages: 1,
             waitTimeSeconds: 1,
           });
-          if (!receiveResult.ok) throw new Error("Expected success");
 
           if (receiveResult.messages.length > 0) {
             const msg = receiveResult.messages.firstOrThrow();
@@ -135,7 +134,7 @@ Deno.test({
               maxMessages: 1,
               waitTimeSeconds: 0,
             });
-            if (!result.ok) throw new Error("Expected success");
+            assertEquals(result.ok, true);
             assertEquals(result.messages.length, 0);
           },
         );
@@ -149,7 +148,6 @@ Deno.test({
             { id: "2", body: "batch-msg-3" },
           ]);
           assertEquals(result.ok, true);
-          if (!result.ok) throw new Error("Expected success");
           assertEquals(result.failed.length, 0);
           assertEquals(result.successful.length, 3);
         });
@@ -159,13 +157,11 @@ Deno.test({
             maxMessages: 10,
             waitTimeSeconds: 1,
           });
-          if (!receiveResult.ok) throw new Error("Expected success");
 
           if (receiveResult.messages.length > 0) {
             const handles = receiveResult.messages.map((m) => m.receiptHandle);
             const deleteResult = await client.deleteBatch(handles);
             assertEquals(deleteResult.ok, true);
-            if (!deleteResult.ok) throw new Error("Expected success");
             assertEquals(deleteResult.failed.length, 0);
           }
         });
@@ -194,7 +190,7 @@ Deno.test({
             waitTimeSeconds: 1,
             messageAttributeNames: ["All"],
           });
-          if (!result.ok) throw new Error("Expected success");
+          assertEquals(result.ok, true);
           assertEquals(result.messages.length > 0, true);
 
           const msg = result.messages.firstOrThrow();
@@ -219,7 +215,7 @@ Deno.test({
             maxMessages: 1,
             waitTimeSeconds: 0,
           });
-          if (!immediateResult.ok) throw new Error("Expected success");
+          assertEquals(immediateResult.ok, true);
           assertEquals(immediateResult.messages.length, 0);
 
           await new Promise((r) => setTimeout(r, 1500));
@@ -228,7 +224,7 @@ Deno.test({
             maxMessages: 1,
             waitTimeSeconds: 1,
           });
-          if (!delayedResult.ok) throw new Error("Expected success");
+          assertEquals(delayedResult.ok, true);
           assertEquals(delayedResult.messages.length > 0, true);
           assertEquals(
             delayedResult.messages.firstOrThrow().body.includes("delayed"),
@@ -254,7 +250,6 @@ Deno.test({
             maxMessages: 10,
             waitTimeSeconds: 1,
           });
-          if (!result.ok) throw new Error("Expected success");
 
           assertEquals(result.messages.first() !== undefined, true);
           assertEquals(result.messages.last() !== undefined, true);
@@ -275,7 +270,6 @@ Deno.test({
               maxMessages: 1,
               waitTimeSeconds: 0,
             });
-            if (!result.ok) throw new Error("Expected success");
 
             try {
               result.messages.firstOrThrow();
@@ -349,7 +343,6 @@ Deno.test({
             maxMessages: 10,
             waitTimeSeconds: 5,
           });
-          if (!result.ok) throw new Error("Expected success");
 
           for (const msg of result.messages) {
             received.push(msg.body);
@@ -367,7 +360,7 @@ Deno.test({
           const newQueueName = `test-ensure-queue-${crypto.randomUUID()}`;
           const result = await client.ensureQueue(newQueueName);
 
-          if (!result.ok) throw new Error("Expected success");
+          assertEquals(result.ok, true);
           assertEquals(typeof result.queueUrl, "string");
           assertEquals(result.queueUrl.includes(newQueueName), true);
           assertEquals(typeof result.duration, "number");
@@ -383,11 +376,11 @@ Deno.test({
 
             // Create queue first time
             const firstResult = await client.ensureQueue(existingQueueName);
-            if (!firstResult.ok) throw new Error("Expected success");
+            assertEquals(firstResult.ok, true);
 
             // Create queue second time (should return same URL)
             const secondResult = await client.ensureQueue(existingQueueName);
-            if (!secondResult.ok) throw new Error("Expected success");
+            assertEquals(secondResult.ok, true);
             assertEquals(secondResult.queueUrl, firstResult.queueUrl);
 
             // Clean up
@@ -404,7 +397,7 @@ Deno.test({
             },
           });
 
-          if (!result.ok) throw new Error("Expected success");
+          assertEquals(result.ok, true);
           assertEquals(typeof result.queueUrl, "string");
 
           // Clean up
@@ -414,7 +407,7 @@ Deno.test({
         await t.step("deleteQueue removes a queue", async () => {
           const queueToDelete = `test-delete-${crypto.randomUUID()}`;
           const createResult = await client.ensureQueue(queueToDelete);
-          if (!createResult.ok) throw new Error("Expected success");
+          assertEquals(createResult.ok, true);
 
           const deleteResult = await client.deleteQueue(createResult.queueUrl);
           assertEquals(deleteResult.ok, true);
@@ -469,7 +462,7 @@ Deno.test({
         async () => {
           const queueName = `test-auto-url-${crypto.randomUUID()}`;
           const ensureResult = await client.ensureQueue(queueName);
-          if (!ensureResult.ok) throw new Error("Expected success");
+          assertEquals(ensureResult.ok, true);
           createdQueueUrl = ensureResult.queueUrl;
 
           // queueUrl should be set automatically
@@ -485,7 +478,7 @@ Deno.test({
             maxMessages: 1,
             waitTimeSeconds: 1,
           });
-          if (!receiveResult.ok) throw new Error("Expected success");
+          assertEquals(receiveResult.ok, true);
           assertEquals(receiveResult.messages.length, 1);
           assertEquals(
             receiveResult.messages.first()?.body,
@@ -500,7 +493,7 @@ Deno.test({
           // Create another queue
           const anotherQueueName = `test-another-${crypto.randomUUID()}`;
           const anotherResult = await client.ensureQueue(anotherQueueName);
-          if (!anotherResult.ok) throw new Error("Expected success");
+          assertEquals(anotherResult.ok, true);
 
           // Create a second client and set queue URL manually
           const client2 = await createSqsClient({
@@ -528,7 +521,7 @@ Deno.test({
               maxMessages: 1,
               waitTimeSeconds: 1,
             });
-            if (!receiveResult.ok) throw new Error("Expected success");
+            assertEquals(receiveResult.ok, true);
             assertEquals(
               receiveResult.messages.first()?.body,
               "message via setQueueUrl",

@@ -32,21 +32,15 @@
  *
  * // Insert a document
  * const insertResult = await users.insertOne({ name: "Alice", email: "alice@example.com" });
- * if (insertResult.ok) {
- *   console.log("Inserted ID:", insertResult.insertedId);
- * }
+ * console.log("Inserted ID:", insertResult.insertedId);
  *
  * // Find documents
  * const findResult = await users.find({ name: "Alice" });
- * if (findResult.ok) {
- *   console.log("Found:", findResult.docs);
- * }
+ * console.log("Found:", findResult.docs);
  *
  * // Find one document
  * const user = await users.findOne({ name: "Alice" });
- * if (user.ok) {
- *   console.log("User:", user.doc);
- * }
+ * console.log("User:", user?.doc);
  *
  * await client.close();
  * ```
@@ -87,9 +81,7 @@
  * });
  *
  * const result = await client.collection("test").findOne({});
- * if (result.ok) {
- *   console.log(result.doc);
- * }
+ * console.log(result?.doc);
  * // Client automatically closed when block exits
  * ```
  *

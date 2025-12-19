@@ -1,9 +1,5 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
-import type {
-  GraphqlResponse,
-  GraphqlResponseFailure,
-  GraphqlResponseType,
-} from "./response.ts";
+import type { GraphqlResponse } from "./response.ts";
 
 /**
  * GraphQL error item as per GraphQL specification.
@@ -23,7 +19,7 @@ export interface GraphqlErrorItem {
   readonly extensions?: Record<string, unknown>;
 }
 
-export type { GraphqlResponse, GraphqlResponseFailure, GraphqlResponseType };
+export type { GraphqlResponse };
 
 /**
  * Options for individual GraphQL requests.
@@ -116,7 +112,7 @@ export interface GraphqlClient extends AsyncDisposable {
     query: string,
     variables?: TVariables,
     options?: GraphqlOptions,
-  ): Promise<GraphqlResponseType<TData>>;
+  ): Promise<GraphqlResponse<TData>>;
 
   /** Execute a GraphQL mutation */
   // deno-lint-ignore no-explicit-any
@@ -124,7 +120,7 @@ export interface GraphqlClient extends AsyncDisposable {
     mutation: string,
     variables?: TVariables,
     options?: GraphqlOptions,
-  ): Promise<GraphqlResponseType<TData>>;
+  ): Promise<GraphqlResponse<TData>>;
 
   /** Execute a GraphQL document (query or mutation) */
   // deno-lint-ignore no-explicit-any
@@ -132,7 +128,7 @@ export interface GraphqlClient extends AsyncDisposable {
     document: string,
     variables?: TVariables,
     options?: GraphqlOptions,
-  ): Promise<GraphqlResponseType<TData>>;
+  ): Promise<GraphqlResponse<TData>>;
 
   /** Subscribe to a GraphQL subscription via WebSocket */
   // deno-lint-ignore no-explicit-any
@@ -140,7 +136,7 @@ export interface GraphqlClient extends AsyncDisposable {
     document: string,
     variables?: TVariables,
     options?: GraphqlOptions,
-  ): AsyncIterable<GraphqlResponseType<TData>>;
+  ): AsyncIterable<GraphqlResponse<TData>>;
 
   /** Close the client and release resources */
   close(): Promise<void>;

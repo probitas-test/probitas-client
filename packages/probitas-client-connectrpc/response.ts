@@ -6,7 +6,6 @@
 
 import type { ConnectError } from "@connectrpc/connect";
 import type { ClientResult } from "@probitas/client";
-import type { ConnectRpcError } from "./errors.ts";
 import type { ConnectRpcStatusCode } from "./status.ts";
 
 /**
@@ -134,68 +133,4 @@ export class ConnectRpcResponseImpl<T = unknown> implements ConnectRpcResponse {
   raw(): T | ConnectError | undefined {
     return this.#response ?? this.#error;
   }
-}
-
-/**
- * ConnectRPC response failure result.
- *
- * Represents a failure to complete a ConnectRPC request due to network errors,
- * connection failures, or other issues that prevented the request from
- * reaching the server or receiving a response.
- *
- * Note: gRPC/ConnectRPC error status codes (non-zero codes) are NOT represented
- * by this type. Those are successful RPC responses with error status codes and
- * are represented by `ConnectRpcResponse` with `ok: false`.
- */
-export interface ConnectRpcResponseFailure {
-  /** Result kind discriminator */
-  readonly kind: "connectrpc";
-
-  /** Always false for failure results */
-  readonly ok: false;
-
-  /** The error that caused the failure */
-  readonly error: ConnectRpcError;
-
-  /** Response time in milliseconds until failure */
-  readonly duration: number;
-}
-
-/**
- * Union type for ConnectRPC response results.
- *
- * Use type narrowing with the `statusCode` property to distinguish between
- * ConnectRpcResponse and ConnectRpcResponseFailure:
- *
- * ```ts ignore
- * const result = await client.call("echo.EchoService", "echo", { message: "Hello" });
- * if ("statusCode" in result) {
- *   // result is ConnectRpcResponse - RPC completed
- *   console.log(result.statusCode, result.data());
- * } else {
- *   // result is ConnectRpcResponseFailure - request failed
- *   console.error(result.error.message);
- * }
- * ```
- */
-export type ConnectRpcResponseType =
-  | ConnectRpcResponse
-  | ConnectRpcResponseFailure;
-
-/**
- * Create a ConnectRPC response failure result.
- *
- * @param error - The error that caused the failure
- * @param duration - Time in milliseconds until failure
- */
-export function createConnectRpcResponseFailure(
-  error: ConnectRpcError,
-  duration: number,
-): ConnectRpcResponseFailure {
-  return {
-    kind: "connectrpc",
-    ok: false as const,
-    error,
-    duration,
-  };
 }

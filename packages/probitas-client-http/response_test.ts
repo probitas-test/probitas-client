@@ -60,32 +60,32 @@ Deno.test("createHttpResponse", async (t) => {
     assertEquals(response.text(), "hello");
   });
 
-  await t.step("json() returns parsed JSON", async () => {
+  await t.step("data() returns parsed JSON", async () => {
     const data = { name: "John", age: 30 };
     const raw = new Response(JSON.stringify(data), { status: 200 });
     const response = await createHttpResponse(raw, 10);
 
-    assertEquals(response.json(), data);
+    assertEquals(response.data(), data);
   });
 
-  await t.step("json() returns null when no body", async () => {
+  await t.step("data() returns null when no body", async () => {
     const raw = new Response(null, { status: 204 });
     const response = await createHttpResponse(raw, 10);
 
-    assertEquals(response.json(), null);
+    assertEquals(response.data(), null);
   });
 
-  await t.step("json() can be called multiple times", async () => {
+  await t.step("data() can be called multiple times", async () => {
     const data = { id: 1 };
     const raw = new Response(JSON.stringify(data), { status: 200 });
     const response = await createHttpResponse(raw, 10);
 
-    assertEquals(response.json(), data);
-    assertEquals(response.json(), data);
-    assertEquals(response.json(), data);
+    assertEquals(response.data(), data);
+    assertEquals(response.data(), data);
+    assertEquals(response.data(), data);
   });
 
-  await t.step("json() supports generic type hint", async () => {
+  await t.step("data() supports generic type hint", async () => {
     interface User {
       id: number;
       name: string;
@@ -95,7 +95,7 @@ Deno.test("createHttpResponse", async (t) => {
     });
     const response = await createHttpResponse(raw, 10);
 
-    const user = response.json<User>();
+    const user = response.data<User>();
     assertEquals(user?.id, 1);
     assertEquals(user?.name, "Alice");
   });
