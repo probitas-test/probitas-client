@@ -2,7 +2,12 @@ import type { DuckDBConnection } from "@duckdb/node-api";
 import { DuckDBInstance } from "@duckdb/node-api";
 import { getLogger } from "@probitas/logger";
 import {
-  SqlQueryResult,
+  SqlConnectionError,
+  type SqlQueryOptions,
+  type SqlQueryResult,
+  SqlQueryResultErrorImpl,
+  SqlQueryResultFailureImpl,
+  SqlQueryResultSuccessImpl,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -14,25 +19,6 @@ import {
 } from "./transaction.ts";
 
 const logger = getLogger("probitas", "client", "sql", "duckdb");
-
-/**
- * Format SQL for logging, truncating if necessary.
- */
-function formatSql(sql: string): string {
-  return sql.length > 1000 ? sql.slice(0, 1000) + "..." : sql;
-}
-
-/**
- * Format parameters for logging, truncating if necessary.
- */
-function formatParams(params: unknown): string {
-  try {
-    const str = JSON.stringify(params);
-    return str.length > 500 ? str.slice(0, 500) + "..." : str;
-  } catch {
-    return "<unserializable>";
-  }
-}
 
 /**
  * DuckDB client interface.
@@ -48,22 +34,26 @@ export interface DuckDbClient extends AsyncDisposable {
    * Execute a SQL query.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -117,7 +107,9 @@ export interface DuckDbClient extends AsyncDisposable {
  * const client = await createDuckDbClient({});
  *
  * const result = await client.query("SELECT 42 as answer");
- * console.log(result.rows.first());  // { answer: 42 }
+ * if (result.ok) {
+ *   console.log(result.rows[0]);  // { answer: 42 }
+ * }
  *
  * await client.close();
  * ```
@@ -201,7 +193,7 @@ export async function createDuckDbClient(
     );
     const connection = await instance.connect();
 
-    return new DuckDbClientImpl(config, instance, connection);
+    return new DuckDbClientImpl(config, connection);
   } catch (error) {
     throw convertDuckDbError(error);
   }
@@ -210,17 +202,11 @@ export async function createDuckDbClient(
 class DuckDbClientImpl implements DuckDbClient {
   readonly config: DuckDbClientConfig;
   readonly dialect = "duckdb" as const;
-  readonly #instance: DuckDBInstance;
   readonly #connection: DuckDBConnection;
   #closed = false;
 
-  constructor(
-    config: DuckDbClientConfig,
-    instance: DuckDBInstance,
-    connection: DuckDBConnection,
-  ) {
+  constructor(config: DuckDbClientConfig, connection: DuckDBConnection) {
     this.config = config;
-    this.#instance = instance;
     this.#connection = connection;
 
     logger.debug("DuckDB client created", {
@@ -233,9 +219,18 @@ class DuckDbClientImpl implements DuckDbClient {
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>> {
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
     if (this.#closed) {
-      throw convertDuckDbError(new Error("Client is closed"));
+      const error = new SqlConnectionError("Client is closed");
+      if (shouldThrow) {
+        throw error;
+      }
+      return new SqlQueryResultFailureImpl<T>(error, 0);
     }
 
     const startTime = performance.now();
@@ -247,8 +242,8 @@ class DuckDbClientImpl implements DuckDbClient {
     });
 
     logger.trace("DuckDB query details", {
-      sql: formatSql(sql),
-      params: params ? formatParams(params) : undefined,
+      sql: sql,
+      params: params ? params : undefined,
     });
 
     try {
@@ -317,28 +312,45 @@ class DuckDbClientImpl implements DuckDbClient {
       if (rows.length > 0) {
         const sample = rows.slice(0, 1);
         logger.trace("DuckDB query row sample", {
-          rows: formatParams(sample),
+          rows: sample,
         });
       }
 
       if (isSelect) {
-        return new SqlQueryResult<T>({
-          ok: true,
+        return new SqlQueryResultSuccessImpl<T>({
           rows: rows as T[],
           rowCount: rows.length,
           duration,
         });
       } else {
         // For INSERT/UPDATE/DELETE queries
-        return new SqlQueryResult<T>({
-          ok: true,
+        return new SqlQueryResultSuccessImpl<T>({
           rows: [],
           rowCount: rows.length,
           duration,
         });
       }
     } catch (error) {
-      throw convertDuckDbError(error);
+      const duration = performance.now() - startTime;
+      const sqlError = convertDuckDbError(error);
+
+      logger.debug("DuckDB query failed", {
+        sql: sqlPreview,
+        duration: `${duration.toFixed(2)}ms`,
+        error: sqlError.message,
+      });
+
+      // Throw error if required
+      if (shouldThrow) {
+        throw sqlError;
+      }
+
+      // Return Failure for connection errors, Error for query errors
+      if (sqlError instanceof SqlConnectionError) {
+        return new SqlQueryResultFailureImpl<T>(sqlError, duration);
+      }
+
+      return new SqlQueryResultErrorImpl<T>(sqlError, duration);
     }
   }
 
@@ -346,9 +358,18 @@ class DuckDbClientImpl implements DuckDbClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
-    return result.rows.first();
+    // queryOne always throws on error for convenience
+    const result = await this.query<T>(sql, params, {
+      ...options,
+      throwOnError: true,
+    });
+    // result.ok is guaranteed to be true here due to throwOnError: true
+    if (!result.ok) {
+      throw result.error;
+    }
+    return result.rows[0];
   }
 
   async transaction<T>(

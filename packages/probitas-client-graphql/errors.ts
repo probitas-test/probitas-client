@@ -1,79 +1,65 @@
-import { ClientError } from "@probitas/client";
-import type { GraphqlErrorItem, GraphqlResponse } from "./types.ts";
+import { AbortError, ClientError, TimeoutError } from "@probitas/client";
+import type { GraphqlErrorItem } from "./types.ts";
 
 /**
- * Options for GraphqlError constructor.
+ * Error thrown for GraphQL execution errors.
+ *
+ * This error is returned when the GraphQL server processes the request
+ * but returns errors in the response (validation errors, resolver errors, etc.).
  */
-export interface GraphqlErrorOptions extends ErrorOptions {
-  /** Associated GraphQL response */
-  readonly response?: GraphqlResponse;
-}
-
-/**
- * Base GraphQL error class.
- */
-export class GraphqlError extends ClientError {
-  override readonly name: string = "GraphqlError";
+export class GraphqlExecutionError extends ClientError {
+  override readonly name = "GraphqlExecutionError";
   override readonly kind = "graphql" as const;
 
   /** GraphQL errors from response */
   readonly errors: readonly GraphqlErrorItem[];
 
-  /** Associated GraphQL response (if available) */
-  readonly response?: GraphqlResponse;
-
   constructor(
-    message: string,
     errors: readonly GraphqlErrorItem[],
-    options?: GraphqlErrorOptions,
+    options?: ErrorOptions,
   ) {
+    const message = formatGraphqlErrors(errors);
     super(message, "graphql", options);
     this.errors = errors;
-    this.response = options?.response;
   }
 }
 
 /**
- * Error thrown for network/HTTP errors before GraphQL processing.
+ * Error thrown for network-level failures.
+ *
+ * This error indicates that the request could not reach or be processed
+ * by the GraphQL server (connection refused, HTTP errors, etc.).
  */
-export class GraphqlNetworkError extends GraphqlError {
+export class GraphqlNetworkError extends ClientError {
   override readonly name = "GraphqlNetworkError";
+  override readonly kind = "network" as const;
 
   constructor(message: string, options?: ErrorOptions) {
-    super(message, [], options);
+    super(message, "network", options);
   }
 }
 
 /**
- * Error thrown for GraphQL validation errors.
+ * Format GraphQL errors for display.
  */
-export class GraphqlValidationError extends GraphqlError {
-  override readonly name = "GraphqlValidationError";
-
-  constructor(
-    errors: readonly GraphqlErrorItem[],
-    options?: GraphqlErrorOptions,
-  ) {
-    const message = `GraphQL validation failed: ${
-      errors.map((e) => e.message).join("; ")
-    }`;
-    super(message, errors, options);
-  }
+function formatGraphqlErrors(errors: readonly GraphqlErrorItem[]): string {
+  const detail = Deno.inspect(errors, {
+    compact: false,
+    sorted: true,
+    trailingComma: true,
+  });
+  const indented = detail
+    .split("\n")
+    .map((line) => `  ${line}`)
+    .join("\n");
+  return `GraphQL execution failed:\n\n${indented}`;
 }
 
 /**
- * Error thrown for GraphQL execution errors.
+ * Error types that indicate the operation was not processed.
+ * These are errors that occur before the request reaches the GraphQL server.
  */
-export class GraphqlExecutionError extends GraphqlError {
-  override readonly name = "GraphqlExecutionError";
-
-  constructor(
-    errors: readonly GraphqlErrorItem[],
-    options?: GraphqlErrorOptions,
-  ) {
-    const message = `GraphQL execution failed: ${
-      errors.map((e) => e.message).join("; ")
-    }`;
-    super(message, errors, options);
-  }
-}
+export type GraphqlFailureError =
+  | GraphqlNetworkError
+  | AbortError
+  | TimeoutError;

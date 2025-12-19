@@ -1,7 +1,12 @@
 import { type BindValue, Database } from "@db/sqlite";
 import { getLogger } from "@probitas/logger";
 import {
-  SqlQueryResult,
+  SqlConnectionError,
+  type SqlQueryOptions,
+  type SqlQueryResult,
+  SqlQueryResultErrorImpl,
+  SqlQueryResultFailureImpl,
+  SqlQueryResultSuccessImpl,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -18,25 +23,6 @@ const logger = getLogger("probitas", "client", "sql", "sqlite");
 type BindParams = BindValue[];
 
 /**
- * Format SQL for logging, truncating if necessary.
- */
-function formatSql(sql: string): string {
-  return sql.length > 1000 ? sql.slice(0, 1000) + "..." : sql;
-}
-
-/**
- * Format parameters for logging, truncating if necessary.
- */
-function formatParams(params: unknown): string {
-  try {
-    const str = JSON.stringify(params);
-    return str.length > 500 ? str.slice(0, 500) + "..." : str;
-  } catch {
-    return "<unserializable>";
-  }
-}
-
-/**
  * SQLite client interface.
  */
 export interface SqliteClient extends AsyncDisposable {
@@ -50,22 +36,26 @@ export interface SqliteClient extends AsyncDisposable {
    * Execute a SQL query.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -118,7 +108,9 @@ export interface SqliteClient extends AsyncDisposable {
  *   "SELECT * FROM users WHERE id = ?",
  *   [1],
  * );
- * console.log(result.rows.first());
+ * if (result.ok) {
+ *   console.log(result.rows[0]);  // { id: 1, name: "Alice" }
+ * }
  *
  * await client.close();
  * ```
@@ -141,8 +133,9 @@ export interface SqliteClient extends AsyncDisposable {
  * const client = await createSqliteClient({ path: ":memory:" });
  * const user = await client.transaction(async (tx: SqlTransaction) => {
  *   await tx.query("INSERT INTO users (name) VALUES (?)", ["Alice"]);
- *   const result = await tx.query("SELECT last_insert_rowid() as id");
- *   return result.rows.first();
+ *   const result = await tx.query<{ id: number }>("SELECT last_insert_rowid() as id");
+ *   if (!result.ok) throw result.error;
+ *   return result.rows[0];
  * });
  * await client.close();
  * ```
@@ -223,11 +216,18 @@ class SqliteClientImpl implements SqliteClient {
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>> {
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
     if (this.#closed) {
-      return Promise.reject(
-        convertSqliteError(new Error("Client is closed")),
-      );
+      const error = new SqlConnectionError("Client is closed");
+      if (shouldThrow) {
+        return Promise.reject(error);
+      }
+      return Promise.resolve(new SqlQueryResultFailureImpl<T>(error, 0));
     }
 
     const startTime = performance.now();
@@ -239,8 +239,8 @@ class SqliteClientImpl implements SqliteClient {
     });
 
     logger.trace("SQLite query details", {
-      sql: formatSql(sql),
-      params: params ? formatParams(params) : undefined,
+      sql: sql,
+      params: params ? params : undefined,
     });
 
     try {
@@ -271,13 +271,12 @@ class SqliteClientImpl implements SqliteClient {
           if (rows.length > 0) {
             const sample = rows.slice(0, 1);
             logger.trace("SQLite query row sample", {
-              rows: formatParams(sample),
+              rows: sample,
             });
           }
 
           return Promise.resolve(
-            new SqlQueryResult<T>({
-              ok: true,
+            new SqlQueryResultSuccessImpl<T>({
               rows: rows,
               rowCount: rows.length,
               duration,
@@ -308,8 +307,7 @@ class SqliteClientImpl implements SqliteClient {
           });
 
           return Promise.resolve(
-            new SqlQueryResult<T>({
-              ok: true,
+            new SqlQueryResultSuccessImpl<T>({
               rows: [],
               rowCount: changes,
               duration,
@@ -324,12 +322,29 @@ class SqliteClientImpl implements SqliteClient {
       }
     } catch (error) {
       const duration = performance.now() - startTime;
-      logger.error("SQLite query failed", {
+      const sqlError = convertSqliteError(error);
+
+      logger.debug("SQLite query failed", {
         sql: sqlPreview,
         duration: `${duration.toFixed(2)}ms`,
-        error: error instanceof Error ? error.message : String(error),
+        error: sqlError.message,
       });
-      return Promise.reject(convertSqliteError(error));
+
+      // Throw error if required
+      if (shouldThrow) {
+        return Promise.reject(sqlError);
+      }
+
+      // Return Failure for connection errors, Error for query errors
+      if (sqlError instanceof SqlConnectionError) {
+        return Promise.resolve(
+          new SqlQueryResultFailureImpl<T>(sqlError, duration),
+        );
+      }
+
+      return Promise.resolve(
+        new SqlQueryResultErrorImpl<T>(sqlError, duration),
+      );
     }
   }
 
@@ -337,9 +352,18 @@ class SqliteClientImpl implements SqliteClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
-    return result.rows.first();
+    // queryOne always throws on error for convenience
+    const result = await this.query<T>(sql, params, {
+      ...options,
+      throwOnError: true,
+    });
+    // result.ok is guaranteed to be true here due to throwOnError: true
+    if (!result.ok) {
+      throw result.error;
+    }
+    return result.rows[0];
   }
 
   async transaction<T>(

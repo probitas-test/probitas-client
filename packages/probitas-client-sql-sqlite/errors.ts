@@ -2,6 +2,7 @@ import {
   ConstraintError,
   DeadlockError,
   QuerySyntaxError,
+  SqlConnectionError,
   SqlError,
   type SqlErrorOptions,
 } from "@probitas/client-sql";
@@ -78,7 +79,41 @@ const SQLITE_ERROR = 1;
 const SQLITE_BUSY = 5;
 const SQLITE_LOCKED = 6;
 const SQLITE_READONLY = 8;
+const SQLITE_CANTOPEN = 14;
 const SQLITE_CONSTRAINT = 19;
+
+/**
+ * Check if an error is a connection-level error.
+ */
+export function isConnectionError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const err = error as Error & { code?: number };
+  const message = err.message.toLowerCase();
+
+  // Check for SQLite error codes
+  if (err.code !== undefined) {
+    const primaryCode = err.code & 0xff;
+    if (primaryCode === SQLITE_CANTOPEN) {
+      return true;
+    }
+  }
+
+  // Check message patterns
+  const connectionPatterns = [
+    "unable to open database",
+    "cannot open",
+    "no such file",
+    "permission denied",
+    "disk i/o error",
+    "database disk image",
+    "client is closed",
+  ];
+
+  return connectionPatterns.some((pattern) => message.includes(pattern));
+}
 
 /**
  * Convert a @db/sqlite error to the appropriate error class.
@@ -100,6 +135,11 @@ export function convertSqliteError(error: unknown): SqlError {
     cause: error,
     extendedCode: err.code,
   };
+
+  // Check for connection errors first
+  if (isConnectionError(error)) {
+    return new SqlConnectionError(err.message, options);
+  }
 
   const message = err.message.toLowerCase();
 

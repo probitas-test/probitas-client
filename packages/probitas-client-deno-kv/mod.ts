@@ -93,6 +93,6 @@
 
 export type * from "./types.ts";
 export * from "./errors.ts";
-export * from "./results.ts";
+export type * from "./result.ts";
 export type * from "./atomic.ts";
 export * from "./client.ts";

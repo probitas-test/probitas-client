@@ -1,4 +1,4 @@
-import { assertEquals, assertGreater } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertGreater } from "@std/assert";
 import { createDenoKvClient } from "./client.ts";
 
 Deno.test("createDenoKvClient", async (t) => {
@@ -26,7 +26,7 @@ Deno.test("DenoKvClient.get", async (t) => {
     const kv = await createDenoKvClient({ path: ":memory:" });
     try {
       const result = await kv.get(["nonexistent"]);
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(result.key, ["nonexistent"]);
       assertEquals(result.value, null);
       assertEquals(result.versionstamp, null);
@@ -41,7 +41,7 @@ Deno.test("DenoKvClient.get", async (t) => {
     try {
       await kv.set(["test"], { name: "Alice" });
       const result = await kv.get<{ name: string }>(["test"]);
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(result.value, { name: "Alice" });
       assertEquals(typeof result.versionstamp, "string");
     } finally {
@@ -78,7 +78,7 @@ Deno.test("DenoKvClient.set", async (t) => {
     const kv = await createDenoKvClient({ path: ":memory:" });
     try {
       const result = await kv.set(["test"], { name: "Bob" });
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(typeof result.versionstamp, "string");
       assertGreater(result.duration, 0);
 
@@ -93,7 +93,7 @@ Deno.test("DenoKvClient.set", async (t) => {
     const kv = await createDenoKvClient({ path: ":memory:" });
     try {
       const result = await kv.set(["expiring"], "value", { expireIn: 1000 });
-      assertEquals(result.ok, true);
+      assert(result.ok);
     } finally {
       await kv.close();
     }
@@ -106,7 +106,7 @@ Deno.test("DenoKvClient.delete", async (t) => {
     try {
       await kv.set(["test"], "value");
       const result = await kv.delete(["test"]);
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertGreater(result.duration, 0);
 
       const getResult = await kv.get(["test"]);
@@ -120,7 +120,7 @@ Deno.test("DenoKvClient.delete", async (t) => {
     const kv = await createDenoKvClient({ path: ":memory:" });
     try {
       const result = await kv.delete(["nonexistent"]);
-      assertEquals(result.ok, true);
+      assert(result.ok);
     } finally {
       await kv.close();
     }
@@ -136,10 +136,10 @@ Deno.test("DenoKvClient.list", async (t) => {
       await kv.set(["posts", "1"], { title: "Hello" });
 
       const result = await kv.list<{ name: string }>({ prefix: ["users"] });
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(result.entries.length, 2);
-      assertEquals(result.entries.first()?.value.name, "Alice");
-      assertEquals(result.entries.last()?.value.name, "Bob");
+      assertEquals(result.entries[0]?.value.name, "Alice");
+      assertEquals(result.entries[1]?.value.name, "Bob");
     } finally {
       await kv.close();
     }
@@ -170,8 +170,8 @@ Deno.test("DenoKvClient.list", async (t) => {
         { prefix: ["items"] },
         { reverse: true },
       );
-      assertEquals(result.entries.first()?.value, "c");
-      assertEquals(result.entries.last()?.value, "a");
+      assertEquals(result.entries[0]?.value, "c");
+      assertEquals(result.entries[result.entries.length - 1]?.value, "a");
     } finally {
       await kv.close();
     }
@@ -181,7 +181,7 @@ Deno.test("DenoKvClient.list", async (t) => {
     const kv = await createDenoKvClient({ path: ":memory:" });
     try {
       const result = await kv.list({ prefix: ["nonexistent"] });
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(result.entries.length, 0);
     } finally {
       await kv.close();
@@ -197,7 +197,7 @@ Deno.test("DenoKvClient.atomic", async (t) => {
         .set(["counter"], 1)
         .commit();
 
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(typeof result.versionstamp, "string");
 
       const getResult = await kv.get<number>(["counter"]);
@@ -218,7 +218,7 @@ Deno.test("DenoKvClient.atomic", async (t) => {
         .set(["key"], "updated")
         .commit();
 
-      assertEquals(result.ok, true);
+      assert(result.ok);
     } finally {
       await kv.close();
     }
@@ -241,8 +241,9 @@ Deno.test("DenoKvClient.atomic", async (t) => {
           .set(["key"], "updated")
           .commit();
 
-        assertEquals(result.ok, false);
-        assertEquals(result.versionstamp, undefined);
+        assertFalse(result.ok);
+        assertEquals(result.error, null); // Check failure is NOT an error
+        assertEquals(result.versionstamp, null);
       } finally {
         await kv.close();
       }
@@ -258,7 +259,7 @@ Deno.test("DenoKvClient.atomic", async (t) => {
         .delete(["to-delete"])
         .commit();
 
-      assertEquals(result.ok, true);
+      assert(result.ok);
 
       const getResult = await kv.get(["to-delete"]);
       assertEquals(getResult.value, null);

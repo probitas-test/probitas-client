@@ -87,7 +87,8 @@ Deno.test("createConnectRpcClient - supports metadata", async () => {
   try {
     assertExists(client);
     assertExists(client.config.metadata);
-    assertEquals(client.config.metadata["x-custom-header"], "value");
+    const metadata = new Headers(client.config.metadata);
+    assertEquals(metadata.get("x-custom-header"), "value");
   } finally {
     await client.close();
   }

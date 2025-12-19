@@ -33,7 +33,7 @@
  *
  * // Ensure queue exists
  * const queueResult = await client.ensureQueue("test-queue");
- * const queueUrl = queueResult.queueUrl;
+ * if (!queueResult.ok) throw new Error("Failed to ensure queue");
  *
  * // Send a message
  * const sendResult = await client.send("Hello, World!", {
@@ -41,6 +41,7 @@
  *     type: { dataType: "String", stringValue: "greeting" },
  *   },
  * });
+ * if (!sendResult.ok) throw new Error("Failed to send message");
  * console.log("Message ID:", sendResult.messageId);
  *
  * // Receive messages
@@ -48,6 +49,7 @@
  *   maxMessages: 10,
  *   waitTimeSeconds: 5,
  * });
+ * if (!receiveResult.ok) throw new Error("Failed to receive messages");
  * console.log("Received:", receiveResult.messages.length);
  *
  * // Delete message after processing
@@ -70,7 +72,7 @@
  * });
  *
  * const queueResult = await client.ensureQueue("test-queue");
- * const queueUrl = queueResult.queueUrl;
+ * if (!queueResult.ok) throw new Error("Failed to ensure queue");
  *
  * // Send batch messages
  * await client.sendBatch([
@@ -80,8 +82,9 @@
  * ]);
  *
  * // Delete batch messages
- * const messages = await client.receive({ maxMessages: 10 });
- * const handles = messages.messages.map((m: { receiptHandle: string }) => m.receiptHandle);
+ * const receiveResult = await client.receive({ maxMessages: 10 });
+ * if (!receiveResult.ok) throw new Error("Failed to receive messages");
+ * const handles = receiveResult.messages.map((m) => m.receiptHandle);
  * await client.deleteBatch(handles);
  *
  * await client.close();
@@ -121,7 +124,6 @@
  */
 
 export type * from "./types.ts";
-export type * from "./result.ts";
 export * from "./errors.ts";
+export type * from "./result.ts";
 export * from "./client.ts";
-export * from "./messages.ts";

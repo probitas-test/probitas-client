@@ -3,9 +3,14 @@ import {
   ConstraintError,
   DeadlockError,
   QuerySyntaxError,
+  SqlConnectionError,
   SqlError,
 } from "@probitas/client-sql";
-import { mapPostgresError, type PostgresErrorLike } from "./errors.ts";
+import {
+  isConnectionError,
+  mapPostgresError,
+  type PostgresErrorLike,
+} from "./errors.ts";
 
 Deno.test("mapPostgresError", async (t) => {
   await t.step("maps syntax error (SQLSTATE 42xxx)", async (t) => {
@@ -132,6 +137,57 @@ Deno.test("mapPostgresError", async (t) => {
     assertEquals(error.sqlState, "40000");
   });
 
+  await t.step("maps connection errors (SQLSTATE 08xxx)", async (t) => {
+    await t.step("08006 - connection_failure", () => {
+      const error = mapPostgresError({
+        message: "connection to server lost",
+        code: "08006",
+      });
+
+      assertInstanceOf(error, SqlConnectionError);
+      assertEquals(error.kind, "connection");
+      assertEquals(error.sqlState, "08006");
+    });
+
+    await t.step("08003 - connection_does_not_exist", () => {
+      const error = mapPostgresError({
+        message: "connection does not exist",
+        code: "08003",
+      });
+
+      assertInstanceOf(error, SqlConnectionError);
+      assertEquals(error.kind, "connection");
+      assertEquals(error.sqlState, "08003");
+    });
+
+    await t.step("message-based: connection refused", () => {
+      const error = mapPostgresError({
+        message: "connect ECONNREFUSED 127.0.0.1:5432",
+      });
+
+      assertInstanceOf(error, SqlConnectionError);
+      assertEquals(error.kind, "connection");
+    });
+
+    await t.step("message-based: timeout", () => {
+      const error = mapPostgresError({
+        message: "Connection timed out",
+      });
+
+      assertInstanceOf(error, SqlConnectionError);
+      assertEquals(error.kind, "connection");
+    });
+
+    await t.step("message-based: authentication failed", () => {
+      const error = mapPostgresError({
+        message: "password authentication failed for user",
+      });
+
+      assertInstanceOf(error, SqlConnectionError);
+      assertEquals(error.kind, "connection");
+    });
+  });
+
   await t.step(
     "maps unknown errors to SqlError with kind unknown",
     async (t) => {
@@ -144,16 +200,6 @@ Deno.test("mapPostgresError", async (t) => {
         assertInstanceOf(error, SqlError);
         assertEquals(error.kind, "unknown");
         assertEquals(error.sqlState, "XX000");
-      });
-
-      await t.step("error without code", () => {
-        const error = mapPostgresError({
-          message: "connection lost",
-        });
-
-        assertInstanceOf(error, SqlError);
-        assertEquals(error.kind, "unknown");
-        assertEquals(error.sqlState, undefined);
       });
     },
   );
@@ -177,5 +223,62 @@ Deno.test("mapPostgresError", async (t) => {
     });
 
     assertEquals(error.message, message);
+  });
+});
+
+Deno.test("isConnectionError", async (t) => {
+  await t.step("returns true for SQLSTATE 08xxx", () => {
+    assertEquals(
+      isConnectionError({ message: "error", code: "08006" }),
+      true,
+    );
+    assertEquals(
+      isConnectionError({ message: "error", code: "08003" }),
+      true,
+    );
+  });
+
+  await t.step(
+    "returns true for SQLSTATE 57xxx (operator intervention)",
+    () => {
+      assertEquals(
+        isConnectionError({ message: "error", code: "57P01" }),
+        true,
+      );
+      assertEquals(
+        isConnectionError({ message: "error", code: "57000" }),
+        true,
+      );
+    },
+  );
+
+  await t.step("returns true for connection-related message patterns", () => {
+    assertEquals(
+      isConnectionError({ message: "connection refused" }),
+      true,
+    );
+    assertEquals(
+      isConnectionError({ message: "connect ECONNREFUSED" }),
+      true,
+    );
+    assertEquals(
+      isConnectionError({ message: "connection timeout" }),
+      true,
+    );
+    assertEquals(
+      isConnectionError({ message: "authentication failed" }),
+      true,
+    );
+  });
+
+  await t.step("returns false for query errors", () => {
+    assertEquals(
+      isConnectionError({ message: "syntax error", code: "42601" }),
+      false,
+    );
+    assertEquals(
+      isConnectionError({ message: "unique violation", code: "23505" }),
+      false,
+    );
   });
 });

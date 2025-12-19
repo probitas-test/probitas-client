@@ -22,4 +22,12 @@ export interface SqliteClientConfig extends CommonOptions {
    * @default true
    */
   readonly wal?: boolean;
+
+  /**
+   * Whether to throw an error for query failures.
+   * When false, failures are returned as SqlQueryResultError or SqlQueryResultFailure.
+   * Can be overridden per-query via SqlQueryOptions.
+   * @default false
+   */
+  readonly throwOnError?: boolean;
 }

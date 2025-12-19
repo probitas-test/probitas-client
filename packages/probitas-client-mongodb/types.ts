@@ -8,11 +8,13 @@ import type {
   MongoInsertOneResult,
   MongoResult,
   MongoUpdateResult,
-} from "./results.ts";
+} from "./result.ts";
+import type { MongoFailureError } from "./errors.ts";
 
 export type {
   MongoCountResult,
   MongoDeleteResult,
+  MongoFailureError,
   MongoFindOneResult,
   MongoFindResult,
   MongoInsertManyResult,
@@ -20,6 +22,18 @@ export type {
   MongoResult,
   MongoUpdateResult,
 };
+
+/**
+ * Common options with throwOnError support.
+ */
+export interface MongoOptions extends CommonOptions {
+  /**
+   * If true, throws errors instead of returning them in the result.
+   * If false (default), errors are returned in the result object.
+   * @default false
+   */
+  readonly throwOnError?: boolean;
+}
 
 /**
  * MongoDB connection configuration.
@@ -50,16 +64,6 @@ export interface MongoConnectionConfig extends CommonConnectionConfig {
 export type Document<T = any> = Record<string, T>;
 
 /**
- * Document array with first/last methods
- */
-export interface MongoDocs<T> extends ReadonlyArray<T> {
-  first(): T | undefined;
-  firstOrThrow(): T;
-  last(): T | undefined;
-  lastOrThrow(): T;
-}
-
-/**
  * MongoDB filter type (simplified for compatibility with mongodb driver)
  * Allows query operators like $gte, $lt, $in, etc.
  */
@@ -76,7 +80,7 @@ export type UpdateFilter = Record<string, any>;
 /**
  * MongoDB find options
  */
-export interface MongoFindOptions extends CommonOptions {
+export interface MongoFindOptions extends MongoOptions {
   readonly sort?: Record<string, 1 | -1>;
   readonly limit?: number;
   readonly skip?: number;
@@ -86,7 +90,7 @@ export interface MongoFindOptions extends CommonOptions {
 /**
  * MongoDB update options
  */
-export interface MongoUpdateOptions extends CommonOptions {
+export interface MongoUpdateOptions extends MongoOptions {
   readonly upsert?: boolean;
 }
 
@@ -115,7 +119,7 @@ export interface MongoUpdateOptions extends CommonOptions {
  * };
  * ```
  */
-export interface MongoClientConfig extends CommonOptions {
+export interface MongoClientConfig extends MongoOptions {
   /**
    * MongoDB connection URL or configuration object.
    */
@@ -144,15 +148,15 @@ export interface MongoCollection<T extends Document> {
   ): Promise<MongoFindResult<T>>;
   findOne(
     filter: Filter,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoFindOneResult<T>>;
   insertOne(
     doc: Omit<T, "_id">,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoInsertOneResult>;
   insertMany(
     docs: Omit<T, "_id">[],
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoInsertManyResult>;
   updateOne(
     filter: Filter,
@@ -166,19 +170,19 @@ export interface MongoCollection<T extends Document> {
   ): Promise<MongoUpdateResult>;
   deleteOne(
     filter: Filter,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoDeleteResult>;
   deleteMany(
     filter: Filter,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoDeleteResult>;
   aggregate<R = T>(
     pipeline: Document[],
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoFindResult<R>>;
   countDocuments(
     filter?: Filter,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoCountResult>;
 }
 

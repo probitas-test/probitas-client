@@ -10,28 +10,6 @@
  * ConnectRPC/gRPC status codes.
  * These codes are used by both gRPC and ConnectRPC protocols.
  */
-export type ConnectRpcStatusCode =
-  | 0 // OK
-  | 1 // CANCELLED
-  | 2 // UNKNOWN
-  | 3 // INVALID_ARGUMENT
-  | 4 // DEADLINE_EXCEEDED
-  | 5 // NOT_FOUND
-  | 6 // ALREADY_EXISTS
-  | 7 // PERMISSION_DENIED
-  | 8 // RESOURCE_EXHAUSTED
-  | 9 // FAILED_PRECONDITION
-  | 10 // ABORTED
-  | 11 // OUT_OF_RANGE
-  | 12 // UNIMPLEMENTED
-  | 13 // INTERNAL
-  | 14 // UNAVAILABLE
-  | 15 // DATA_LOSS
-  | 16; // UNAUTHENTICATED
-
-/**
- * Human-readable names for ConnectRPC/gRPC status codes.
- */
 export const ConnectRpcStatus = {
   OK: 0,
   CANCELLED: 1,
@@ -53,6 +31,21 @@ export const ConnectRpcStatus = {
 } as const;
 
 /**
+ * ConnectRPC/gRPC status code type.
+ * Derived from ConnectRpcStatus values.
+ */
+export type ConnectRpcStatusCode =
+  (typeof ConnectRpcStatus)[keyof typeof ConnectRpcStatus];
+
+// Reverse mapping: code -> name
+const statusNames = Object.fromEntries(
+  Object.entries(ConnectRpcStatus).map(([name, code]) => [code, name]),
+) as Record<ConnectRpcStatusCode, string>;
+
+// Set of valid status codes
+const validCodes = new Set(Object.values(ConnectRpcStatus));
+
+/**
  * Get the name of a ConnectRPC/gRPC status code.
  *
  * @example
@@ -63,26 +56,7 @@ export const ConnectRpcStatus = {
  * ```
  */
 export function getStatusName(code: ConnectRpcStatusCode): string {
-  const names: Record<ConnectRpcStatusCode, string> = {
-    0: "OK",
-    1: "CANCELLED",
-    2: "UNKNOWN",
-    3: "INVALID_ARGUMENT",
-    4: "DEADLINE_EXCEEDED",
-    5: "NOT_FOUND",
-    6: "ALREADY_EXISTS",
-    7: "PERMISSION_DENIED",
-    8: "RESOURCE_EXHAUSTED",
-    9: "FAILED_PRECONDITION",
-    10: "ABORTED",
-    11: "OUT_OF_RANGE",
-    12: "UNIMPLEMENTED",
-    13: "INTERNAL",
-    14: "UNAVAILABLE",
-    15: "DATA_LOSS",
-    16: "UNAUTHENTICATED",
-  };
-  return names[code];
+  return statusNames[code];
 }
 
 /**
@@ -98,5 +72,5 @@ export function getStatusName(code: ConnectRpcStatusCode): string {
 export function isConnectRpcStatusCode(
   code: number,
 ): code is ConnectRpcStatusCode {
-  return Number.isInteger(code) && code >= 0 && code <= 16;
+  return validCodes.has(code as ConnectRpcStatusCode);
 }

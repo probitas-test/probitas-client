@@ -8,6 +8,7 @@
  */
 
 import {
+  assert,
   assertEquals,
   assertExists,
   assertGreaterOrEqual,
@@ -60,10 +61,10 @@ Deno.test({
           "SELECT 1 as result",
         );
 
-        assertEquals(result.ok, true);
+        assert(result.ok);
         assertEquals(result.rows.length, 1);
 
-        assertEquals(result.rows.first()?.result, 1);
+        assertEquals(result.rows[0]?.result, 1);
       } finally {
         await client.close();
       }
@@ -83,7 +84,7 @@ Deno.test({
         "SELECT 1 as result",
       );
 
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(result.rows.length, 1);
     });
 
@@ -92,7 +93,7 @@ Deno.test({
 
       const result = await client.query<{ now: Date }>("SELECT NOW() as now");
 
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(result.rows.length, 1);
     });
 
@@ -104,10 +105,10 @@ Deno.test({
         [10, 20],
       );
 
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertEquals(result.rows.length, 1);
 
-      assertEquals(result.rows.first()?.sum, 30);
+      assertEquals(result.rows[0]?.sum, 30);
     });
 
     await t.step("queryOne returns first row", async () => {
@@ -149,7 +150,7 @@ Deno.test({
           ["Alice", "alice@example.com"],
         );
 
-        assertEquals(insertResult.ok, true);
+        assert(insertResult.ok);
         assertEquals(insertResult.rowCount, 1);
         assertExists(insertResult.lastInsertId);
 
@@ -163,11 +164,11 @@ Deno.test({
           ["Alice"],
         );
 
-        assertEquals(selectResult.ok, true);
+        assert(selectResult.ok);
         assertEquals(selectResult.rows.length, 1);
 
-        assertEquals(selectResult.rows.first()?.name, "Alice");
-        assertEquals(selectResult.rows.first()?.email, "alice@example.com");
+        assertEquals(selectResult.rows[0]?.name, "Alice");
+        assertEquals(selectResult.rows[0]?.email, "alice@example.com");
       } finally {
         // Drop table
         await client.query("DROP TABLE IF EXISTS test_users");
@@ -190,6 +191,7 @@ Deno.test({
             "INSERT INTO test_tx_helper (value) VALUES (?)",
             ["auto-committed"],
           );
+          if (!result.ok) throw result.error;
           return result.lastInsertId;
         });
 
@@ -200,10 +202,10 @@ Deno.test({
           [lastInsertId],
         );
 
-        assertEquals(result.ok, true);
+        assert(result.ok);
         assertEquals(result.rows.length, 1);
 
-        assertEquals(result.rows.first()?.value, "auto-committed");
+        assertEquals(result.rows[0]?.value, "auto-committed");
       } finally {
         await client.query("DROP TABLE IF EXISTS test_tx_helper");
       }
@@ -238,7 +240,7 @@ Deno.test({
           ["will-rollback"],
         );
 
-        assertEquals(result.ok, true);
+        assert(result.ok);
         assertEquals(result.rows.length, 0);
       } finally {
         await client.query("DROP TABLE IF EXISTS test_tx_error");
@@ -253,7 +255,8 @@ Deno.test({
           "SELECT @@transaction_isolation as level",
         );
 
-        assertEquals(result.rows.first()?.level, "SERIALIZABLE");
+        if (!result.ok) throw result.error;
+        assertEquals(result.rows[0]?.level, "SERIALIZABLE");
       }, { isolationLevel: "serializable" });
     });
 
@@ -273,7 +276,7 @@ Deno.test({
           ["test"],
         );
 
-        assertEquals(result.ok, true);
+        assert(result.ok);
         assertEquals(result.rowCount, 1);
         assertExists(result.lastInsertId);
 
@@ -300,7 +303,7 @@ Deno.test({
 
       const result = await client.query("SELECT SLEEP(0.1)");
 
-      assertEquals(result.ok, true);
+      assert(result.ok);
       assertLess(result.duration, 1000);
 
       // Should take at least 100ms due to SLEEP

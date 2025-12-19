@@ -1,5 +1,13 @@
 import type postgres from "postgres";
-import { SqlQueryResult, type SqlTransaction } from "@probitas/client-sql";
+import {
+  SqlConnectionError,
+  type SqlQueryOptions,
+  type SqlQueryResult,
+  SqlQueryResultErrorImpl,
+  SqlQueryResultFailureImpl,
+  SqlQueryResultSuccessImpl,
+  type SqlTransaction,
+} from "@probitas/client-sql";
 import { mapPostgresError } from "./errors.ts";
 
 /**
@@ -38,12 +46,17 @@ export class PostgresTransaction implements SqlTransaction {
    *
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>> {
+    // Determine whether to throw on error (default false for transactions)
+    const shouldThrow = options?.throwOnError ?? false;
+
     this.#assertActive();
 
     const startTime = performance.now();
@@ -52,14 +65,28 @@ export class PostgresTransaction implements SqlTransaction {
       const result = await this.#sql.unsafe<T[]>(sql, params as never[]);
       const duration = performance.now() - startTime;
 
-      return new SqlQueryResult<T>({
-        ok: true,
+      return new SqlQueryResultSuccessImpl<T>({
         rows: result as unknown as readonly T[],
         rowCount: result.count ?? result.length,
         duration,
       });
     } catch (error) {
-      throw mapPostgresError(error as { message: string; code?: string });
+      const duration = performance.now() - startTime;
+      const sqlError = mapPostgresError(
+        error as { message: string; code?: string },
+      );
+
+      // Throw error if required
+      if (shouldThrow) {
+        throw sqlError;
+      }
+
+      // Return Failure for connection errors, Error for query errors
+      if (sqlError instanceof SqlConnectionError) {
+        return new SqlQueryResultFailureImpl<T>(sqlError, duration);
+      }
+
+      return new SqlQueryResultErrorImpl<T>(sqlError, duration);
     }
   }
 
@@ -68,14 +95,24 @@ export class PostgresTransaction implements SqlTransaction {
    *
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
-    return result.rows.first();
+    // queryOne always throws on error for convenience
+    const result = await this.query<T>(sql, params, {
+      ...options,
+      throwOnError: true,
+    });
+    // result.ok is guaranteed to be true here due to throwOnError: true
+    if (!result.ok) {
+      throw result.error;
+    }
+    return result.rows[0];
   }
 
   /**

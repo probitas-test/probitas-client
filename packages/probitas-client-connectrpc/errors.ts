@@ -5,8 +5,24 @@
  */
 
 import { type Code, ConnectError } from "@connectrpc/connect";
-import { ClientError } from "@probitas/client";
+import { AbortError, ClientError, TimeoutError } from "@probitas/client";
 import type { ConnectRpcStatusCode } from "./status.ts";
+
+/**
+ * Error thrown when a network-level failure occurs.
+ *
+ * This error indicates that the request could not be processed by the server
+ * due to network issues (connection refused, DNS resolution failure, timeout, etc.).
+ * Unlike ConnectRpcError, this error means the server was never reached.
+ */
+export class ConnectRpcNetworkError extends ClientError {
+  override readonly name: string = "ConnectRpcNetworkError";
+  override readonly kind = "connectrpc" as const;
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, "network", options);
+  }
+}
 
 /**
  * Rich error detail from google.rpc.Status.
@@ -39,23 +55,25 @@ export interface ConnectRpcErrorOptions extends ErrorOptions {
   /**
    * Headers/metadata from the ConnectRPC response.
    */
-  readonly metadata?: Headers;
+  readonly metadata?: Headers | null;
 
   /**
    * Rich error details from google.rpc.Status.
    */
-  readonly details?: readonly ErrorDetail[];
+  readonly details?: readonly ErrorDetail[] | null;
 }
 
 /**
- * Base error class for ConnectRPC/gRPC errors.
+ * Error class for ConnectRPC/gRPC errors.
+ *
+ * Use `statusCode` to distinguish between different gRPC error codes.
  */
 export class ConnectRpcError extends ClientError {
   override readonly name: string = "ConnectRpcError";
   override readonly kind = "connectrpc" as const;
   readonly statusCode: ConnectRpcStatusCode;
   readonly statusMessage: string;
-  readonly metadata?: Headers;
+  readonly metadata: Headers | null;
   readonly details: readonly ErrorDetail[];
 
   constructor(
@@ -64,83 +82,11 @@ export class ConnectRpcError extends ClientError {
     statusMessage: string,
     options?: ConnectRpcErrorOptions,
   ) {
-    super(message, "ConnectRpcError", options);
+    super(message, "connectrpc", options);
     this.statusCode = statusCode;
     this.statusMessage = statusMessage;
-    this.metadata = options?.metadata;
+    this.metadata = options?.metadata ?? null;
     this.details = options?.details ?? [];
-  }
-}
-
-/**
- * Error thrown when the client is not authenticated (code 16).
- */
-export class ConnectRpcUnauthenticatedError extends ConnectRpcError {
-  override readonly name = "ConnectRpcUnauthenticatedError" as const;
-  override readonly statusCode = 16 as const;
-
-  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Unauthenticated: ${statusMessage}`, 16, statusMessage, options);
-  }
-}
-
-/**
- * Error thrown when the client lacks permission (code 7).
- */
-export class ConnectRpcPermissionDeniedError extends ConnectRpcError {
-  override readonly name = "ConnectRpcPermissionDeniedError" as const;
-  override readonly statusCode = 7 as const;
-
-  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Permission denied: ${statusMessage}`, 7, statusMessage, options);
-  }
-}
-
-/**
- * Error thrown when the requested resource is not found (code 5).
- */
-export class ConnectRpcNotFoundError extends ConnectRpcError {
-  override readonly name = "ConnectRpcNotFoundError" as const;
-  override readonly statusCode = 5 as const;
-
-  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Not found: ${statusMessage}`, 5, statusMessage, options);
-  }
-}
-
-/**
- * Error thrown when a resource is exhausted (code 8).
- */
-export class ConnectRpcResourceExhaustedError extends ConnectRpcError {
-  override readonly name = "ConnectRpcResourceExhaustedError" as const;
-  override readonly statusCode = 8 as const;
-
-  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Resource exhausted: ${statusMessage}`, 8, statusMessage, options);
-  }
-}
-
-/**
- * Error thrown for internal server errors (code 13).
- */
-export class ConnectRpcInternalError extends ConnectRpcError {
-  override readonly name = "ConnectRpcInternalError" as const;
-  override readonly statusCode = 13 as const;
-
-  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Internal error: ${statusMessage}`, 13, statusMessage, options);
-  }
-}
-
-/**
- * Error thrown when the service is unavailable (code 14).
- */
-export class ConnectRpcUnavailableError extends ConnectRpcError {
-  override readonly name = "ConnectRpcUnavailableError" as const;
-  override readonly statusCode = 14 as const;
-
-  constructor(statusMessage: string, options?: ConnectRpcErrorOptions) {
-    super(`Unavailable: ${statusMessage}`, 14, statusMessage, options);
   }
 }
 
@@ -149,7 +95,7 @@ export class ConnectRpcUnavailableError extends ConnectRpcError {
  *
  * @param error - The ConnectError from @connectrpc/connect
  * @param metadata - Optional metadata from the response
- * @returns Appropriate ConnectRpcError subclass based on error code
+ * @returns ConnectRpcError with statusCode for discrimination
  */
 export function fromConnectError(
   error: ConnectError,
@@ -170,32 +116,18 @@ export function fromConnectError(
     };
   });
 
-  const options: ConnectRpcErrorOptions = {
+  return new ConnectRpcError(error.message, statusCode, statusMessage, {
     cause: error,
     metadata,
     details,
-  };
-
-  // Return specific error subclass based on code
-  switch (statusCode) {
-    case 5:
-      return new ConnectRpcNotFoundError(statusMessage, options);
-    case 7:
-      return new ConnectRpcPermissionDeniedError(statusMessage, options);
-    case 8:
-      return new ConnectRpcResourceExhaustedError(statusMessage, options);
-    case 13:
-      return new ConnectRpcInternalError(statusMessage, options);
-    case 14:
-      return new ConnectRpcUnavailableError(statusMessage, options);
-    case 16:
-      return new ConnectRpcUnauthenticatedError(statusMessage, options);
-    default:
-      return new ConnectRpcError(
-        error.message,
-        statusCode,
-        statusMessage,
-        options,
-      );
-  }
+  });
 }
+
+/**
+ * Error types that indicate the operation was not processed.
+ * These are errors that occur before the request reaches the server.
+ */
+export type ConnectRpcFailureError =
+  | ConnectRpcNetworkError
+  | AbortError
+  | TimeoutError;

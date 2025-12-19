@@ -1,143 +1,26 @@
 import postgres from "postgres";
-import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
 import { ConnectionError } from "@probitas/client";
 import { getLogger } from "@probitas/logger";
 import {
+  SqlConnectionError,
   type SqlIsolationLevel,
-  SqlQueryResult,
+  type SqlQueryOptions,
+  type SqlQueryResult,
+  SqlQueryResultErrorImpl,
+  SqlQueryResultFailureImpl,
+  SqlQueryResultSuccessImpl,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
 import { mapPostgresError } from "./errors.ts";
 import { PostgresTransaction } from "./transaction.ts";
+import type {
+  PostgresClientConfig,
+  PostgresNotification,
+  PostgresSslConfig,
+} from "./types.ts";
 
 const logger = getLogger("probitas", "client", "sql", "postgres");
-
-/**
- * Format SQL for logging, truncating if necessary.
- */
-function formatSql(sql: string): string {
-  return sql.length > 1000 ? sql.slice(0, 1000) + "..." : sql;
-}
-
-/**
- * Format parameters for logging, truncating if necessary.
- */
-function formatParams(params: unknown): string {
-  try {
-    const str = JSON.stringify(params);
-    return str.length > 500 ? str.slice(0, 500) + "..." : str;
-  } catch {
-    return "<unserializable>";
-  }
-}
-
-/**
- * SSL/TLS configuration for PostgreSQL connection.
- */
-export interface PostgresSslConfig {
-  /**
-   * Whether to reject unauthorized certificates.
-   * @default true
-   */
-  readonly rejectUnauthorized?: boolean;
-
-  /**
-   * CA certificate(s) for verification.
-   */
-  readonly ca?: string;
-
-  /**
-   * Client certificate for mutual TLS.
-   */
-  readonly cert?: string;
-
-  /**
-   * Client private key for mutual TLS.
-   */
-  readonly key?: string;
-}
-
-/**
- * PostgreSQL connection configuration.
- *
- * Extends CommonConnectionConfig with PostgreSQL-specific options.
- */
-export interface PostgresConnectionConfig extends CommonConnectionConfig {
-  /**
-   * Database name to connect to.
-   */
-  readonly database?: string;
-
-  /**
-   * SSL/TLS configuration.
-   */
-  readonly ssl?: boolean | PostgresSslConfig;
-}
-
-/**
- * Pool configuration for PostgreSQL.
- */
-export interface PostgresPoolConfig {
-  /** Maximum number of connections in the pool */
-  readonly max?: number;
-
-  /** Idle timeout in milliseconds before closing unused connections */
-  readonly idleTimeout?: number;
-
-  /** Connection timeout in milliseconds */
-  readonly connectTimeout?: number;
-}
-
-/**
- * Configuration for creating a PostgreSQL client.
- */
-export interface PostgresClientConfig extends CommonOptions {
-  /**
-   * Connection URL string or configuration object.
-   *
-   * @example Using a URL string
-   * ```ts
-   * import type { PostgresClientConfig } from "@probitas/client-sql-postgres";
-   * const config: PostgresClientConfig = { url: "postgres://user:pass@localhost:5432/mydb" };
-   * ```
-   *
-   * @example Using a configuration object
-   * ```ts
-   * import type { PostgresClientConfig } from "@probitas/client-sql-postgres";
-   * const config: PostgresClientConfig = {
-   *   url: {
-   *     host: "localhost",
-   *     port: 5432,
-   *     database: "mydb",
-   *     username: "user",
-   *     password: "pass",
-   *   },
-   * };
-   * ```
-   */
-  readonly url: string | PostgresConnectionConfig;
-
-  /** Pool configuration */
-  readonly pool?: PostgresPoolConfig;
-
-  /** Application name for PostgreSQL connection */
-  readonly applicationName?: string;
-}
-
-/**
- * PostgreSQL LISTEN/NOTIFY notification.
- */
-export interface PostgresNotification {
-  /** Channel name */
-  readonly channel: string;
-
-  /** Notification payload */
-  readonly payload: string;
-
-  /** Process ID of the notifying backend */
-  readonly processId: number;
-}
 
 /**
  * PostgreSQL client interface.
@@ -154,11 +37,13 @@ export interface PostgresClient extends AsyncDisposable {
    *
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>>;
 
   /**
@@ -166,11 +51,13 @@ export interface PostgresClient extends AsyncDisposable {
    *
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -276,8 +163,19 @@ class PostgresClientImpl implements PostgresClient {
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>> {
-    this.#assertNotClosed();
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
+    if (this.#closed) {
+      const error = new SqlConnectionError("Client is closed");
+      if (shouldThrow) {
+        throw error;
+      }
+      return new SqlQueryResultFailureImpl<T>(error, 0);
+    }
 
     const startTime = performance.now();
     const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql;
@@ -287,10 +185,7 @@ class PostgresClientImpl implements PostgresClient {
       paramCount: params?.length ?? 0,
     });
 
-    logger.trace("PostgreSQL query details", {
-      sql: formatSql(sql),
-      params: params ? formatParams(params) : undefined,
-    });
+    logger.trace("PostgreSQL query details", { sql, params });
 
     try {
       const result = await this.#sql.unsafe<T[]>(
@@ -306,25 +201,37 @@ class PostgresClientImpl implements PostgresClient {
 
       if (result.length > 0) {
         const sample = result.slice(0, 1);
-        logger.trace("PostgreSQL query row sample", {
-          rows: formatParams(sample),
-        });
+        logger.trace("PostgreSQL query row sample", { rows: sample });
       }
 
-      return new SqlQueryResult<T>({
-        ok: true,
+      return new SqlQueryResultSuccessImpl<T>({
         rows: result as unknown as readonly T[],
         rowCount: result.count ?? result.length,
         duration,
       });
     } catch (error) {
       const duration = performance.now() - startTime;
+      const pgError = error as { message: string; code?: string };
+
       logger.debug("PostgreSQL query failed", {
         sql: sqlPreview,
         duration: `${duration.toFixed(2)}ms`,
-        error: error instanceof Error ? error.message : String(error),
+        error: pgError.message,
       });
-      throw mapPostgresError(error as { message: string; code?: string });
+
+      const sqlError = mapPostgresError(pgError);
+
+      // Throw error if required
+      if (shouldThrow) {
+        throw sqlError;
+      }
+
+      // Return Failure for connection errors, Error for query errors
+      if (sqlError instanceof SqlConnectionError) {
+        return new SqlQueryResultFailureImpl<T>(sqlError, duration);
+      }
+
+      return new SqlQueryResultErrorImpl<T>(sqlError, duration);
     }
   }
 
@@ -332,9 +239,18 @@ class PostgresClientImpl implements PostgresClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
-    return result.rows.first();
+    // queryOne always throws on error for convenience
+    const result = await this.query<T>(sql, params, {
+      ...options,
+      throwOnError: true,
+    });
+    // result.ok is guaranteed to be true here due to throwOnError: true
+    if (!result.ok) {
+      throw result.error;
+    }
+    return result.rows[0];
   }
 
   async transaction<T>(
@@ -444,9 +360,7 @@ class PostgresClientImpl implements PostgresClient {
       sql: sqlPreview,
     });
 
-    logger.trace("PostgreSQL COPY TO details", {
-      sql: formatSql(query),
-    });
+    logger.trace("PostgreSQL COPY TO details", { sql: query });
 
     const startTime = performance.now();
     const reserved = await this.#sql.reserve();
@@ -459,9 +373,7 @@ class PostgresClientImpl implements PostgresClient {
       for (const row of result) {
         rowCount++;
         if (!rowSampleLogged && rowCount === 1) {
-          logger.trace("PostgreSQL COPY TO row sample", {
-            row: formatParams(Object.values(row)),
-          });
+          logger.trace("PostgreSQL COPY TO row sample", { row });
           rowSampleLogged = true;
         }
         yield Object.values(row);
@@ -622,7 +534,9 @@ function resolveSslOptions(
  * });
  *
  * const result = await client.query("SELECT * FROM users WHERE id = $1", [1]);
- * console.log(result.rows.first());
+ * if (result.ok) {
+ *   console.log(result.rows[0]);
+ * }
  *
  * await client.close();
  * ```

@@ -6,7 +6,7 @@ import {
 } from "@std/assert";
 import { AbortError } from "@probitas/client";
 import { createRabbitMqClient } from "./client.ts";
-import { RabbitMqChannelError } from "./errors.ts";
+import { RabbitMqConnectionError } from "./errors.ts";
 
 const RABBITMQ_URL = Deno.env.get("RABBITMQ_URL") ??
   "amqp://guest:guest@localhost:5672";
@@ -249,7 +249,7 @@ Deno.test({
             assertExists(result.message);
 
             if (result.message) {
-              await channel.reject(result.message, false);
+              await channel.reject(result.message, { requeue: false });
             }
 
             const result2 = await channel.get(testQueue);
@@ -278,13 +278,23 @@ Deno.test({
         await channel.close();
       });
 
-      await t.step("Closed channel throws error", async () => {
+      await t.step("Closed channel returns Failure", async () => {
+        const channel = await client.channel();
+        await channel.close();
+
+        const result = await channel.assertQueue("test");
+        assertEquals(result.ok, false);
+        assertEquals(result.processed, false);
+        assertInstanceOf(result.error, RabbitMqConnectionError);
+      });
+
+      await t.step("Closed channel throws with throwOnError", async () => {
         const channel = await client.channel();
         await channel.close();
 
         await assertRejects(
-          () => channel.assertQueue("test"),
-          RabbitMqChannelError,
+          () => channel.assertQueue("test", { throwOnError: true }),
+          RabbitMqConnectionError,
         );
       });
 
@@ -307,16 +317,34 @@ Deno.test({
           });
 
           await t.step(
-            "get throws AbortError when signal is aborted",
+            "get returns Failure when signal is aborted",
             async () => {
               const controller = new AbortController();
               controller.abort();
 
-              const error = await assertRejects(
-                () => channel.get(testQueue, { signal: controller.signal }),
+              const result = await channel.get(testQueue, {
+                signal: controller.signal,
+              });
+              assertEquals(result.ok, false);
+              assertEquals(result.processed, false);
+              assertInstanceOf(result.error, AbortError);
+            },
+          );
+
+          await t.step(
+            "get throws AbortError when throwOnError is true",
+            async () => {
+              const controller = new AbortController();
+              controller.abort();
+
+              await assertRejects(
+                () =>
+                  channel.get(testQueue, {
+                    signal: controller.signal,
+                    throwOnError: true,
+                  }),
                 AbortError,
               );
-              assertInstanceOf(error, AbortError);
             },
           );
 

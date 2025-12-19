@@ -1,5 +1,10 @@
 import type { CommonConnectionConfig, CommonOptions } from "@probitas/client";
-import type { GraphqlResponse } from "./response.ts";
+import type {
+  GraphqlResponse,
+  GraphqlResponseError,
+  GraphqlResponseFailure,
+  GraphqlResponseSuccess,
+} from "./response.ts";
 
 /**
  * GraphQL error item as per GraphQL specification.
@@ -10,30 +15,35 @@ export interface GraphqlErrorItem {
   readonly message: string;
 
   /** Location(s) in the GraphQL document where the error occurred */
-  readonly locations?: readonly { line: number; column: number }[];
+  readonly locations: readonly { line: number; column: number }[] | null;
 
   /** Path to the field that caused the error */
-  readonly path?: readonly (string | number)[];
+  readonly path: readonly (string | number)[] | null;
 
   /** Additional error metadata */
-  readonly extensions?: Record<string, unknown>;
+  readonly extensions: Record<string, unknown> | null;
 }
 
-export type { GraphqlResponse };
+export type {
+  GraphqlResponse,
+  GraphqlResponseError,
+  GraphqlResponseFailure,
+  GraphqlResponseSuccess,
+};
 
 /**
  * Options for individual GraphQL requests.
  */
 export interface GraphqlOptions extends CommonOptions {
   /** Additional request headers */
-  readonly headers?: Record<string, string>;
+  readonly headers?: HeadersInit;
 
   /** Operation name (for documents with multiple operations) */
   readonly operationName?: string;
 
   /**
-   * Whether to throw GraphqlError when response contains errors.
-   * @default true (inherited from client config if not specified)
+   * Whether to throw GraphqlError when response contains errors or request fails.
+   * @default false (inherited from client config if not specified)
    */
   readonly throwOnError?: boolean;
 }
@@ -83,7 +93,7 @@ export interface GraphqlClientConfig extends CommonOptions {
   readonly url: string | GraphqlConnectionConfig;
 
   /** Default headers for all requests */
-  readonly headers?: Record<string, string>;
+  readonly headers?: HeadersInit;
 
   /** WebSocket endpoint URL (for subscriptions) */
   readonly wsEndpoint?: string;
@@ -92,9 +102,9 @@ export interface GraphqlClientConfig extends CommonOptions {
   readonly fetch?: typeof fetch;
 
   /**
-   * Whether to throw GraphqlError when response contains errors.
+   * Whether to throw GraphqlError when response contains errors or request fails.
    * Can be overridden per-request via GraphqlOptions.
-   * @default true
+   * @default false
    */
   readonly throwOnError?: boolean;
 }

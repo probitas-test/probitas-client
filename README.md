@@ -67,7 +67,7 @@ export default scenario("example http request")
   .step("assert response", (ctx) => {
     const response = ctx.previous;
     assertEquals(response.status, 200);
-    assertEquals(response.data().args.hello, "world");
+    assertEquals(response.json().args.hello, "world");
   })
   .build();
 ```

@@ -21,6 +21,29 @@ export type {
   SqsSendResult,
 };
 
+// Re-export error types for convenience
+export type {
+  SqsBatchError,
+  SqsCommandError,
+  SqsConnectionError,
+  SqsError,
+  SqsMessageNotFoundError,
+  SqsMessageTooLargeError,
+  SqsQueueNotFoundError,
+} from "./errors.ts";
+
+/**
+ * Common options with throwOnError support.
+ */
+export interface SqsOptions extends CommonOptions {
+  /**
+   * If true, throws errors instead of returning them in the result.
+   * If false (default), errors are returned in the result object.
+   * @default false
+   */
+  readonly throwOnError?: boolean;
+}
+
 /**
  * SQS connection configuration.
  *
@@ -48,7 +71,7 @@ export interface SqsConnectionConfig extends CommonConnectionConfig {
 /**
  * SQS client configuration.
  */
-export interface SqsClientConfig extends CommonOptions {
+export interface SqsClientConfig extends SqsOptions {
   /** AWS region */
   readonly region: string;
   /** AWS credentials */
@@ -88,23 +111,9 @@ export interface SqsMessage {
 }
 
 /**
- * Message array with helper methods.
- */
-export interface SqsMessages extends ReadonlyArray<SqsMessage> {
-  /** Get the first message or undefined if empty */
-  first(): SqsMessage | undefined;
-  /** Get the first message or throw if empty */
-  firstOrThrow(): SqsMessage;
-  /** Get the last message or undefined if empty */
-  last(): SqsMessage | undefined;
-  /** Get the last message or throw if empty */
-  lastOrThrow(): SqsMessage;
-}
-
-/**
  * Options for sending a message.
  */
-export interface SqsSendOptions extends CommonOptions {
+export interface SqsSendOptions extends SqsOptions {
   /** Delay in seconds before the message becomes visible (0-900) */
   readonly delaySeconds?: number;
   /** Message attributes */
@@ -128,7 +137,7 @@ export interface SqsBatchMessage {
 /**
  * Options for receiving messages.
  */
-export interface SqsReceiveOptions extends CommonOptions {
+export interface SqsReceiveOptions extends SqsOptions {
   /** Maximum number of messages to receive (1-10, default: 1) */
   readonly maxMessages?: number;
   /** Wait time in seconds for long polling (0-20) */
@@ -161,12 +170,27 @@ export interface SqsBatchFailedEntry {
 /**
  * Options for ensuring a queue exists.
  */
-export interface SqsEnsureQueueOptions extends CommonOptions {
+export interface SqsEnsureQueueOptions extends SqsOptions {
   /** Queue attributes (e.g., DelaySeconds, MessageRetentionPeriod) */
   readonly attributes?: Record<string, string>;
   /** Queue tags */
   readonly tags?: Record<string, string>;
 }
+
+/**
+ * Options for deleting a message.
+ */
+export interface SqsDeleteOptions extends SqsOptions {}
+
+/**
+ * Options for batch operations.
+ */
+export interface SqsBatchOptions extends SqsOptions {}
+
+/**
+ * Options for deleting a queue.
+ */
+export interface SqsDeleteQueueOptions extends SqsOptions {}
 
 /**
  * SQS client interface.
@@ -199,7 +223,7 @@ export interface SqsClient extends AsyncDisposable {
    */
   deleteQueue(
     queueUrl: string,
-    options?: CommonOptions,
+    options?: SqsDeleteQueueOptions,
   ): Promise<SqsDeleteQueueResult>;
 
   /**
@@ -210,7 +234,10 @@ export interface SqsClient extends AsyncDisposable {
   /**
    * Send multiple messages to the queue in a single request.
    */
-  sendBatch(messages: SqsBatchMessage[]): Promise<SqsSendBatchResult>;
+  sendBatch(
+    messages: SqsBatchMessage[],
+    options?: SqsBatchOptions,
+  ): Promise<SqsSendBatchResult>;
 
   /**
    * Receive messages from the queue.
@@ -222,7 +249,7 @@ export interface SqsClient extends AsyncDisposable {
    */
   delete(
     receiptHandle: string,
-    options?: CommonOptions,
+    options?: SqsDeleteOptions,
   ): Promise<SqsDeleteResult>;
 
   /**
@@ -230,13 +257,13 @@ export interface SqsClient extends AsyncDisposable {
    */
   deleteBatch(
     receiptHandles: string[],
-    options?: CommonOptions,
+    options?: SqsBatchOptions,
   ): Promise<SqsDeleteBatchResult>;
 
   /**
    * Purge all messages from the queue.
    */
-  purge(options?: CommonOptions): Promise<SqsDeleteResult>;
+  purge(options?: SqsOptions): Promise<SqsDeleteResult>;
 
   /**
    * Close the client and release resources.

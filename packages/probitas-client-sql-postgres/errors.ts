@@ -2,6 +2,7 @@ import {
   ConstraintError,
   DeadlockError,
   QuerySyntaxError,
+  SqlConnectionError,
   SqlError,
   type SqlErrorOptions,
 } from "@probitas/client-sql";
@@ -18,6 +19,10 @@ const SQLSTATE_CLASS = {
   CONSTRAINT_VIOLATION: "23",
   /** Transaction Rollback */
   TRANSACTION_ROLLBACK: "40",
+  /** Connection Exception */
+  CONNECTION_EXCEPTION: "08",
+  /** Operator Intervention */
+  OPERATOR_INTERVENTION: "57",
 } as const;
 
 /**
@@ -40,6 +45,44 @@ export interface PostgresErrorLike {
 }
 
 /**
+ * Check if an error is a connection-level error based on SQLSTATE or error characteristics.
+ */
+export function isConnectionError(error: PostgresErrorLike): boolean {
+  const sqlState = error.code;
+
+  // Check SQLSTATE class
+  if (sqlState) {
+    if (sqlState.startsWith(SQLSTATE_CLASS.CONNECTION_EXCEPTION)) {
+      return true;
+    }
+    if (sqlState.startsWith(SQLSTATE_CLASS.OPERATOR_INTERVENTION)) {
+      return true;
+    }
+  }
+
+  // Check error message patterns for connection-related errors
+  const message = error.message.toLowerCase();
+  const connectionPatterns = [
+    "connection refused",
+    "connection reset",
+    "connection terminated",
+    "timed out",
+    "timeout",
+    "econnrefused",
+    "econnreset",
+    "etimedout",
+    "ehostunreach",
+    "enetunreach",
+    "socket",
+    "authentication failed",
+    "password authentication failed",
+    "pool",
+  ];
+
+  return connectionPatterns.some((pattern) => message.includes(pattern));
+}
+
+/**
  * Maps a PostgreSQL error to the appropriate SqlError subclass.
  *
  * @param error - PostgreSQL error from the driver
@@ -48,6 +91,11 @@ export interface PostgresErrorLike {
 export function mapPostgresError(error: PostgresErrorLike): SqlError {
   const sqlState = error.code;
   const options: SqlErrorOptions = { sqlState, cause: error };
+
+  // Check for connection errors first
+  if (isConnectionError(error)) {
+    return new SqlConnectionError(error.message, options);
+  }
 
   if (!sqlState) {
     return new SqlError(error.message, "unknown", options);

@@ -5,17 +5,7 @@ import type {
   RabbitMqExchangeResult,
   RabbitMqPublishResult,
   RabbitMqQueueResult,
-  RabbitMqResult,
 } from "./result.ts";
-
-export type {
-  RabbitMqAckResult,
-  RabbitMqConsumeResult,
-  RabbitMqExchangeResult,
-  RabbitMqPublishResult,
-  RabbitMqQueueResult,
-  RabbitMqResult,
-};
 
 /**
  * RabbitMQ message properties.
@@ -103,12 +93,28 @@ export interface RabbitMqClientConfig extends CommonOptions {
   readonly heartbeat?: number;
   /** Default prefetch count for channels */
   readonly prefetch?: number;
+  /**
+   * Whether to throw errors instead of returning them in results.
+   * @default false
+   */
+  readonly throwOnError?: boolean;
+}
+
+/**
+ * Base options for RabbitMQ operations.
+ */
+export interface RabbitMqOptions extends CommonOptions {
+  /**
+   * Whether to throw errors instead of returning them in results.
+   * Overrides the client-level `throwOnError` setting.
+   */
+  readonly throwOnError?: boolean;
 }
 
 /**
  * Exchange options.
  */
-export interface RabbitMqExchangeOptions extends CommonOptions {
+export interface RabbitMqExchangeOptions extends RabbitMqOptions {
   readonly durable?: boolean;
   readonly autoDelete?: boolean;
   readonly internal?: boolean;
@@ -118,7 +124,7 @@ export interface RabbitMqExchangeOptions extends CommonOptions {
 /**
  * Queue options.
  */
-export interface RabbitMqQueueOptions extends CommonOptions {
+export interface RabbitMqQueueOptions extends RabbitMqOptions {
   readonly durable?: boolean;
   readonly exclusive?: boolean;
   readonly autoDelete?: boolean;
@@ -132,7 +138,7 @@ export interface RabbitMqQueueOptions extends CommonOptions {
 /**
  * Publish options.
  */
-export interface RabbitMqPublishOptions extends CommonOptions {
+export interface RabbitMqPublishOptions extends RabbitMqOptions {
   readonly persistent?: boolean;
   readonly contentType?: string;
   readonly contentEncoding?: string;
@@ -147,7 +153,7 @@ export interface RabbitMqPublishOptions extends CommonOptions {
 /**
  * Consume options.
  */
-export interface RabbitMqConsumeOptions extends CommonOptions {
+export interface RabbitMqConsumeOptions extends RabbitMqOptions {
   readonly noAck?: boolean;
   readonly exclusive?: boolean;
   readonly priority?: number;
@@ -156,9 +162,16 @@ export interface RabbitMqConsumeOptions extends CommonOptions {
 /**
  * Nack options.
  */
-export interface RabbitMqNackOptions extends CommonOptions {
+export interface RabbitMqNackOptions extends RabbitMqOptions {
   readonly requeue?: boolean;
   readonly allUpTo?: boolean;
+}
+
+/**
+ * Reject options.
+ */
+export interface RabbitMqRejectOptions extends RabbitMqOptions {
+  readonly requeue?: boolean;
 }
 
 /**
@@ -178,7 +191,7 @@ export interface RabbitMqChannel extends AsyncDisposable {
   ): Promise<RabbitMqExchangeResult>;
   deleteExchange(
     name: string,
-    options?: CommonOptions,
+    options?: RabbitMqOptions,
   ): Promise<RabbitMqExchangeResult>;
 
   // Queue
@@ -188,23 +201,23 @@ export interface RabbitMqChannel extends AsyncDisposable {
   ): Promise<RabbitMqQueueResult>;
   deleteQueue(
     name: string,
-    options?: CommonOptions,
+    options?: RabbitMqOptions,
   ): Promise<RabbitMqQueueResult>;
   purgeQueue(
     name: string,
-    options?: CommonOptions,
+    options?: RabbitMqOptions,
   ): Promise<RabbitMqQueueResult>;
   bindQueue(
     queue: string,
     exchange: string,
     routingKey: string,
-    options?: CommonOptions,
+    options?: RabbitMqOptions,
   ): Promise<RabbitMqExchangeResult>;
   unbindQueue(
     queue: string,
     exchange: string,
     routingKey: string,
-    options?: CommonOptions,
+    options?: RabbitMqOptions,
   ): Promise<RabbitMqExchangeResult>;
 
   // Publish
@@ -221,7 +234,7 @@ export interface RabbitMqChannel extends AsyncDisposable {
   ): Promise<RabbitMqPublishResult>;
 
   // Consume
-  get(queue: string, options?: CommonOptions): Promise<RabbitMqConsumeResult>;
+  get(queue: string, options?: RabbitMqOptions): Promise<RabbitMqConsumeResult>;
   consume(
     queue: string,
     options?: RabbitMqConsumeOptions,
@@ -230,7 +243,7 @@ export interface RabbitMqChannel extends AsyncDisposable {
   // Ack
   ack(
     message: RabbitMqMessage,
-    options?: CommonOptions,
+    options?: RabbitMqOptions,
   ): Promise<RabbitMqAckResult>;
   nack(
     message: RabbitMqMessage,
@@ -238,7 +251,7 @@ export interface RabbitMqChannel extends AsyncDisposable {
   ): Promise<RabbitMqAckResult>;
   reject(
     message: RabbitMqMessage,
-    requeue?: boolean,
+    options?: RabbitMqRejectOptions,
   ): Promise<RabbitMqAckResult>;
 
   // Prefetch

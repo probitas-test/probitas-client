@@ -1,4 +1,4 @@
-import { ClientError } from "@probitas/client";
+import { AbortError, ClientError, TimeoutError } from "@probitas/client";
 
 /**
  * Options for Redis errors.
@@ -77,3 +77,21 @@ export class RedisScriptError extends RedisError {
     this.script = options.script;
   }
 }
+
+/**
+ * Error types that indicate the operation was not processed.
+ * These are errors that occur before the operation reaches the Redis server.
+ */
+export type RedisFailureError =
+  | RedisConnectionError
+  | AbortError
+  | TimeoutError;
+
+/**
+ * Error types that indicate the operation was processed but failed.
+ * These are errors returned by the Redis server.
+ */
+export type RedisOperationError =
+  | RedisCommandError
+  | RedisScriptError
+  | RedisError;

@@ -1,4 +1,4 @@
-import { ClientError } from "@probitas/client";
+import { AbortError, ClientError, TimeoutError } from "@probitas/client";
 
 /**
  * Options for SQS errors.
@@ -117,3 +117,24 @@ export class SqsMessageNotFoundError extends SqsError {
     super(message, "message_not_found", options);
   }
 }
+
+/**
+ * Error types that indicate an operation was processed by the server.
+ * These errors occur after the operation reaches the SQS service.
+ */
+export type SqsOperationError =
+  | SqsCommandError
+  | SqsQueueNotFoundError
+  | SqsMessageTooLargeError
+  | SqsBatchError
+  | SqsMessageNotFoundError
+  | SqsError;
+
+/**
+ * Error types that indicate the operation was not processed.
+ * These are errors that occur before the operation reaches the SQS service.
+ */
+export type SqsFailureError =
+  | SqsConnectionError
+  | AbortError
+  | TimeoutError;

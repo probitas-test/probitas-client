@@ -1,7 +1,12 @@
 import mysql from "mysql2/promise";
 import { getLogger } from "@probitas/logger";
 import {
-  SqlQueryResult,
+  SqlConnectionError,
+  type SqlQueryOptions,
+  type SqlQueryResult,
+  SqlQueryResultErrorImpl,
+  SqlQueryResultFailureImpl,
+  SqlQueryResultSuccessImpl,
   type SqlTransaction,
   type SqlTransactionOptions,
 } from "@probitas/client-sql";
@@ -11,25 +16,6 @@ import { MySqlTransactionImpl } from "./transaction.ts";
 import type { MySqlTransaction } from "./transaction.ts";
 
 const logger = getLogger("probitas", "client", "sql", "mysql");
-
-/**
- * Format SQL for logging, truncating if necessary.
- */
-function formatSql(sql: string): string {
-  return sql.length > 1000 ? sql.slice(0, 1000) + "..." : sql;
-}
-
-/**
- * Format parameters for logging, truncating if necessary.
- */
-function formatParams(params: unknown): string {
-  try {
-    const str = JSON.stringify(params);
-    return str.length > 500 ? str.slice(0, 500) + "..." : str;
-  } catch {
-    return "<unserializable>";
-  }
-}
 
 /**
  * MySQL client interface.
@@ -45,22 +31,26 @@ export interface MySqlClient extends AsyncDisposable {
    * Execute a SQL query.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>>;
 
   /**
    * Execute a query and return the first row or undefined.
    * @param sql - SQL query string
    * @param params - Optional query parameters
+   * @param options - Optional query options
    */
   // deno-lint-ignore no-explicit-any
   queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined>;
 
   /**
@@ -151,7 +141,9 @@ function parseConnectionUrl(url: string): MySqlConnectionConfig {
  *   "SELECT * FROM users WHERE id = ?",
  *   [1],
  * );
- * console.log(result.rows.first());  // { id: 1, name: "Alice" }
+ * if (result.ok) {
+ *   console.log(result.rows[0]);  // { id: 1, name: "Alice" }
+ * }
  *
  * await client.close();
  * ```
@@ -282,9 +274,18 @@ class MySqlClientImpl implements MySqlClient {
   async query<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<SqlQueryResult<T>> {
+    // Determine whether to throw on error (request option > config > default false)
+    const shouldThrow = options?.throwOnError ?? this.config.throwOnError ??
+      false;
+
     if (this.#closed) {
-      throw convertMySqlError(new Error("Client is closed"));
+      const error = new SqlConnectionError("Client is closed");
+      if (shouldThrow) {
+        throw error;
+      }
+      return new SqlQueryResultFailureImpl<T>(error, 0);
     }
 
     const startTime = performance.now();
@@ -296,8 +297,8 @@ class MySqlClientImpl implements MySqlClient {
     });
 
     logger.trace("MySQL query details", {
-      sql: formatSql(sql),
-      params: params ? formatParams(params) : undefined,
+      sql: sql,
+      params: params ? params : undefined,
     });
 
     try {
@@ -315,12 +316,11 @@ class MySqlClientImpl implements MySqlClient {
         if (rows.length > 0) {
           const sample = rows.slice(0, 1);
           logger.trace("MySQL query row sample", {
-            rows: formatParams(sample),
+            rows: sample,
           });
         }
 
-        return new SqlQueryResult<T>({
-          ok: true,
+        return new SqlQueryResultSuccessImpl<T>({
           rows: rows as unknown as T[],
           rowCount: rows.length,
           duration,
@@ -338,8 +338,7 @@ class MySqlClientImpl implements MySqlClient {
         warnings: resultHeader.warningStatus,
       });
 
-      return new SqlQueryResult<T>({
-        ok: true,
+      return new SqlQueryResultSuccessImpl<T>({
         rows: [],
         rowCount: resultHeader.affectedRows,
         duration,
@@ -351,7 +350,26 @@ class MySqlClientImpl implements MySqlClient {
           : undefined,
       });
     } catch (error) {
-      throw convertMySqlError(error);
+      const duration = performance.now() - startTime;
+      const sqlError = convertMySqlError(error);
+
+      logger.debug("MySQL query failed", {
+        sql: sqlPreview,
+        duration: `${duration.toFixed(2)}ms`,
+        error: sqlError.message,
+      });
+
+      // Throw error if required
+      if (shouldThrow) {
+        throw sqlError;
+      }
+
+      // Return Failure for connection errors, Error for query errors
+      if (sqlError instanceof SqlConnectionError) {
+        return new SqlQueryResultFailureImpl<T>(sqlError, duration);
+      }
+
+      return new SqlQueryResultErrorImpl<T>(sqlError, duration);
     }
   }
 
@@ -359,9 +377,18 @@ class MySqlClientImpl implements MySqlClient {
   async queryOne<T = Record<string, any>>(
     sql: string,
     params?: unknown[],
+    options?: SqlQueryOptions,
   ): Promise<T | undefined> {
-    const result = await this.query<T>(sql, params);
-    return result.rows.first();
+    // queryOne always throws on error for convenience
+    const result = await this.query<T>(sql, params, {
+      ...options,
+      throwOnError: true,
+    });
+    // result.ok is guaranteed to be true here due to throwOnError: true
+    if (!result.ok) {
+      throw result.error;
+    }
+    return result.rows[0];
   }
 
   async transaction<T>(

@@ -1,11 +1,14 @@
 import {
+  assert,
   assertEquals,
+  assertFalse,
   assertInstanceOf,
   assertRejects,
   assertThrows,
 } from "@std/assert";
+import { AbortError } from "@probitas/client";
 import { createHttpClient } from "./client.ts";
-import { HttpNotFoundError } from "./errors.ts";
+import { HttpError, HttpNetworkError } from "./errors.ts";
 
 function createMockFetch(
   handler: (req: Request) => Response | Promise<Response>,
@@ -70,9 +73,9 @@ Deno.test("HttpClient.get", async (t) => {
     const response = await client.get("/users/1");
     await client.close();
 
-    assertEquals(response.ok, true);
+    assert(response.ok);
     assertEquals(response.status, 200);
-    assertEquals(response.data(), { id: 1, name: "John" });
+    assertEquals(response.json(), { id: 1, name: "John" });
   });
 
   await t.step("includes query parameters", async () => {
@@ -146,6 +149,31 @@ Deno.test("HttpClient.get", async (t) => {
   });
 });
 
+Deno.test("HttpClient.head", async (t) => {
+  await t.step("sends HEAD request", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response(null, {
+        status: 200,
+        headers: { "Content-Length": "1234" },
+      });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    const response = await client.head("/users/1");
+    await client.close();
+
+    assertEquals(capturedRequest?.method, "HEAD");
+    assertEquals(capturedRequest?.url, "http://localhost:3000/users/1");
+    assertEquals(response.headers?.get("Content-Length"), "1234");
+  });
+});
+
 Deno.test("HttpClient.post", async (t) => {
   await t.step("sends POST request with JSON body", async () => {
     let capturedRequest: Request | undefined;
@@ -159,7 +187,9 @@ Deno.test("HttpClient.post", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.post("/users", { name: "John", email: "john@example.com" });
+    await client.post("/users", {
+      body: { name: "John", email: "john@example.com" },
+    });
     await client.close();
 
     assertEquals(capturedRequest?.method, "POST");
@@ -183,7 +213,7 @@ Deno.test("HttpClient.post", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.post("/text", "plain text body");
+    await client.post("/text", { body: "plain text body" });
     await client.close();
 
     assertEquals(capturedRequest?.method, "POST");
@@ -204,7 +234,7 @@ Deno.test("HttpClient.post", async (t) => {
     });
 
     const binary = new Uint8Array([1, 2, 3, 4, 5]);
-    await client.post("/upload", binary);
+    await client.post("/upload", { body: binary });
     await client.close();
 
     assertEquals(capturedRequest?.method, "POST");
@@ -225,12 +255,30 @@ Deno.test("HttpClient.post", async (t) => {
     });
 
     const params = new URLSearchParams({ foo: "bar", baz: "qux" });
-    await client.post("/form", params);
+    await client.post("/form", { body: params });
     await client.close();
 
     assertEquals(capturedRequest?.method, "POST");
     const body = await capturedRequest?.text();
     assertEquals(body, "foo=bar&baz=qux");
+  });
+
+  await t.step("sends POST request without body", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response("ok", { status: 200 });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    await client.post("/action");
+    await client.close();
+
+    assertEquals(capturedRequest?.method, "POST");
   });
 });
 
@@ -247,11 +295,13 @@ Deno.test("HttpClient.put", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.put("/users/1", { name: "Updated" });
+    await client.put("/users/1", { body: { name: "Updated" } });
     await client.close();
 
     assertEquals(capturedRequest?.method, "PUT");
     assertEquals(capturedRequest?.url, "http://localhost:3000/users/1");
+    const body = await capturedRequest?.json();
+    assertEquals(body, { name: "Updated" });
   });
 });
 
@@ -268,11 +318,13 @@ Deno.test("HttpClient.patch", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.patch("/users/1", { name: "Patched" });
+    await client.patch("/users/1", { body: { name: "Patched" } });
     await client.close();
 
     assertEquals(capturedRequest?.method, "PATCH");
     assertEquals(capturedRequest?.url, "http://localhost:3000/users/1");
+    const body = await capturedRequest?.json();
+    assertEquals(body, { name: "Patched" });
   });
 });
 
@@ -295,6 +347,51 @@ Deno.test("HttpClient.delete", async (t) => {
     assertEquals(capturedRequest?.method, "DELETE");
     assertEquals(capturedRequest?.url, "http://localhost:3000/users/1");
   });
+
+  await t.step("sends DELETE request with body", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response(null, { status: 200 });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    await client.delete("/users/1", { body: { reason: "cleanup" } });
+    await client.close();
+
+    assertEquals(capturedRequest?.method, "DELETE");
+    const body = await capturedRequest?.json();
+    assertEquals(body, { reason: "cleanup" });
+  });
+});
+
+Deno.test("HttpClient.options", async (t) => {
+  await t.step("sends OPTIONS request", async () => {
+    let capturedRequest: Request | undefined;
+    const mockFetch = createMockFetch((req) => {
+      capturedRequest = req;
+      return new Response(null, {
+        status: 204,
+        headers: { "Allow": "GET, POST, PUT, DELETE" },
+      });
+    });
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+    });
+
+    const response = await client.options("/resource");
+    await client.close();
+
+    assertEquals(capturedRequest?.method, "OPTIONS");
+    assertEquals(capturedRequest?.url, "http://localhost:3000/resource");
+    assertEquals(response.headers?.get("Allow"), "GET, POST, PUT, DELETE");
+  });
 });
 
 Deno.test("HttpClient.request", async (t) => {
@@ -310,10 +407,10 @@ Deno.test("HttpClient.request", async (t) => {
       fetch: mockFetch,
     });
 
-    await client.request("OPTIONS", "/resource");
+    await client.request("CUSTOM", "/resource");
     await client.close();
 
-    assertEquals(capturedRequest?.method, "OPTIONS");
+    assertEquals(capturedRequest?.method, "CUSTOM");
     assertEquals(capturedRequest?.url, "http://localhost:3000/resource");
   });
 
@@ -339,27 +436,31 @@ Deno.test("HttpClient.request", async (t) => {
 });
 
 Deno.test("HttpClient error handling", async (t) => {
-  await t.step("throws HttpNotFoundError for 404", async () => {
-    const mockFetch = createMockFetch(() => {
-      return new Response("Not Found", {
-        status: 404,
-        statusText: "Not Found",
+  await t.step(
+    "throws HttpError for 404 when throwOnError: true",
+    async () => {
+      const mockFetch = createMockFetch(() => {
+        return new Response("Not Found", {
+          status: 404,
+          statusText: "Not Found",
+        });
       });
-    });
 
-    const client = createHttpClient({
-      url: "http://localhost:3000",
-      fetch: mockFetch,
-    });
+      const client = createHttpClient({
+        url: "http://localhost:3000",
+        fetch: mockFetch,
+        throwOnError: true,
+      });
 
-    const error = await assertRejects(
-      () => client.get("/missing"),
-      HttpNotFoundError,
-    );
-    assertInstanceOf(error, HttpNotFoundError);
-    assertEquals(error.status, 404);
-    await client.close();
-  });
+      const error = await assertRejects(
+        () => client.get("/missing"),
+        HttpError,
+      );
+      assertInstanceOf(error, HttpError);
+      assertEquals(error.status, 404);
+      await client.close();
+    },
+  );
 });
 
 Deno.test("HttpClient response duration", async (t) => {
@@ -382,9 +483,12 @@ Deno.test("HttpClient response duration", async (t) => {
 });
 
 Deno.test("HttpClient throwOnError option", async (t) => {
-  await t.step("throws by default for 4xx response", async () => {
+  await t.step("returns response by default for 4xx response", async () => {
     const mockFetch = createMockFetch(() => {
-      return new Response("Not Found", { status: 404 });
+      return new Response("Not Found", {
+        status: 404,
+        statusText: "Not Found",
+      });
     });
 
     const client = createHttpClient({
@@ -392,8 +496,12 @@ Deno.test("HttpClient throwOnError option", async (t) => {
       fetch: mockFetch,
     });
 
-    await assertRejects(() => client.get("/missing"), HttpNotFoundError);
+    const response = await client.get("/missing");
     await client.close();
+
+    assertFalse(response.ok);
+    assertEquals(response.status, 404);
+    assertInstanceOf(response.error, HttpError);
   });
 
   await t.step(
@@ -414,7 +522,7 @@ Deno.test("HttpClient throwOnError option", async (t) => {
       const response = await client.get("/missing", { throwOnError: false });
       await client.close();
 
-      assertEquals(response.ok, false);
+      assertFalse(response.ok);
       assertEquals(response.status, 404);
       assertEquals(response.statusText, "Not Found");
     },
@@ -439,7 +547,7 @@ Deno.test("HttpClient throwOnError option", async (t) => {
       const response = await client.get("/error");
       await client.close();
 
-      assertEquals(response.ok, false);
+      assertFalse(response.ok);
       assertEquals(response.status, 500);
     },
   );
@@ -459,7 +567,7 @@ Deno.test("HttpClient throwOnError option", async (t) => {
 
       await assertRejects(
         () => client.get("/missing", { throwOnError: true }),
-        HttpNotFoundError,
+        HttpError,
       );
       await client.close();
     },
@@ -481,7 +589,7 @@ Deno.test("HttpClient throwOnError option", async (t) => {
       const response = await client.get("/missing", { throwOnError: false });
       await client.close();
 
-      assertEquals(response.ok, false);
+      assertFalse(response.ok);
       assertEquals(response.status, 404);
     },
   );
@@ -496,7 +604,8 @@ Deno.test("HttpClient throwOnError option", async (t) => {
       fetch: mockFetch,
     });
 
-    const response = await client.post("/data", { invalid: "data" }, {
+    const response = await client.post("/data", {
+      body: { invalid: "data" },
       throwOnError: false,
     });
     await client.close();
@@ -721,4 +830,137 @@ Deno.test("HttpClient cookie handling", async (t) => {
     assertEquals(cookieHeader, "session=first");
     await client.close();
   });
+});
+
+function createFailingFetch(error: Error): typeof fetch {
+  return () => {
+    return Promise.reject(error);
+  };
+}
+
+Deno.test("HttpClient network failure handling", async (t) => {
+  await t.step(
+    "returns HttpResponseFailure for network error when throwOnError: false",
+    async () => {
+      const mockFetch = createFailingFetch(new TypeError("Failed to fetch"));
+
+      const client = createHttpClient({
+        url: "http://localhost:3000",
+        fetch: mockFetch,
+        throwOnError: false,
+      });
+
+      const response = await client.get("/api");
+      await client.close();
+
+      assertEquals(response.processed, false);
+      assertFalse(response.ok);
+      assertInstanceOf(response.error, HttpNetworkError);
+      assertEquals(response.status, null);
+      assertEquals(response.statusText, null);
+      assertEquals(response.headers, null);
+      assertEquals(response.body, null);
+      assertEquals(response.url, "http://localhost:3000/api");
+      assertEquals(typeof response.duration, "number");
+    },
+  );
+
+  await t.step(
+    "throws HttpNetworkError for network error when throwOnError: true",
+    async () => {
+      const mockFetch = createFailingFetch(new TypeError("Failed to fetch"));
+
+      const client = createHttpClient({
+        url: "http://localhost:3000",
+        fetch: mockFetch,
+        throwOnError: true,
+      });
+
+      await assertRejects(
+        () => client.get("/api"),
+        HttpNetworkError,
+      );
+      await client.close();
+    },
+  );
+
+  await t.step(
+    "returns HttpResponseFailure for abort when throwOnError: false",
+    async () => {
+      const abortError = new DOMException("Aborted", "AbortError");
+      const mockFetch = createFailingFetch(abortError);
+
+      const client = createHttpClient({
+        url: "http://localhost:3000",
+        fetch: mockFetch,
+        throwOnError: false,
+      });
+
+      const response = await client.get("/api");
+      await client.close();
+
+      assertEquals(response.processed, false);
+      assertFalse(response.ok);
+      assertInstanceOf(response.error, AbortError);
+    },
+  );
+
+  await t.step(
+    "throws AbortError for abort when throwOnError: true",
+    async () => {
+      const abortError = new DOMException("Aborted", "AbortError");
+      const mockFetch = createFailingFetch(abortError);
+
+      const client = createHttpClient({
+        url: "http://localhost:3000",
+        fetch: mockFetch,
+        throwOnError: true,
+      });
+
+      await assertRejects(
+        () => client.get("/api"),
+        AbortError,
+      );
+      await client.close();
+    },
+  );
+
+  await t.step("HttpResponseFailure methods return null", async () => {
+    const mockFetch = createFailingFetch(new TypeError("Failed to fetch"));
+
+    const client = createHttpClient({
+      url: "http://localhost:3000",
+      fetch: mockFetch,
+      throwOnError: false,
+    });
+
+    const response = await client.get("/api");
+    await client.close();
+
+    assert(!response.processed);
+    assertEquals(response.raw(), null);
+    assertEquals(response.arrayBuffer(), null);
+    assertEquals(response.blob(), null);
+    assertEquals(response.text(), null);
+    assertEquals(response.json(), null);
+  });
+
+  await t.step(
+    "request option overrides config for failure (throwOnError: false)",
+    async () => {
+      const mockFetch = createFailingFetch(new TypeError("Failed to fetch"));
+
+      const client = createHttpClient({
+        url: "http://localhost:3000",
+        fetch: mockFetch,
+        throwOnError: true,
+      });
+
+      const response = await client.get("/api", { throwOnError: false });
+      await client.close();
+
+      assertEquals(response.processed, false);
+      assertInstanceOf(response.error, HttpNetworkError);
+    },
+  );
 });

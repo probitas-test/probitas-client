@@ -5,24 +5,33 @@ import type {
   RedisCountResult,
   RedisGetResult,
   RedisHashResult,
-  RedisResult,
   RedisSetResult,
 } from "./result.ts";
 
-export type {
-  RedisArrayResult,
-  RedisCommonResult,
-  RedisCountResult,
-  RedisGetResult,
-  RedisHashResult,
-  RedisResult,
-  RedisSetResult,
-};
+export type * from "./result.ts";
+export type { RedisFailureError, RedisOperationError } from "./errors.ts";
+
+/**
+ * Redis command options.
+ *
+ * Extends CommonOptions with Redis-specific behavior options.
+ */
+export interface RedisCommandOptions extends CommonOptions {
+  /**
+   * Whether to throw an error when the operation fails.
+   *
+   * When `true`, failures will throw an error instead of returning a result
+   * with `ok: false`.
+   *
+   * @default false (inherited from client config or defaults to false)
+   */
+  readonly throwOnError?: boolean;
+}
 
 /**
  * Redis SET options
  */
-export interface RedisSetOptions extends CommonOptions {
+export interface RedisSetOptions extends RedisCommandOptions {
   /** Expiration in seconds */
   readonly ex?: number;
   /** Expiration in milliseconds */
@@ -82,6 +91,16 @@ export interface RedisClientConfig extends CommonOptions {
    * ```
    */
   readonly url: string | RedisConnectionConfig;
+
+  /**
+   * Whether to throw an error when operations fail.
+   *
+   * When `true`, failures will throw an error instead of returning a result
+   * with `ok: false`. This can be overridden per-command.
+   *
+   * @default false
+   */
+  readonly throwOnError?: boolean;
 }
 
 /**
@@ -110,7 +129,7 @@ export interface RedisTransaction {
   zadd(key: string, ...entries: { score: number; member: string }[]): this;
   zrange(key: string, start: number, stop: number): this;
   zscore(key: string, member: string): this;
-  exec(): Promise<RedisArrayResult<unknown>>;
+  exec(options?: RedisCommandOptions): Promise<RedisArrayResult<unknown>>;
   discard(): void;
 }
 
@@ -121,77 +140,112 @@ export interface RedisClient extends AsyncDisposable {
   readonly config: RedisClientConfig;
 
   // Strings
-  get(key: string, options?: CommonOptions): Promise<RedisGetResult>;
+  get(key: string, options?: RedisCommandOptions): Promise<RedisGetResult>;
   set(
     key: string,
     value: string,
     options?: RedisSetOptions,
   ): Promise<RedisSetResult>;
-  del(...keys: string[]): Promise<RedisCountResult>;
-  incr(key: string): Promise<RedisCountResult>;
-  decr(key: string): Promise<RedisCountResult>;
+  del(keys: string[], options?: RedisCommandOptions): Promise<RedisCountResult>;
+  incr(key: string, options?: RedisCommandOptions): Promise<RedisCountResult>;
+  decr(key: string, options?: RedisCommandOptions): Promise<RedisCountResult>;
 
   // Hashes
   hget(
     key: string,
     field: string,
-    options?: CommonOptions,
+    options?: RedisCommandOptions,
   ): Promise<RedisGetResult>;
   hset(
     key: string,
     field: string,
     value: string,
-    options?: CommonOptions,
+    options?: RedisCommandOptions,
   ): Promise<RedisCountResult>;
-  hgetall(key: string, options?: CommonOptions): Promise<RedisHashResult>;
-  hdel(key: string, ...fields: string[]): Promise<RedisCountResult>;
+  hgetall(key: string, options?: RedisCommandOptions): Promise<RedisHashResult>;
+  hdel(
+    key: string,
+    fields: string[],
+    options?: RedisCommandOptions,
+  ): Promise<RedisCountResult>;
 
   // Lists
-  lpush(key: string, ...values: string[]): Promise<RedisCountResult>;
-  rpush(key: string, ...values: string[]): Promise<RedisCountResult>;
-  lpop(key: string): Promise<RedisGetResult>;
-  rpop(key: string): Promise<RedisGetResult>;
+  lpush(
+    key: string,
+    values: string[],
+    options?: RedisCommandOptions,
+  ): Promise<RedisCountResult>;
+  rpush(
+    key: string,
+    values: string[],
+    options?: RedisCommandOptions,
+  ): Promise<RedisCountResult>;
+  lpop(key: string, options?: RedisCommandOptions): Promise<RedisGetResult>;
+  rpop(key: string, options?: RedisCommandOptions): Promise<RedisGetResult>;
   lrange(
     key: string,
     start: number,
     stop: number,
-    options?: CommonOptions,
+    options?: RedisCommandOptions,
   ): Promise<RedisArrayResult>;
-  llen(key: string): Promise<RedisCountResult>;
+  llen(key: string, options?: RedisCommandOptions): Promise<RedisCountResult>;
 
   // Sets
-  sadd(key: string, ...members: string[]): Promise<RedisCountResult>;
-  srem(key: string, ...members: string[]): Promise<RedisCountResult>;
-  smembers(key: string, options?: CommonOptions): Promise<RedisArrayResult>;
-  sismember(key: string, member: string): Promise<RedisCommonResult<boolean>>;
+  sadd(
+    key: string,
+    members: string[],
+    options?: RedisCommandOptions,
+  ): Promise<RedisCountResult>;
+  srem(
+    key: string,
+    members: string[],
+    options?: RedisCommandOptions,
+  ): Promise<RedisCountResult>;
+  smembers(
+    key: string,
+    options?: RedisCommandOptions,
+  ): Promise<RedisArrayResult>;
+  sismember(
+    key: string,
+    member: string,
+    options?: RedisCommandOptions,
+  ): Promise<RedisCommonResult<boolean>>;
 
   // Sorted Sets
   zadd(
     key: string,
-    ...entries: { score: number; member: string }[]
+    entries: { score: number; member: string }[],
+    options?: RedisCommandOptions,
   ): Promise<RedisCountResult>;
   zrange(
     key: string,
     start: number,
     stop: number,
-    options?: CommonOptions,
+    options?: RedisCommandOptions,
   ): Promise<RedisArrayResult>;
   zscore(
     key: string,
     member: string,
+    options?: RedisCommandOptions,
   ): Promise<RedisCommonResult<number | null>>;
 
   // Pub/Sub
-  publish(channel: string, message: string): Promise<RedisCountResult>;
+  publish(
+    channel: string,
+    message: string,
+    options?: RedisCommandOptions,
+  ): Promise<RedisCountResult>;
   subscribe(channel: string): AsyncIterable<RedisMessage>;
 
   // Transaction
   multi(): RedisTransaction;
 
   // Raw command
-  command<T = unknown>(
+  // deno-lint-ignore no-explicit-any
+  command<T = any>(
     cmd: string,
-    ...args: unknown[]
+    args: unknown[],
+    options?: RedisCommandOptions,
   ): Promise<RedisCommonResult<T>>;
 
   close(): Promise<void>;

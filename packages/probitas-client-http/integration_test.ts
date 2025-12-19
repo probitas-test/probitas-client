@@ -7,8 +7,13 @@
  *   docker compose down
  */
 
-import { assert, assertEquals, assertInstanceOf } from "@std/assert";
-import { createHttpClient, HttpNotFoundError } from "./mod.ts";
+import {
+  assert,
+  assertEquals,
+  assertFalse,
+  assertInstanceOf,
+} from "@std/assert";
+import { createHttpClient, HttpError, HttpNetworkError } from "./mod.ts";
 
 const ECHO_HTTP_URL = Deno.env.get("ECHO_HTTP_URL") ?? "http://localhost:18080";
 
@@ -36,11 +41,12 @@ Deno.test({
         headers: { "X-Custom-Header": "test-value" },
       });
 
-      assertEquals(res.ok, true);
+      assert(res.processed);
+      assert(res.ok);
       assertEquals(res.status, 200);
       assert(res.headers.get("content-type")?.match(/^application\/json/));
 
-      const data = res.data<{
+      const data = res.json<{
         args: Record<string, string>;
         headers: Record<string, string>;
         url: string;
@@ -53,13 +59,14 @@ Deno.test({
 
     await t.step("POST /post with JSON body", async () => {
       const payload = { name: "John", email: "john@example.com" };
-      const res = await client.post("/post", payload);
+      const res = await client.post("/post", { body: payload });
 
-      assertEquals(res.ok, true);
+      assert(res.processed);
+      assert(res.ok);
       assertEquals(res.status, 200);
       assert(res.headers.get("content-type")?.match(/^application\/json/));
 
-      const data = res.data<{
+      const data = res.json<{
         json: typeof payload;
         headers: Record<string, string>;
       }>();
@@ -73,59 +80,67 @@ Deno.test({
         username: "alice",
         password: "secret",
       });
-      const res = await client.post("/post", params);
+      const res = await client.post("/post", { body: params });
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 200);
 
-      const data = res.data<{ form: Record<string, string> }>();
+      const data = res.json<{ form: Record<string, string> }>();
       assertEquals(data?.form.username, "alice");
       assertEquals(data?.form.password, "secret");
     });
 
     await t.step("PUT /put", async () => {
-      const res = await client.put("/put", { updated: true });
+      const res = await client.put("/put", { body: { updated: true } });
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 200);
 
-      const data = res.data<{ json: { updated: boolean } }>();
+      const data = res.json<{ json: { updated: boolean } }>();
       assertEquals(data?.json.updated, true);
     });
 
     await t.step("PATCH /patch", async () => {
-      const res = await client.patch("/patch", { patched: "value" });
+      const res = await client.patch("/patch", { body: { patched: "value" } });
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 200);
 
-      const data = res.data<{ json: { patched: string } }>();
+      const data = res.json<{ json: { patched: string } }>();
       assertEquals(data?.json.patched, "value");
     });
 
     await t.step("DELETE /delete", async () => {
       const res = await client.delete("/delete");
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 200);
     });
 
     await t.step("GET /status/201 returns custom status", async () => {
       const res = await client.request("GET", "/status/201");
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 201);
     });
 
-    await t.step("GET /status/404 throws HttpNotFoundError", async () => {
-      try {
-        await client.get("/status/404");
-        throw new Error("Expected HttpNotFoundError");
-      } catch (error) {
-        assertInstanceOf(error, HttpNotFoundError);
-        assertEquals(error.status, 404);
-      }
-    });
+    await t.step(
+      "GET /status/404 throws HttpError with status 404",
+      async () => {
+        // Use throwOnError: true to test throwing behavior
+        const throwingClient = createHttpClient({
+          url: ECHO_HTTP_URL,
+          throwOnError: true,
+        });
+        try {
+          await throwingClient.get("/status/404");
+          throw new Error("Expected HttpError");
+        } catch (error) {
+          assertInstanceOf(error, HttpError);
+          assertEquals(error.status, 404);
+        }
+      },
+    );
 
     await t.step("GET /headers returns request headers", async () => {
       const res = await client.get("/headers", {
@@ -134,9 +149,9 @@ Deno.test({
         },
       });
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
 
-      const data = res.data<{ headers: Record<string, string> }>();
+      const data = res.json<{ headers: Record<string, string> }>();
       // Verify Accept header was sent (echo-http echoes back headers)
       assertEquals(data?.headers["Accept"], "application/json");
     });
@@ -144,7 +159,7 @@ Deno.test({
     await t.step("GET /delay/1 measures duration", async () => {
       const res = await client.get("/delay/1");
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       // Should take at least 1 second
       assertEquals(
         res.duration >= 1000,
@@ -162,8 +177,8 @@ Deno.test({
       assertEquals(text1, text2);
 
       // Read as JSON
-      const json1 = res.data();
-      const json2 = res.data();
+      const json1 = res.json();
+      const json2 = res.json();
       assertEquals(json1, json2);
 
       // Body bytes are also available
@@ -180,7 +195,7 @@ Deno.test({
       });
 
       const res = await clientWithHeaders.get("/headers");
-      const data = res.data<{ headers: Record<string, string> }>();
+      const data = res.json<{ headers: Record<string, string> }>();
 
       assertEquals(data?.headers["Authorization"], "Bearer token123");
       assertEquals(data?.headers["X-Api-Version"], "v1");
@@ -197,7 +212,7 @@ Deno.test({
       const res = await clientWithHeaders.get("/headers", {
         headers: { "X-Header": "from-request" },
       });
-      const data = res.data<{ headers: Record<string, string> }>();
+      const data = res.json<{ headers: Record<string, string> }>();
 
       assertEquals(data?.headers["X-Header"], "from-request");
 
@@ -207,10 +222,10 @@ Deno.test({
     await t.step("redirect: follow (default) follows redirects", async () => {
       const res = await client.get("/redirect/3");
 
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 200);
 
-      const data = res.data<{ redirected: boolean }>();
+      const data = res.json<{ redirected: boolean }>();
       assertEquals(data?.redirected, true);
     });
 
@@ -221,23 +236,25 @@ Deno.test({
       });
 
       // Should return the redirect response without following
+      assert(res.processed);
       assertEquals(res.status, 302);
-      assertEquals(res.ok, false);
+      assertFalse(res.ok);
       // Location header should be present
       assertEquals(res.headers.has("location"), true);
     });
 
-    await t.step("redirect: error throws on redirect", async () => {
-      try {
-        await client.get("/redirect/1", {
-          redirect: "error",
-          throwOnError: false,
-        });
-        throw new Error("Expected fetch to throw on redirect");
-      } catch (error) {
-        // fetch throws TypeError when redirect is "error" and response is redirect
-        assertInstanceOf(error, TypeError);
-      }
+    await t.step("redirect: error returns Failure on redirect", async () => {
+      // When redirect: "error" and throwOnError: false, fetch error is returned as Failure
+      const res = await client.get("/redirect/1", {
+        redirect: "error",
+        throwOnError: false,
+      });
+
+      // Should return Failure (not processed) because fetch itself throws
+      assert(!res.ok);
+      assert(!res.processed);
+      // The underlying error is a TypeError converted to HttpNetworkError
+      assertInstanceOf(res.error, HttpNetworkError);
     });
 
     await t.step("config-level redirect setting", async () => {
@@ -261,7 +278,7 @@ Deno.test({
 
       // Override manual with follow
       const res = await clientManual.get("/redirect/1", { redirect: "follow" });
-      assertEquals(res.ok, true);
+      assert(res.ok);
       assertEquals(res.status, 200);
 
       await clientManual.close();
@@ -283,8 +300,8 @@ Deno.test({
 
       const res = await client.get("/cookies");
 
-      assertEquals(res.ok, true);
-      const data = res.data<{ cookies: Record<string, string> }>();
+      assert(res.ok);
+      const data = res.json<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.session, "test123");
       assertEquals(data?.cookies.user, "alice");
 
@@ -326,7 +343,7 @@ Deno.test({
 
       // Second request should send the cookie back
       const res = await client.get("/cookies");
-      const data = res.data<{ cookies: Record<string, string> }>();
+      const data = res.json<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.auth, "bearer-token");
 
       await client.close();
@@ -340,7 +357,7 @@ Deno.test({
 
       // Verify initial cookie is sent
       let res = await client.get("/cookies");
-      let data = res.data<{ cookies: Record<string, string> }>();
+      let data = res.json<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.initial, "value");
 
       // Clear cookies
@@ -348,7 +365,7 @@ Deno.test({
 
       // Verify no cookies are sent
       res = await client.get("/cookies");
-      data = res.data<{ cookies: Record<string, string> }>();
+      data = res.json<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.initial, undefined);
 
       await client.close();
@@ -364,7 +381,7 @@ Deno.test({
 
       // Verify it's sent
       const res = await client.get("/cookies");
-      const data = res.data<{ cookies: Record<string, string> }>();
+      const data = res.json<{ cookies: Record<string, string> }>();
       assertEquals(data?.cookies.manual, "cookie-value");
 
       await client.close();

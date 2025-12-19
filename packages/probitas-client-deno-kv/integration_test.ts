@@ -164,8 +164,8 @@ Deno.test({
         assertGreater(result.entries.length, 0);
         assertEquals(result.entries.length, 3);
 
-        assertEquals(result.entries.first()?.value.order, 1);
-        assertEquals(result.entries.last()?.value.order, 3);
+        assertEquals(result.entries[0]?.value.order, 1);
+        assertEquals(result.entries[result.entries.length - 1]?.value.order, 3);
 
         // Clean up
         for (const entry of result.entries) {
@@ -214,8 +214,8 @@ Deno.test({
         assertEquals(result.ok, true);
         assertEquals(result.entries.length, 3);
 
-        assertEquals(result.entries.first()?.value, "third");
-        assertEquals(result.entries.last()?.value, "first");
+        assertEquals(result.entries[0]?.value, "third");
+        assertEquals(result.entries[result.entries.length - 1]?.value, "first");
 
         // Clean up
         for (const entry of result.entries) {
@@ -303,7 +303,8 @@ Deno.test({
           .commit();
 
         assertEquals(result.ok, false);
-        assertEquals(result.versionstamp, undefined);
+        assertEquals(result.error, null); // Check failure is NOT an error
+        assertEquals(result.versionstamp, null);
 
         // Value should remain as modified by other
         const current = await kv.get<string>(key);

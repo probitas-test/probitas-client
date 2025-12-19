@@ -11,6 +11,7 @@
   "imports": {
     "@probitas/client": "jsr:@probitas/client@^0",
     "@probitas/logger": "jsr:@probitas/logger@^0.2.1",
-    "@aws-sdk/client-sqs": "npm:@aws-sdk/client-sqs@^3.700.0"
+    "@aws-sdk/client-sqs": "npm:@aws-sdk/client-sqs@^3.700.0",
+    "@std/async": "jsr:@std/async@^1.0.15"
   }
 }

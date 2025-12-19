@@ -1,4 +1,4 @@
-import { ClientError } from "@probitas/client";
+import { AbortError, ClientError, TimeoutError } from "@probitas/client";
 
 /**
  * Options for RabbitMQ errors.
@@ -102,3 +102,22 @@ export class RabbitMqPreconditionFailedError extends RabbitMqError {
     this.reason = options.reason;
   }
 }
+
+/**
+ * Error types that indicate a RabbitMQ operation error.
+ * These are errors where the operation reached the server but failed.
+ */
+export type RabbitMqOperationError =
+  | RabbitMqChannelError
+  | RabbitMqNotFoundError
+  | RabbitMqPreconditionFailedError
+  | RabbitMqError;
+
+/**
+ * Error types that indicate the operation was not processed.
+ * These are errors that occur before the operation reaches the RabbitMQ server.
+ */
+export type RabbitMqFailureError =
+  | RabbitMqConnectionError
+  | AbortError
+  | TimeoutError;

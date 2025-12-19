@@ -115,4 +115,5 @@
 
 export type * from "./types.ts";
 export * from "./errors.ts";
+export type * from "./result.ts";
 export * from "./client.ts";

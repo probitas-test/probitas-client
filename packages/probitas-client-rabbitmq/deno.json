@@ -9,8 +9,10 @@
     ]
   },
   "imports": {
+    "@core/errorutil": "jsr:@core/errorutil@^1.2.1",
     "@probitas/client": "jsr:@probitas/client@^0",
     "@probitas/logger": "jsr:@probitas/logger@^0.2.1",
+    "@std/async": "jsr:@std/async@^1.0.15",
     "amqplib": "npm:amqplib@^0.10.5"
   }
 }

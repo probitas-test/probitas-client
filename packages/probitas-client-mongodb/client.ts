@@ -6,8 +6,8 @@ import type {
   MongoClientOptions,
 } from "mongodb";
 import { AbortError, TimeoutError } from "@probitas/client";
-import type { CommonOptions } from "@probitas/client";
 import { getLogger } from "@probitas/logger";
+import { deadline } from "@std/async/deadline";
 import type {
   Document,
   Filter,
@@ -22,6 +22,7 @@ import type {
   MongoFindResult,
   MongoInsertManyResult,
   MongoInsertOneResult,
+  MongoOptions,
   MongoSession,
   MongoUpdateOptions,
   MongoUpdateResult,
@@ -30,10 +31,46 @@ import type {
 import {
   MongoConnectionError,
   MongoDuplicateKeyError,
+  MongoError,
+  type MongoFailureError,
+  type MongoOperationError,
   MongoQueryError,
   MongoWriteError,
 } from "./errors.ts";
-import { createMongoDocs } from "./results.ts";
+import {
+  MongoCountResultErrorImpl,
+  MongoCountResultFailureImpl,
+  MongoCountResultSuccessImpl,
+  MongoDeleteResultErrorImpl,
+  MongoDeleteResultFailureImpl,
+  MongoDeleteResultSuccessImpl,
+  MongoFindOneResultErrorImpl,
+  MongoFindOneResultFailureImpl,
+  MongoFindOneResultSuccessImpl,
+  MongoFindResultErrorImpl,
+  MongoFindResultFailureImpl,
+  MongoFindResultSuccessImpl,
+  MongoInsertManyResultErrorImpl,
+  MongoInsertManyResultFailureImpl,
+  MongoInsertManyResultSuccessImpl,
+  MongoInsertOneResultErrorImpl,
+  MongoInsertOneResultFailureImpl,
+  MongoInsertOneResultSuccessImpl,
+  MongoUpdateResultErrorImpl,
+  MongoUpdateResultFailureImpl,
+  MongoUpdateResultSuccessImpl,
+} from "./result.ts";
+
+/**
+ * Check if an error is a failure error (operation not processed).
+ */
+function isFailureError(error: unknown): error is MongoFailureError {
+  return (
+    error instanceof AbortError ||
+    error instanceof TimeoutError ||
+    error instanceof MongoConnectionError
+  );
+}
 
 const logger = getLogger("probitas", "client", "mongodb");
 
@@ -105,92 +142,168 @@ function getFilterKeys(filter: unknown): string[] {
 }
 
 /**
- * Format data for trace logging (with truncation to avoid log bloat).
+ * Convert DOMException to TimeoutError or AbortError.
+ * Uses name-based checking instead of instanceof for cross-realm compatibility.
  */
-function formatData(data: unknown): string {
-  try {
-    const str = JSON.stringify(data);
-    return str.length > 500 ? str.slice(0, 500) + "..." : str;
-  } catch {
-    return "<unserializable>";
+function convertDeadlineError(
+  err: unknown,
+  operation: string,
+  timeoutMs: number,
+): unknown {
+  if (err instanceof Error) {
+    if (err.name === "TimeoutError") {
+      return new TimeoutError(`Operation timed out: ${operation}`, timeoutMs);
+    }
+    if (err.name === "AbortError") {
+      return new AbortError(`Operation aborted: ${operation}`);
+    }
   }
+  return err;
+}
+
+/**
+ * Execute a promise with abort signal support only.
+ *
+ * This function exists as a workaround for @std/async@1.0.15's `deadline` limitation.
+ * In v1.0.15, `deadline(promise, Infinity, { signal })` throws:
+ *   "TypeError: Failed to execute 'AbortSignal.timeout': Argument 1 is not a finite number"
+ *
+ * This is because v1.0.15 unconditionally calls `AbortSignal.timeout(ms)`:
+ *   const signals = [AbortSignal.timeout(ms)];  // Always called, even when ms=Infinity
+ *
+ * The fix has been merged to main branch (adding `ms < Number.MAX_SAFE_INTEGER` check)
+ * and is expected to be released in @std/async@1.0.16 or later.
+ *
+ * Once the fix is released, this function can be removed and `withOptions` can
+ * simply use `deadline(promise, Infinity, { signal })` for signal-only cases.
+ *
+ * @see https://github.com/denoland/std/blob/main/async/deadline.ts
+ */
+function withSignal<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+  operation: string,
+): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(new AbortError(`Operation aborted: ${operation}`));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(new AbortError(`Operation aborted: ${operation}`));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise
+      .then((value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      })
+      .catch((err) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(err);
+      });
+  });
 }
 
 /**
  * Execute a promise with timeout and abort signal support.
+ *
+ * Routes to appropriate implementation based on options:
+ * - No options: return promise as-is
+ * - Signal only: use withSignal (workaround for @std/async@1.0.15)
+ * - Timeout (±signal): use deadline from @std/async
  */
-async function withOptions<T>(
+function withOptions<T>(
   promise: Promise<T>,
-  options: CommonOptions | undefined,
+  options: MongoOptions | undefined,
   operation: string,
 ): Promise<T> {
   if (!options?.timeout && !options?.signal) {
     return promise;
   }
+  // Signal-only: use withSignal workaround (see withSignal JSDoc for details)
+  // TODO: Replace with `deadline(promise, Infinity, { signal })` after @std/async@1.0.16
+  if (!options.timeout && options.signal) {
+    return withSignal(promise, options.signal, operation);
+  }
+  // Timeout (with optional signal): use deadline
+  const timeoutMs = options.timeout!;
+  return deadline(promise, timeoutMs, { signal: options.signal })
+    .catch((err: unknown) => {
+      throw convertDeadlineError(err, operation, timeoutMs);
+    });
+}
 
-  const controllers: { cleanup: () => void }[] = [];
-
-  try {
-    const racePromises: Promise<T>[] = [promise];
-
-    if (options.timeout !== undefined) {
-      const timeoutMs = options.timeout;
-      let timeoutId: number;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(
-            new TimeoutError(`Operation timed out: ${operation}`, timeoutMs),
-          );
-        }, timeoutMs);
-      });
-      controllers.push({ cleanup: () => clearTimeout(timeoutId) });
-      racePromises.push(timeoutPromise);
+/**
+ * Check if an error is a connection error.
+ */
+function isConnectionError(error: unknown): boolean {
+  if (error instanceof TypeError) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes("network") ||
+      message.includes("connection") ||
+      message.includes("fetch") ||
+      message.includes("dns") ||
+      message.includes("timeout") ||
+      message.includes("econnrefused") ||
+      message.includes("enotfound")
+    );
+  }
+  if (error instanceof Error) {
+    const name = error.name.toLowerCase();
+    if (
+      name.includes("network") ||
+      name.includes("connection")
+    ) {
+      return true;
     }
-
-    if (options.signal) {
-      const signal = options.signal;
-      if (signal.aborted) {
-        throw new AbortError(`Operation aborted: ${operation}`);
-      }
-
-      const abortPromise = new Promise<never>((_, reject) => {
-        const onAbort = () => {
-          reject(new AbortError(`Operation aborted: ${operation}`));
-        };
-        signal.addEventListener("abort", onAbort, { once: true });
-        controllers.push({
-          cleanup: () => signal.removeEventListener("abort", onAbort),
-        });
-      });
-      racePromises.push(abortPromise);
-    }
-
-    return await Promise.race(racePromises);
-  } finally {
-    for (const controller of controllers) {
-      controller.cleanup();
+    // Check for MongoDB network error patterns
+    const message = error.message.toLowerCase();
+    if (
+      message.includes("failed to connect") ||
+      message.includes("server selection") ||
+      message.includes("topology was destroyed") ||
+      message.includes("connection closed") ||
+      message.includes("connection reset")
+    ) {
+      return true;
     }
   }
+  return false;
 }
 
 /**
  * Convert MongoDB error to appropriate error type.
+ * Returns the error instead of throwing it.
  */
 function convertMongoError(
   error: unknown,
   collection: string,
-): never {
-  if (error instanceof TimeoutError || error instanceof AbortError) {
-    throw error;
+): MongoOperationError | MongoFailureError {
+  if (error instanceof MongoError) {
+    return error;
+  }
+
+  // AbortError and TimeoutError should not be converted
+  if (error instanceof AbortError || error instanceof TimeoutError) {
+    return error;
   }
 
   if (error instanceof Error) {
     // deno-lint-ignore no-explicit-any
     const mongoError = error as any;
 
+    // Check if it's a connection error first
+    if (isConnectionError(error)) {
+      return new MongoConnectionError(error.message, {
+        cause: error,
+        code: mongoError.code,
+      });
+    }
+
     // Duplicate key error (code 11000)
     if (mongoError.code === 11000) {
-      throw new MongoDuplicateKeyError(
+      return new MongoDuplicateKeyError(
         error.message,
         mongoError.keyPattern ?? {},
         mongoError.keyValue ?? {},
@@ -200,7 +313,7 @@ function convertMongoError(
 
     // Write errors
     if (mongoError.writeErrors?.length > 0) {
-      throw new MongoWriteError(
+      return new MongoWriteError(
         error.message,
         mongoError.writeErrors.map((
           e: { index: number; code: number; errmsg: string },
@@ -213,13 +326,13 @@ function convertMongoError(
       );
     }
 
-    throw new MongoQueryError(error.message, collection, {
+    return new MongoQueryError(error.message, collection, {
       cause: error,
       code: mongoError.code,
     });
   }
 
-  throw new MongoQueryError(String(error), collection);
+  return new MongoQueryError(String(error), collection);
 }
 
 /**
@@ -242,7 +355,12 @@ function convertMongoError(
  *
  * const users = mongo.collection<{ name: string; age: number }>("users");
  * const result = await users.find({ age: { $gte: 18 } });
- * console.log(result.docs.first());
+ *
+ * if (result.ok) {
+ *   console.log(result.docs[0]);
+ * } else {
+ *   console.error("Error:", result.error.message);
+ * }
  *
  * await mongo.close();
  * ```
@@ -279,14 +397,18 @@ function convertMongoError(
  *
  * // Insert a document
  * const insertResult = await users.insertOne({ name: "Alice", age: 30 });
- * console.log("Inserted ID:", insertResult.insertedId);
+ * if (insertResult.ok) {
+ *   console.log("Inserted ID:", insertResult.insertedId);
+ * }
  *
  * // Find documents with projection and sorting
  * const findResult = await users.find(
  *   { age: { $gte: 25 } },
  *   { sort: { name: 1 }, limit: 10 }
  * );
- * console.log("Found:", findResult.docs.length);
+ * if (findResult.ok) {
+ *   console.log("Found:", findResult.docs.length);
+ * }
  *
  * await mongo.close();
  * ```
@@ -304,8 +426,14 @@ function convertMongoError(
  *
  * await mongo.transaction(async (session) => {
  *   const users = session.collection<User>("users");
- *   await users.insertOne({ name: "Bob", age: 25 });
- *   await users.updateOne({ name: "Alice" }, { $inc: { age: 1 } });
+ *   const insertResult = await users.insertOne({ name: "Bob", age: 25 });
+ *   if (!insertResult.ok) throw insertResult.error;
+ *
+ *   const updateResult = await users.updateOne(
+ *     { name: "Alice" },
+ *     { $inc: { age: 1 } }
+ *   );
+ *   if (!updateResult.ok) throw updateResult.error;
  * });
  *
  * await mongo.close();
@@ -327,7 +455,9 @@ function convertMongoError(
  *   { $group: { _id: "$department", avgAge: { $avg: "$age" } } },
  *   { $sort: { avgAge: -1 } },
  * ]);
- * console.log(result.docs);
+ * if (result.ok) {
+ *   console.log(result.docs);
+ * }
  *
  * await mongo.close();
  * ```
@@ -342,7 +472,9 @@ function convertMongoError(
  * });
  *
  * const result = await mongo.collection("users").find({});
- * console.log(result.docs);
+ * if (result.ok) {
+ *   console.log(result.docs);
+ * }
  * // Client automatically closed when scope exits
  * ```
  */
@@ -407,6 +539,7 @@ class MongoClientImpl implements MongoClient {
     return new MongoCollectionImpl<T>(
       this.#db.collection(name),
       name,
+      this.config,
       undefined,
     );
   }
@@ -431,6 +564,7 @@ class MongoClientImpl implements MongoClient {
       const result = await session.withTransaction(async () => {
         const mongoSession = new MongoSessionImpl(
           this.#db,
+          this.config,
           session,
         );
         return await fn(mongoSession);
@@ -440,8 +574,6 @@ class MongoClientImpl implements MongoClient {
         duration: `${duration.toFixed(2)}ms`,
       });
       return result;
-    } catch (error) {
-      throw error;
     } finally {
       await session.endSession();
     }
@@ -467,10 +599,12 @@ class MongoClientImpl implements MongoClient {
 
 class MongoSessionImpl implements MongoSession {
   readonly #db: Db;
+  readonly #config: MongoClientConfig;
   readonly #session: ClientSession;
 
-  constructor(db: Db, session: ClientSession) {
+  constructor(db: Db, config: MongoClientConfig, session: ClientSession) {
     this.#db = db;
+    this.#config = config;
     this.#session = session;
   }
 
@@ -478,6 +612,7 @@ class MongoSessionImpl implements MongoSession {
     return new MongoCollectionImpl<T>(
       this.#db.collection(name),
       name,
+      this.#config,
       this.#session,
     );
   }
@@ -486,16 +621,23 @@ class MongoSessionImpl implements MongoSession {
 class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
   readonly #collection: NativeCollection;
   readonly #name: string;
+  readonly #config: MongoClientConfig;
   readonly #session?: ClientSession;
 
   constructor(
     collection: NativeCollection,
     name: string,
+    config: MongoClientConfig,
     session?: ClientSession,
   ) {
     this.#collection = collection;
     this.#name = name;
+    this.#config = config;
     this.#session = session;
+  }
+
+  #shouldThrow(options?: MongoOptions): boolean {
+    return options?.throwOnError ?? this.#config.throwOnError ?? false;
   }
 
   async find(
@@ -513,9 +655,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       hasProjection: !!options?.projection,
       hasSort: !!options?.sort,
     });
-    logger.trace("MongoDB find filter", {
-      filter: formatData(filter),
-    });
+    logger.trace("MongoDB find filter", { filter });
 
     try {
       const findOptions: Record<string, unknown> = {};
@@ -540,25 +680,37 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         duration: `${duration.toFixed(2)}ms`,
       });
       if (docs.length > 0) {
-        logger.trace("MongoDB find results", {
-          results: formatData(docs),
-        });
+        logger.trace("MongoDB find results", { docs });
       }
 
-      return {
-        kind: "mongo:find",
-        ok: true,
-        docs: createMongoDocs(docs),
+      return new MongoFindResultSuccessImpl<T>({
+        docs,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB find operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoFindResultFailureImpl<T>({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoFindResultErrorImpl<T>({ error: mongoError, duration });
     }
   }
 
   async findOne(
     filter: Filter,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoFindOneResult<T>> {
     const startTime = performance.now();
     const operation = `findOne(${this.#name})`;
@@ -567,9 +719,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
     });
-    logger.trace("MongoDB findOne filter", {
-      filter: formatData(filter),
-    });
+    logger.trace("MongoDB findOne filter", { filter });
 
     try {
       const findOptions: Record<string, unknown> = {};
@@ -585,25 +735,40 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         duration: `${duration.toFixed(2)}ms`,
       });
       if (doc) {
-        logger.trace("MongoDB findOne result", {
-          result: formatData(doc),
-        });
+        logger.trace("MongoDB findOne result", { doc });
       }
 
-      return {
-        kind: "mongo:find-one",
-        ok: true,
-        doc: (doc ?? undefined) as T | undefined,
+      return new MongoFindOneResultSuccessImpl<T>({
+        doc: (doc as T | null) ?? null,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB findOne operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoFindOneResultFailureImpl<T>({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoFindOneResultErrorImpl<T>({
+        error: mongoError,
+        duration,
+      });
     }
   }
 
   async insertOne(
     doc: Omit<T, "_id">,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoInsertOneResult> {
     const startTime = performance.now();
     const operation = `insertOne(${this.#name})`;
@@ -611,9 +776,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
     logger.info("MongoDB insertOne operation starting", {
       collection: this.#name,
     });
-    logger.trace("MongoDB insertOne document", {
-      document: formatData(doc),
-    });
+    logger.trace("MongoDB insertOne document", { doc });
 
     try {
       const insertOptions: Record<string, unknown> = {};
@@ -629,24 +792,36 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         acknowledged: result.acknowledged,
         duration: `${duration.toFixed(2)}ms`,
       });
-      logger.trace("MongoDB insertOne result", {
-        result: formatData(result),
-      });
+      logger.trace("MongoDB insertOne result", { result });
 
-      return {
-        kind: "mongo:insert-one",
-        ok: result.acknowledged,
+      return new MongoInsertOneResultSuccessImpl({
         insertedId: String(result.insertedId),
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB insertOne operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoInsertOneResultFailureImpl({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoInsertOneResultErrorImpl({ error: mongoError, duration });
     }
   }
 
   async insertMany(
     docs: Omit<T, "_id">[],
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoInsertManyResult> {
     const startTime = performance.now();
     const operation = `insertMany(${this.#name})`;
@@ -655,9 +830,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       collection: this.#name,
       documentCount: docs.length,
     });
-    logger.trace("MongoDB insertMany documents", {
-      documents: formatData(docs),
-    });
+    logger.trace("MongoDB insertMany documents", { docs });
 
     try {
       const insertOptions: Record<string, unknown> = {};
@@ -673,19 +846,34 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         acknowledged: result.acknowledged,
         duration: `${duration.toFixed(2)}ms`,
       });
-      logger.trace("MongoDB insertMany result", {
-        result: formatData(result),
-      });
+      logger.trace("MongoDB insertMany result", { result });
 
-      return {
-        kind: "mongo:insert-many",
-        ok: result.acknowledged,
+      return new MongoInsertManyResultSuccessImpl({
         insertedIds: Object.values(result.insertedIds).map(String),
         insertedCount: result.insertedCount,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB insertMany operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoInsertManyResultFailureImpl({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoInsertManyResultErrorImpl({
+        error: mongoError,
+        duration,
+      });
     }
   }
 
@@ -702,10 +890,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       filterKeys: getFilterKeys(filter),
       upsert: options?.upsert ?? false,
     });
-    logger.trace("MongoDB updateOne filter and update", {
-      filter: formatData(filter),
-      update: formatData(update),
-    });
+    logger.trace("MongoDB updateOne filter and update", { filter, update });
 
     try {
       const updateOptions: Record<string, unknown> = {};
@@ -720,24 +905,36 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         collection: this.#name,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
-        upsertedId: result.upsertedId ? String(result.upsertedId) : undefined,
+        upsertedId: result.upsertedId ? String(result.upsertedId) : null,
         acknowledged: result.acknowledged,
         duration: `${duration.toFixed(2)}ms`,
       });
-      logger.trace("MongoDB updateOne result", {
-        result: formatData(result),
-      });
+      logger.trace("MongoDB updateOne result", { result });
 
-      return {
-        kind: "mongo:update",
-        ok: result.acknowledged,
+      return new MongoUpdateResultSuccessImpl({
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
-        upsertedId: result.upsertedId ? String(result.upsertedId) : undefined,
+        upsertedId: result.upsertedId ? String(result.upsertedId) : null,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB updateOne operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoUpdateResultFailureImpl({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoUpdateResultErrorImpl({ error: mongoError, duration });
     }
   }
 
@@ -754,10 +951,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       filterKeys: getFilterKeys(filter),
       upsert: options?.upsert ?? false,
     });
-    logger.trace("MongoDB updateMany filter and update", {
-      filter: formatData(filter),
-      update: formatData(update),
-    });
+    logger.trace("MongoDB updateMany filter and update", { filter, update });
 
     try {
       const updateOptions: Record<string, unknown> = {};
@@ -776,30 +970,42 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         collection: this.#name,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
-        upsertedId: result.upsertedId ? String(result.upsertedId) : undefined,
+        upsertedId: result.upsertedId ? String(result.upsertedId) : null,
         acknowledged: result.acknowledged,
         duration: `${duration.toFixed(2)}ms`,
       });
-      logger.trace("MongoDB updateMany result", {
-        result: formatData(result),
-      });
+      logger.trace("MongoDB updateMany result", { result });
 
-      return {
-        kind: "mongo:update",
-        ok: result.acknowledged,
+      return new MongoUpdateResultSuccessImpl({
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
-        upsertedId: result.upsertedId ? String(result.upsertedId) : undefined,
+        upsertedId: result.upsertedId ? String(result.upsertedId) : null,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB updateMany operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoUpdateResultFailureImpl({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoUpdateResultErrorImpl({ error: mongoError, duration });
     }
   }
 
   async deleteOne(
     filter: Filter,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoDeleteResult> {
     const startTime = performance.now();
     const operation = `deleteOne(${this.#name})`;
@@ -808,9 +1014,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
     });
-    logger.trace("MongoDB deleteOne filter", {
-      filter: formatData(filter),
-    });
+    logger.trace("MongoDB deleteOne filter", { filter });
 
     try {
       const deleteOptions: Record<string, unknown> = {};
@@ -826,24 +1030,36 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         acknowledged: result.acknowledged,
         duration: `${duration.toFixed(2)}ms`,
       });
-      logger.trace("MongoDB deleteOne result", {
-        result: formatData(result),
-      });
+      logger.trace("MongoDB deleteOne result", { result });
 
-      return {
-        kind: "mongo:delete",
-        ok: result.acknowledged,
+      return new MongoDeleteResultSuccessImpl({
         deletedCount: result.deletedCount,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB deleteOne operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoDeleteResultFailureImpl({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoDeleteResultErrorImpl({ error: mongoError, duration });
     }
   }
 
   async deleteMany(
     filter: Filter,
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoDeleteResult> {
     const startTime = performance.now();
     const operation = `deleteMany(${this.#name})`;
@@ -852,9 +1068,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
     });
-    logger.trace("MongoDB deleteMany filter", {
-      filter: formatData(filter),
-    });
+    logger.trace("MongoDB deleteMany filter", { filter });
 
     try {
       const deleteOptions: Record<string, unknown> = {};
@@ -870,24 +1084,36 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         acknowledged: result.acknowledged,
         duration: `${duration.toFixed(2)}ms`,
       });
-      logger.trace("MongoDB deleteMany result", {
-        result: formatData(result),
-      });
+      logger.trace("MongoDB deleteMany result", { result });
 
-      return {
-        kind: "mongo:delete",
-        ok: result.acknowledged,
+      return new MongoDeleteResultSuccessImpl({
         deletedCount: result.deletedCount,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB deleteMany operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoDeleteResultFailureImpl({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoDeleteResultErrorImpl({ error: mongoError, duration });
     }
   }
 
   async aggregate<R = T>(
     pipeline: Document[],
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoFindResult<R>> {
     const startTime = performance.now();
     const operation = `aggregate(${this.#name})`;
@@ -896,9 +1122,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       collection: this.#name,
       pipelineStages: pipeline.length,
     });
-    logger.trace("MongoDB aggregate pipeline", {
-      pipeline: formatData(pipeline),
-    });
+    logger.trace("MongoDB aggregate pipeline", { pipeline });
 
     try {
       const aggOptions: Record<string, unknown> = {};
@@ -916,25 +1140,37 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         duration: `${duration.toFixed(2)}ms`,
       });
       if (docs.length > 0) {
-        logger.trace("MongoDB aggregate results", {
-          results: formatData(docs),
-        });
+        logger.trace("MongoDB aggregate results", { docs });
       }
 
-      return {
-        kind: "mongo:find",
-        ok: true,
-        docs: createMongoDocs(docs),
+      return new MongoFindResultSuccessImpl<R>({
+        docs,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB aggregate operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoFindResultFailureImpl<R>({
+          error: mongoError,
+          duration,
+        });
+      }
+      return new MongoFindResultErrorImpl<R>({ error: mongoError, duration });
     }
   }
 
   async countDocuments(
     filter: Filter = {},
-    options?: CommonOptions,
+    options?: MongoOptions,
   ): Promise<MongoCountResult> {
     const startTime = performance.now();
     const operation = `countDocuments(${this.#name})`;
@@ -943,9 +1179,7 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
       collection: this.#name,
       filterKeys: getFilterKeys(filter),
     });
-    logger.trace("MongoDB countDocuments filter", {
-      filter: formatData(filter),
-    });
+    logger.trace("MongoDB countDocuments filter", { filter });
 
     try {
       const countOptions: Record<string, unknown> = {};
@@ -960,18 +1194,27 @@ class MongoCollectionImpl<T extends Document> implements MongoCollection<T> {
         count,
         duration: `${duration.toFixed(2)}ms`,
       });
-      logger.trace("MongoDB countDocuments result", {
-        count,
-      });
+      logger.trace("MongoDB countDocuments result", { count });
 
-      return {
-        kind: "mongo:count",
-        ok: true,
+      return new MongoCountResultSuccessImpl({
         count,
         duration,
-      };
+      });
     } catch (error) {
-      convertMongoError(error, this.#name);
+      const duration = performance.now() - startTime;
+      logger.debug("MongoDB countDocuments operation failed", {
+        collection: this.#name,
+        duration: `${duration.toFixed(2)}ms`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const mongoError = convertMongoError(error, this.#name);
+      if (this.#shouldThrow(options)) throw mongoError;
+
+      if (isFailureError(mongoError)) {
+        return new MongoCountResultFailureImpl({ error: mongoError, duration });
+      }
+      return new MongoCountResultErrorImpl({ error: mongoError, duration });
     }
   }
 }

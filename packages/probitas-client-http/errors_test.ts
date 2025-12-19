@@ -1,161 +1,138 @@
-import { assertEquals, assertInstanceOf } from "@std/assert";
+import { assertEquals, assertInstanceOf, assertThrows } from "@std/assert";
 import { ClientError } from "@probitas/client";
-import {
-  HttpBadRequestError,
-  HttpConflictError,
-  HttpError,
-  HttpForbiddenError,
-  HttpInternalServerError,
-  HttpNotFoundError,
-  HttpTooManyRequestsError,
-  HttpUnauthorizedError,
-} from "./errors.ts";
+import { HttpError } from "./errors.ts";
 
 Deno.test("HttpError", async (t) => {
   await t.step("extends ClientError", () => {
-    const error = new HttpError("request failed", 500, "Internal Server Error");
+    const error = new HttpError(500, "Internal Server Error");
     assertInstanceOf(error, ClientError);
     assertInstanceOf(error, HttpError);
   });
 
   await t.step("has correct properties", () => {
-    const error = new HttpError("request failed", 404, "Not Found");
+    const error = new HttpError(404, "Not Found");
     assertEquals(error.name, "HttpError");
     assertEquals(error.kind, "http");
-    assertEquals(error.message, "request failed");
     assertEquals(error.status, 404);
     assertEquals(error.statusText, "Not Found");
-    assertEquals(error.response, undefined);
   });
 
-  await t.step("supports response property", () => {
-    const mockResponse = { status: 500 } as never;
-    const error = new HttpError(
-      "request failed",
-      500,
-      "Internal Server Error",
-      {
-        response: mockResponse,
-      },
-    );
-    assertEquals(error.response, mockResponse);
+  await t.step("generates message from status", () => {
+    const error = new HttpError(404, "Not Found");
+    assertEquals(error.message, "404: Not Found");
+  });
+
+  await t.step("includes body in message when provided", () => {
+    const body = new TextEncoder().encode('{"error": "not found"}');
+    const error = new HttpError(404, "Not Found", { body });
+    assertEquals(error.message.includes("404: Not Found"), true);
+    assertEquals(error.message.includes("not found"), true);
   });
 
   await t.step("supports cause option", () => {
     const cause = new Error("network error");
-    const error = new HttpError(
-      "request failed",
-      500,
-      "Internal Server Error",
-      {
-        cause,
-      },
-    );
+    const error = new HttpError(500, "Internal Server Error", { cause });
     assertEquals(error.cause, cause);
   });
-});
 
-Deno.test("HttpBadRequestError", async (t) => {
-  await t.step("extends HttpError", () => {
-    const error = new HttpBadRequestError("bad request");
-    assertInstanceOf(error, HttpError);
-    assertInstanceOf(error, HttpBadRequestError);
+  await t.step("body is null by default", () => {
+    const error = new HttpError(500, "Internal Server Error");
+    assertEquals(error.body, null);
   });
 
-  await t.step("has status 400", () => {
-    const error = new HttpBadRequestError("bad request");
-    assertEquals(error.name, "HttpBadRequestError");
-    assertEquals(error.status, 400);
-    assertEquals(error.statusText, "Bad Request");
-  });
-});
-
-Deno.test("HttpUnauthorizedError", async (t) => {
-  await t.step("extends HttpError", () => {
-    const error = new HttpUnauthorizedError("unauthorized");
-    assertInstanceOf(error, HttpError);
-    assertInstanceOf(error, HttpUnauthorizedError);
+  await t.step("body property stores raw bytes", () => {
+    const body = new TextEncoder().encode("error details");
+    const error = new HttpError(500, "Internal Server Error", { body });
+    assertInstanceOf(error.body, Uint8Array);
+    assertEquals(error.body, body);
   });
 
-  await t.step("has status 401", () => {
-    const error = new HttpUnauthorizedError("unauthorized");
-    assertEquals(error.name, "HttpUnauthorizedError");
-    assertEquals(error.status, 401);
-    assertEquals(error.statusText, "Unauthorized");
-  });
-});
-
-Deno.test("HttpForbiddenError", async (t) => {
-  await t.step("extends HttpError", () => {
-    const error = new HttpForbiddenError("forbidden");
-    assertInstanceOf(error, HttpError);
-    assertInstanceOf(error, HttpForbiddenError);
+  await t.step("headers property stores response headers", () => {
+    const headers = new Headers({ "Content-Type": "application/json" });
+    const error = new HttpError(500, "Internal Server Error", { headers });
+    assertEquals(error.headers?.get("Content-Type"), "application/json");
   });
 
-  await t.step("has status 403", () => {
-    const error = new HttpForbiddenError("forbidden");
-    assertEquals(error.name, "HttpForbiddenError");
-    assertEquals(error.status, 403);
-    assertEquals(error.statusText, "Forbidden");
-  });
-});
-
-Deno.test("HttpNotFoundError", async (t) => {
-  await t.step("extends HttpError", () => {
-    const error = new HttpNotFoundError("not found");
-    assertInstanceOf(error, HttpError);
-    assertInstanceOf(error, HttpNotFoundError);
+  await t.step("text() returns body as string", () => {
+    const body = new TextEncoder().encode("error message");
+    const error = new HttpError(500, "Internal Server Error", { body });
+    assertEquals(error.text(), "error message");
   });
 
-  await t.step("has status 404", () => {
-    const error = new HttpNotFoundError("not found");
-    assertEquals(error.name, "HttpNotFoundError");
-    assertEquals(error.status, 404);
-    assertEquals(error.statusText, "Not Found");
-  });
-});
-
-Deno.test("HttpConflictError", async (t) => {
-  await t.step("extends HttpError", () => {
-    const error = new HttpConflictError("conflict");
-    assertInstanceOf(error, HttpError);
-    assertInstanceOf(error, HttpConflictError);
+  await t.step("text() returns null when no body", () => {
+    const error = new HttpError(500, "Internal Server Error");
+    assertEquals(error.text(), null);
   });
 
-  await t.step("has status 409", () => {
-    const error = new HttpConflictError("conflict");
-    assertEquals(error.name, "HttpConflictError");
-    assertEquals(error.status, 409);
-    assertEquals(error.statusText, "Conflict");
-  });
-});
-
-Deno.test("HttpTooManyRequestsError", async (t) => {
-  await t.step("extends HttpError", () => {
-    const error = new HttpTooManyRequestsError("rate limited");
-    assertInstanceOf(error, HttpError);
-    assertInstanceOf(error, HttpTooManyRequestsError);
+  await t.step("text() can be called multiple times", () => {
+    const body = new TextEncoder().encode("error message");
+    const error = new HttpError(500, "Internal Server Error", { body });
+    assertEquals(error.text(), error.text());
   });
 
-  await t.step("has status 429", () => {
-    const error = new HttpTooManyRequestsError("rate limited");
-    assertEquals(error.name, "HttpTooManyRequestsError");
-    assertEquals(error.status, 429);
-    assertEquals(error.statusText, "Too Many Requests");
-  });
-});
-
-Deno.test("HttpInternalServerError", async (t) => {
-  await t.step("extends HttpError", () => {
-    const error = new HttpInternalServerError("server error");
-    assertInstanceOf(error, HttpError);
-    assertInstanceOf(error, HttpInternalServerError);
+  await t.step("json() returns parsed JSON", () => {
+    const body = new TextEncoder().encode('{"code": "NOT_FOUND", "id": 123}');
+    const error = new HttpError(404, "Not Found", { body });
+    assertEquals(error.json(), { code: "NOT_FOUND", id: 123 });
   });
 
-  await t.step("has status 500", () => {
-    const error = new HttpInternalServerError("server error");
-    assertEquals(error.name, "HttpInternalServerError");
-    assertEquals(error.status, 500);
-    assertEquals(error.statusText, "Internal Server Error");
+  await t.step("json() returns null when no body", () => {
+    const error = new HttpError(500, "Internal Server Error");
+    assertEquals(error.json(), null);
+  });
+
+  await t.step("json() throws when body is not valid JSON", () => {
+    const body = new TextEncoder().encode("not json");
+    const error = new HttpError(500, "Internal Server Error", { body });
+    assertThrows(() => error.json(), SyntaxError);
+  });
+
+  await t.step("json() can be called multiple times", () => {
+    const body = new TextEncoder().encode('{"error": true}');
+    const error = new HttpError(500, "Internal Server Error", { body });
+    assertEquals(error.json(), error.json());
+  });
+
+  await t.step("json() supports generic type hint", () => {
+    interface ErrorResponse {
+      code: string;
+      message: string;
+    }
+    const body = new TextEncoder().encode('{"code": "ERR", "message": "fail"}');
+    const error = new HttpError(500, "Internal Server Error", { body });
+    const data = error.json<ErrorResponse>();
+    assertEquals(data?.code, "ERR");
+    assertEquals(data?.message, "fail");
+  });
+
+  await t.step("arrayBuffer() returns ArrayBuffer", () => {
+    const body = new TextEncoder().encode("data");
+    const error = new HttpError(500, "Internal Server Error", { body });
+    const buffer = error.arrayBuffer();
+    assertInstanceOf(buffer, ArrayBuffer);
+    assertEquals(buffer?.byteLength, 4);
+  });
+
+  await t.step("arrayBuffer() returns null when no body", () => {
+    const error = new HttpError(500, "Internal Server Error");
+    assertEquals(error.arrayBuffer(), null);
+  });
+
+  await t.step("blob() returns Blob with content type", () => {
+    const body = new TextEncoder().encode('{"test": true}');
+    const headers = new Headers({ "Content-Type": "application/json" });
+    const error = new HttpError(500, "Internal Server Error", {
+      body,
+      headers,
+    });
+    const blob = error.blob();
+    assertInstanceOf(blob, Blob);
+    assertEquals(blob?.type, "application/json");
+    assertEquals(blob?.size, body.length);
+  });
+
+  await t.step("blob() returns null when no body", () => {
+    const error = new HttpError(500, "Internal Server Error");
+    assertEquals(error.blob(), null);
   });
 });

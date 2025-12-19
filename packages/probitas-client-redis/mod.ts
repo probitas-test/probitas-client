@@ -37,7 +37,7 @@
  * console.log("Email:", email.value);
  *
  * // List operations
- * await client.rpush("queue", "job1", "job2", "job3");
+ * await client.rpush("queue", ["job1", "job2", "job3"]);
  * const job = await client.lpop("queue");
  * console.log("Job:", job.value);
  *
@@ -132,4 +132,5 @@
 
 export type * from "./types.ts";
 export * from "./errors.ts";
+export type * from "./result.ts";
 export * from "./client.ts";

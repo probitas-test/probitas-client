@@ -1,4 +1,5 @@
 import {
+  assert,
   assertEquals,
   assertExists,
   assertInstanceOf,
@@ -89,7 +90,7 @@ Deno.test({
           const result = await client.send(
             JSON.stringify({ type: "TEST", value: 42 }),
           );
-          assertEquals(result.ok, true);
+          assert(result.ok);
           assertExists(result.messageId);
         });
 
@@ -98,11 +99,11 @@ Deno.test({
             maxMessages: 10,
             waitTimeSeconds: 1,
           });
-          assertEquals(result.ok, true);
-          assertEquals(result.messages.length > 0, true);
+          assert(result.ok);
+          assert(result.messages.length > 0);
 
-          const msg = result.messages.first()!;
-          assertEquals(msg.body.includes("TEST"), true);
+          const msg = result.messages[0]!;
+          assert(msg.body.includes("TEST"));
           const parsedBody = JSON.parse(msg.body);
           assertEquals(parsedBody.type, "TEST");
 
@@ -116,11 +117,12 @@ Deno.test({
             maxMessages: 1,
             waitTimeSeconds: 1,
           });
+          assert(receiveResult.ok);
 
           if (receiveResult.messages.length > 0) {
-            const msg = receiveResult.messages.firstOrThrow();
+            const msg = receiveResult.messages[0]!;
             const deleteResult = await client.delete(msg.receiptHandle);
-            assertEquals(deleteResult.ok, true);
+            assert(deleteResult.ok);
           }
         });
 
@@ -134,7 +136,7 @@ Deno.test({
               maxMessages: 1,
               waitTimeSeconds: 0,
             });
-            assertEquals(result.ok, true);
+            assert(result.ok);
             assertEquals(result.messages.length, 0);
           },
         );
@@ -147,7 +149,7 @@ Deno.test({
             { id: "1", body: "batch-msg-2" },
             { id: "2", body: "batch-msg-3" },
           ]);
-          assertEquals(result.ok, true);
+          assert(result.ok);
           assertEquals(result.failed.length, 0);
           assertEquals(result.successful.length, 3);
         });
@@ -157,11 +159,12 @@ Deno.test({
             maxMessages: 10,
             waitTimeSeconds: 1,
           });
+          assert(receiveResult.ok);
 
           if (receiveResult.messages.length > 0) {
             const handles = receiveResult.messages.map((m) => m.receiptHandle);
             const deleteResult = await client.deleteBatch(handles);
-            assertEquals(deleteResult.ok, true);
+            assert(deleteResult.ok);
             assertEquals(deleteResult.failed.length, 0);
           }
         });
@@ -181,7 +184,7 @@ Deno.test({
               },
             },
           );
-          assertEquals(result.ok, true);
+          assert(result.ok);
         });
 
         await t.step("receive retrieves message attributes", async () => {
@@ -190,10 +193,10 @@ Deno.test({
             waitTimeSeconds: 1,
             messageAttributeNames: ["All"],
           });
-          assertEquals(result.ok, true);
-          assertEquals(result.messages.length > 0, true);
+          assert(result.ok);
+          assert(result.messages.length > 0);
 
-          const msg = result.messages.firstOrThrow();
+          const msg = result.messages[0]!;
           assertEquals(msg.messageAttributes?.priority?.stringValue, "high");
           assertEquals(msg.messageAttributes?.count?.stringValue, "100");
 
@@ -209,13 +212,13 @@ Deno.test({
           const result = await client.send("delayed message", {
             delaySeconds: 1,
           });
-          assertEquals(result.ok, true);
+          assert(result.ok);
 
           const immediateResult = await client.receive({
             maxMessages: 1,
             waitTimeSeconds: 0,
           });
-          assertEquals(immediateResult.ok, true);
+          assert(immediateResult.ok);
           assertEquals(immediateResult.messages.length, 0);
 
           await new Promise((r) => setTimeout(r, 1500));
@@ -224,62 +227,14 @@ Deno.test({
             maxMessages: 1,
             waitTimeSeconds: 1,
           });
-          assertEquals(delayedResult.ok, true);
-          assertEquals(delayedResult.messages.length > 0, true);
-          assertEquals(
-            delayedResult.messages.firstOrThrow().body.includes("delayed"),
-            true,
-          );
+          assert(delayedResult.ok);
+          assert(delayedResult.messages.length > 0);
 
-          await client.delete(
-            delayedResult.messages.firstOrThrow().receiptHandle,
-          );
+          const delayedMsg = delayedResult.messages[0]!;
+          assert(delayedMsg.body.includes("delayed"));
+
+          await client.delete(delayedMsg.receiptHandle);
         });
-      });
-
-      await t.step("SqsMessages helpers", async (t) => {
-        await client.purge();
-        await new Promise((r) => setTimeout(r, 100));
-
-        await client.send("first-message");
-        await client.send("second-message");
-        await client.send("third-message");
-
-        await t.step("first() and last() work correctly", async () => {
-          const result = await client.receive({
-            maxMessages: 10,
-            waitTimeSeconds: 1,
-          });
-
-          assertEquals(result.messages.first() !== undefined, true);
-          assertEquals(result.messages.last() !== undefined, true);
-          assertEquals(result.messages.length >= 1, true);
-
-          for (const msg of result.messages) {
-            await client.delete(msg.receiptHandle);
-          }
-        });
-
-        await t.step(
-          "firstOrThrow() throws when empty",
-          async () => {
-            await client.purge();
-            await new Promise((r) => setTimeout(r, 100));
-
-            const result = await client.receive({
-              maxMessages: 1,
-              waitTimeSeconds: 0,
-            });
-
-            try {
-              result.messages.firstOrThrow();
-              throw new Error("Should have thrown");
-            } catch (e) {
-              assertInstanceOf(e, Error);
-              assertEquals(e.message, "No messages available");
-            }
-          },
-        );
       });
 
       await t.step("CommonOptions support", async (t) => {
@@ -289,11 +244,26 @@ Deno.test({
             signal: controller.signal,
             waitTimeSeconds: 0,
           });
-          assertEquals(result.ok, true);
+          assert(result.ok);
         });
 
         await t.step(
-          "operation throws AbortError when signal is aborted",
+          "operation returns Failure when signal is aborted",
+          async () => {
+            const controller = new AbortController();
+            controller.abort();
+
+            const result = await client.receive({
+              signal: controller.signal,
+            });
+            assertEquals(result.ok, false);
+            assertEquals(result.processed, false);
+            assertInstanceOf(result.error, AbortError);
+          },
+        );
+
+        await t.step(
+          "operation throws AbortError when throwOnError is true and signal is aborted",
           async () => {
             const controller = new AbortController();
             controller.abort();
@@ -302,6 +272,7 @@ Deno.test({
               () =>
                 client.receive({
                   signal: controller.signal,
+                  throwOnError: true,
                 }),
               AbortError,
             );
@@ -310,7 +281,7 @@ Deno.test({
         );
       });
 
-      await t.step("Closed client throws error", async () => {
+      await t.step("Closed client returns Error", async () => {
         const tempClient = await createSqsClient({
           url: SQS_ENDPOINT,
           region: SQS_REGION,
@@ -322,11 +293,32 @@ Deno.test({
         });
         await tempClient.close();
 
-        await assertRejects(
-          () => tempClient.send("test"),
-          SqsCommandError,
-        );
+        const result = await tempClient.send("test");
+        assertEquals(result.ok, false);
+        assertEquals(result.processed, true);
+        assertInstanceOf(result.error, SqsCommandError);
       });
+
+      await t.step(
+        "Closed client throws error when throwOnError is true",
+        async () => {
+          const tempClient = await createSqsClient({
+            url: SQS_ENDPOINT,
+            region: SQS_REGION,
+            queueUrl,
+            credentials: {
+              accessKeyId: "test",
+              secretAccessKey: "test",
+            },
+          });
+          await tempClient.close();
+
+          await assertRejects(
+            () => tempClient.send("test", { throwOnError: true }),
+            SqsCommandError,
+          );
+        },
+      );
 
       await t.step("Handles multiple messages", async () => {
         const messages = ["msg1", "msg2", "msg3", "msg4", "msg5"];
@@ -343,6 +335,7 @@ Deno.test({
             maxMessages: 10,
             waitTimeSeconds: 5,
           });
+          assert(result.ok);
 
           for (const msg of result.messages) {
             received.push(msg.body);
@@ -360,9 +353,9 @@ Deno.test({
           const newQueueName = `test-ensure-queue-${crypto.randomUUID()}`;
           const result = await client.ensureQueue(newQueueName);
 
-          assertEquals(result.ok, true);
+          assert(result.ok);
           assertEquals(typeof result.queueUrl, "string");
-          assertEquals(result.queueUrl.includes(newQueueName), true);
+          assert(result.queueUrl.includes(newQueueName));
           assertEquals(typeof result.duration, "number");
 
           // Clean up the queue we created
@@ -376,11 +369,11 @@ Deno.test({
 
             // Create queue first time
             const firstResult = await client.ensureQueue(existingQueueName);
-            assertEquals(firstResult.ok, true);
+            assert(firstResult.ok);
 
             // Create queue second time (should return same URL)
             const secondResult = await client.ensureQueue(existingQueueName);
-            assertEquals(secondResult.ok, true);
+            assert(secondResult.ok);
             assertEquals(secondResult.queueUrl, firstResult.queueUrl);
 
             // Clean up
@@ -397,7 +390,7 @@ Deno.test({
             },
           });
 
-          assertEquals(result.ok, true);
+          assert(result.ok);
           assertEquals(typeof result.queueUrl, "string");
 
           // Clean up
@@ -407,10 +400,10 @@ Deno.test({
         await t.step("deleteQueue removes a queue", async () => {
           const queueToDelete = `test-delete-${crypto.randomUUID()}`;
           const createResult = await client.ensureQueue(queueToDelete);
-          assertEquals(createResult.ok, true);
+          assert(createResult.ok);
 
           const deleteResult = await client.deleteQueue(createResult.queueUrl);
-          assertEquals(deleteResult.ok, true);
+          assert(deleteResult.ok);
           assertEquals(typeof deleteResult.duration, "number");
         });
       });
@@ -443,17 +436,25 @@ Deno.test({
       });
 
       await t.step(
-        "send throws when queueUrl is not set",
+        "send returns Error when queueUrl is not set",
+        async () => {
+          const result = await client.send("test");
+          assertEquals(result.ok, false);
+          assertEquals(result.processed, true);
+          assertInstanceOf(result.error, SqsCommandError);
+          assert(result.error.message.includes("Queue URL is required"));
+        },
+      );
+
+      await t.step(
+        "send throws when queueUrl is not set and throwOnError is true",
         async () => {
           const error = await assertRejects(
-            () => client.send("test"),
+            () => client.send("test", { throwOnError: true }),
             SqsCommandError,
           );
           assertInstanceOf(error, SqsCommandError);
-          assertEquals(
-            error.message.includes("Queue URL is required"),
-            true,
-          );
+          assert(error.message.includes("Queue URL is required"));
         },
       );
 
@@ -462,7 +463,7 @@ Deno.test({
         async () => {
           const queueName = `test-auto-url-${crypto.randomUUID()}`;
           const ensureResult = await client.ensureQueue(queueName);
-          assertEquals(ensureResult.ok, true);
+          assert(ensureResult.ok);
           createdQueueUrl = ensureResult.queueUrl;
 
           // queueUrl should be set automatically
@@ -472,16 +473,16 @@ Deno.test({
           const sendResult = await client.send(
             "test message after ensureQueue",
           );
-          assertEquals(sendResult.ok, true);
+          assert(sendResult.ok);
 
           const receiveResult = await client.receive({
             maxMessages: 1,
             waitTimeSeconds: 1,
           });
-          assertEquals(receiveResult.ok, true);
+          assert(receiveResult.ok);
           assertEquals(receiveResult.messages.length, 1);
           assertEquals(
-            receiveResult.messages.first()?.body,
+            receiveResult.messages[0]?.body,
             "test message after ensureQueue",
           );
         },
@@ -493,7 +494,7 @@ Deno.test({
           // Create another queue
           const anotherQueueName = `test-another-${crypto.randomUUID()}`;
           const anotherResult = await client.ensureQueue(anotherQueueName);
-          assertEquals(anotherResult.ok, true);
+          assert(anotherResult.ok);
 
           // Create a second client and set queue URL manually
           const client2 = await createSqsClient({
@@ -515,15 +516,15 @@ Deno.test({
 
             // Now send should work
             const sendResult = await client2.send("message via setQueueUrl");
-            assertEquals(sendResult.ok, true);
+            assert(sendResult.ok);
 
             const receiveResult = await client2.receive({
               maxMessages: 1,
               waitTimeSeconds: 1,
             });
-            assertEquals(receiveResult.ok, true);
+            assert(receiveResult.ok);
             assertEquals(
-              receiveResult.messages.first()?.body,
+              receiveResult.messages[0]?.body,
               "message via setQueueUrl",
             );
           } finally {

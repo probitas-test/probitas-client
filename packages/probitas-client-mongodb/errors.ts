@@ -1,4 +1,4 @@
-import { ClientError } from "@probitas/client";
+import { AbortError, ClientError, TimeoutError } from "@probitas/client";
 
 /**
  * Options for MongoDB errors.
@@ -126,3 +126,24 @@ export class MongoNotFoundError extends MongoError {
     super(message, "not_found", options);
   }
 }
+
+/**
+ * Error types that indicate a MongoDB operation error.
+ * These are errors where the operation reached the server but failed.
+ */
+export type MongoOperationError =
+  | MongoQueryError
+  | MongoDuplicateKeyError
+  | MongoValidationError
+  | MongoWriteError
+  | MongoNotFoundError
+  | MongoError;
+
+/**
+ * Error types that indicate the operation was not processed.
+ * These are errors that occur before the operation reaches the MongoDB server.
+ */
+export type MongoFailureError =
+  | MongoConnectionError
+  | AbortError
+  | TimeoutError;

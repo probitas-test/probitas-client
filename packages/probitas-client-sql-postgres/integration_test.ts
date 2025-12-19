@@ -7,7 +7,12 @@
  *   docker compose down
  */
 
-import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertInstanceOf,
+  assertRejects,
+} from "@std/assert";
 import {
   ConstraintError,
   createPostgresClient,
@@ -61,8 +66,8 @@ Deno.test({
           "SELECT 1 as value",
         );
 
-        assertEquals(result.ok, true);
-        assertEquals(result.rows.first(), { value: 1 });
+        assert(result.ok);
+        assertEquals(result.rows[0], { value: 1 });
         assertEquals(result.rowCount, 1);
       } finally {
         await client.close();
@@ -110,7 +115,8 @@ Deno.test({
           [10, 20],
         );
 
-        assertEquals(result.rows.first(), { sum: 30 });
+        assert(result.ok);
+        assertEquals(result.rows[0], { sum: 30 });
       } finally {
         await client.close();
       }
@@ -139,7 +145,8 @@ Deno.test({
         const result = await client.query<{ value: string }>(
           "SELECT value FROM test_commit",
         );
-        assertEquals(result.rows.first()?.value, "committed");
+        assert(result.ok);
+        assertEquals(result.rows[0]?.value, "committed");
       } finally {
         await client.query("DROP TABLE IF EXISTS test_commit");
         await client.close();
@@ -175,7 +182,8 @@ Deno.test({
         const result = await client.query<{ count: string }>(
           "SELECT COUNT(*) as count FROM test_rollback",
         );
-        assertEquals(result.rows.first()?.count, "0");
+        assert(result.ok);
+        assertEquals(result.rows[0]?.count, "0");
       } finally {
         await client.query("DROP TABLE IF EXISTS test_rollback");
         await client.close();
@@ -193,7 +201,8 @@ Deno.test({
             const result = await tx.query<{ transaction_isolation: string }>(
               "SHOW transaction_isolation",
             );
-            return result.rows.first()?.transaction_isolation;
+            if (!result.ok) throw result.error;
+            return result.rows[0]?.transaction_isolation;
           },
           { isolationLevel: "serializable" },
         );
@@ -242,16 +251,14 @@ Deno.test({
           ["test@example.com"],
         );
 
-        const error = await assertRejects(
-          () =>
-            client.query(
-              "INSERT INTO test_unique (email) VALUES ($1)",
-              ["test@example.com"],
-            ),
+        const result = await client.query(
+          "INSERT INTO test_unique (email) VALUES ($1)",
+          ["test@example.com"],
         );
 
-        assertInstanceOf(error, ConstraintError);
-        assertEquals(error.kind, "constraint");
+        assert(!result.ok);
+        assertInstanceOf(result.error, ConstraintError);
+        assertEquals(result.error.kind, "constraint");
       } finally {
         await client.query("DROP TABLE IF EXISTS test_unique");
         await client.close();
@@ -264,10 +271,11 @@ Deno.test({
       });
 
       try {
-        const error = await assertRejects(() => client.query("SELEC 1"));
+        const result = await client.query("SELEC 1");
 
-        assertInstanceOf(error, QuerySyntaxError);
-        assertEquals(error.kind, "query");
+        assert(!result.ok);
+        assertInstanceOf(result.error, QuerySyntaxError);
+        assertEquals(result.error.kind, "query");
       } finally {
         await client.close();
       }
@@ -286,16 +294,16 @@ Deno.test({
         const result = await client.query<{ value: number }>(
           "SELECT 42 as value",
         );
-        assertEquals(result.rows.first()?.value, 42);
+        assert(result.ok);
+        assertEquals(result.rows[0]?.value, 42);
       }
 
       // After exiting the block, the client should be closed
-      // Attempting to query should fail
-      await assertRejects(
-        () => clientRef!.query("SELECT 1"),
-        Error,
-        "Client is closed",
-      );
+      // Attempting to query should return Failure
+      const result = await clientRef!.query("SELECT 1");
+      assert(!result.ok);
+      assert(!result.processed);
+      assertEquals(result.error.message, "Client is closed");
     });
 
     await t.step("multiple queries in sequence", async () => {
@@ -310,9 +318,12 @@ Deno.test({
           client.query<{ n: number }>("SELECT 3 as n"),
         ]);
 
-        assertEquals(results[0].rows.first()?.n, 1);
-        assertEquals(results[1].rows.first()?.n, 2);
-        assertEquals(results[2].rows.first()?.n, 3);
+        assert(results[0].ok);
+        assert(results[1].ok);
+        assert(results[2].ok);
+        assertEquals(results[0].rows[0]?.n, 1);
+        assertEquals(results[1].rows[0]?.n, 2);
+        assertEquals(results[2].rows[0]?.n, 3);
       } finally {
         await client.close();
       }
@@ -326,7 +337,7 @@ Deno.test({
       try {
         const result = await client.query("SELECT pg_sleep(0.01)");
 
-        assertEquals(result.ok, true);
+        assert(result.ok);
         assertEquals(typeof result.duration, "number");
         // Duration should be at least 10ms (we slept for 10ms)
         assertEquals(result.duration >= 10, true);
@@ -350,7 +361,8 @@ Deno.test({
         const result = await client.query<{ value: number }>(
           "SELECT 1 as value",
         );
-        assertEquals(result.rows.first()?.value, 1);
+        assert(result.ok);
+        assertEquals(result.rows[0]?.value, 1);
       } finally {
         await client.close();
       }
@@ -370,7 +382,8 @@ Deno.test({
         const result = await client.query<{ value: number }>(
           "SELECT 1 as value",
         );
-        assertEquals(result.rows.first()?.value, 1);
+        assert(result.ok);
+        assertEquals(result.rows[0]?.value, 1);
       } finally {
         await client.close();
       }
@@ -386,7 +399,8 @@ Deno.test({
         const result = await client.query<{ application_name: string }>(
           "SELECT current_setting('application_name') as application_name",
         );
-        assertEquals(result.rows.first()?.application_name, "test-app");
+        assert(result.ok);
+        assertEquals(result.rows[0]?.application_name, "test-app");
       } finally {
         await client.close();
       }
