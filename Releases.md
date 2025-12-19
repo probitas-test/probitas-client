@@ -1,3 +1,97 @@
+### 2025.12.19
+
+#### @probitas/client 0.4.0 (minor)
+
+- feat(*)!: add processed and error properties to ClientResult interface
+
+#### @probitas/client-connectrpc 0.5.0 (minor)
+
+- feat(@probitas/client-connectrpc)!: implement Failure pattern for network
+  errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- refactor(@probitas/client-connectrpc)!: simplify API and unify patterns
+
+#### @probitas/client-deno-kv 0.4.0 (minor)
+
+- feat(@probitas/client-deno-kv)!: implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- refactor(@probitas/client-deno-kv)!: simplify API and unify error handling
+
+#### @probitas/client-graphql 0.4.0 (minor)
+
+- feat(@probitas/client-graphql)!: implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- refactor(@probitas/client-graphql)!: simplify API and unify nullable patterns
+- refactor(@probitas/client-graphql)!: change response.errors array to
+  response.error property
+
+#### @probitas/client-grpc 0.5.0 (minor)
+
+- feat(*)!: add processed and error properties to ClientResult interface
+
+#### @probitas/client-http 0.4.0 (minor)
+
+- feat(@probitas/client-http)!: implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- feat(@probitas/client-http)!: rename .data() to .json() for Web API
+  consistency
+- refactor(@probitas/client-http)!: simplify API and add cookie support
+
+#### @probitas/client-mongodb 0.5.0 (minor)
+
+- feat(@probitas/client-mongodb)!: implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- refactor(@probitas/client-mongodb)!: simplify API and adopt deadline pattern
+
+#### @probitas/client-rabbitmq 0.4.0 (minor)
+
+- feat(@probitas/client-rabbitmq)!: implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- refactor(@probitas/client-rabbitmq)!: simplify API and adopt deadline pattern
+
+#### @probitas/client-redis 0.4.0 (minor)
+
+- feat(@probitas/client-redis)!: implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- refactor(@probitas/client-redis)!: simplify API and adopt deadline pattern
+
+#### @probitas/client-sql 0.4.0 (minor)
+
+- feat(@probitas/client-sql,@probitas/client-sql-postgres,@probitas/client-sql-mysql,@probitas/client-sql-sqlite,@probitas/client-sql-duckdb)!:
+  implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- refactor(@probitas/client-sql)!: simplify API and result patterns
+
+#### @probitas/client-sql-duckdb 0.4.0 (minor)
+
+- feat(@probitas/client-sql,@probitas/client-sql-postgres,@probitas/client-sql-mysql,@probitas/client-sql-sqlite,@probitas/client-sql-duckdb)!:
+  implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+
+#### @probitas/client-sql-mysql 0.4.0 (minor)
+
+- feat(@probitas/client-sql,@probitas/client-sql-postgres,@probitas/client-sql-mysql,@probitas/client-sql-sqlite,@probitas/client-sql-duckdb)!:
+  implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+
+#### @probitas/client-sql-postgres 0.4.0 (minor)
+
+- feat(@probitas/client-sql,@probitas/client-sql-postgres,@probitas/client-sql-mysql,@probitas/client-sql-sqlite,@probitas/client-sql-duckdb)!:
+  implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+
+#### @probitas/client-sql-sqlite 0.4.0 (minor)
+
+- feat(@probitas/client-sql,@probitas/client-sql-postgres,@probitas/client-sql-mysql,@probitas/client-sql-sqlite,@probitas/client-sql-duckdb)!:
+  implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+
+#### @probitas/client-sqs 0.4.0 (minor)
+
+- feat(@probitas/client-sqs)!: implement Failure pattern for network errors
+- feat(*)!: add processed and error properties to ClientResult interface
+- refactor(@probitas/client-sqs)!: simplify API and adopt deadline pattern
+
 ### 2025.12.17
 
 #### @probitas/client 0.3.1 (patch)
