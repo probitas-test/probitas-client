@@ -1,3 +1,20 @@
+### 2025.12.23
+
+#### @probitas/client-connectrpc 0.6.0 (minor)
+
+- BREAKING(@probitas/client-http,@probitas/client-graphql,@probitas/client-connectrpc):
+  convert getter methods to properties
+
+#### @probitas/client-graphql 0.5.0 (minor)
+
+- BREAKING(@probitas/client-http,@probitas/client-graphql,@probitas/client-connectrpc):
+  convert getter methods to properties
+
+#### @probitas/client-http 0.5.0 (minor)
+
+- BREAKING(@probitas/client-http,@probitas/client-graphql,@probitas/client-connectrpc):
+  convert getter methods to properties
+
 ### 2025.12.19
 
 #### @probitas/client 0.4.1 (patch)
