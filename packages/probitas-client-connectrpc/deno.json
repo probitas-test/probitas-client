@@ -1,6 +1,6 @@
 {
   "name": "@probitas/client-connectrpc",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "exports": "./mod.ts",
   "publish": {
     "exclude": [

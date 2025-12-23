@@ -1,5 +1,17 @@
 ### 2025.12.23
 
+#### @probitas/client-connectrpc 0.6.1 (patch)
+
+- feat(@probitas/client-connectrpc,@probitas/client-grpc): separate JSON and
+  protobuf representations in responses
+
+#### @probitas/client-grpc 0.5.2 (patch)
+
+- feat(@probitas/client-connectrpc,@probitas/client-grpc): separate JSON and
+  protobuf representations in responses
+
+### 2025.12.23
+
 #### @probitas/client-connectrpc 0.6.0 (minor)
 
 - BREAKING(@probitas/client-http,@probitas/client-graphql,@probitas/client-connectrpc):
