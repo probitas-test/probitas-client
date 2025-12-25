@@ -1,3 +1,65 @@
+### 2025.12.25
+
+#### @probitas/client 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-connectrpc 0.6.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-deno-kv 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-graphql 0.5.1 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-grpc 0.5.3 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-http 0.5.1 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-mongodb 0.5.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-rabbitmq 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-redis 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-sql 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-sql-duckdb 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-sql-mysql 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-sql-postgres 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-sql-sqlite 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
+#### @probitas/client-sqs 0.4.2 (patch)
+
+- refactor(*): Rename organization from jsr-probitas to probitas-test
+
 ### 2025.12.23
 
 #### @probitas/client-connectrpc 0.6.1 (patch)

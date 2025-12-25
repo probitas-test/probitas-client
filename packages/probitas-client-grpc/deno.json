@@ -1,6 +1,6 @@
 {
   "name": "@probitas/client-grpc",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "exports": "./mod.ts",
   "publish": {
     "exclude": [
