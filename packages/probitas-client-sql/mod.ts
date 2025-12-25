@@ -1,5 +1,5 @@
 /**
- * Common SQL types and utilities for [Probitas](https://github.com/jsr-probitas/probitas) SQL client packages.
+ * Common SQL types and utilities for [Probitas](https://github.com/probitas-test/probitas) SQL client packages.
  *
  * This package provides shared types, result classes, and errors used across
  * all SQL-related client packages.
@@ -46,8 +46,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  *
  * @module
  */

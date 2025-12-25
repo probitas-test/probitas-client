@@ -1,25 +1,25 @@
 services:
   # HTTP echo server for integration testing
   echo-http:
-    image: ghcr.io/jsr-probitas/echo-http:latest
+    image: ghcr.io/probitas-test/echo-http:latest
     ports:
       - "18080:80"
 
   # gRPC echo server with reflection support for integration testing
   echo-grpc:
-    image: ghcr.io/jsr-probitas/echo-grpc:latest
+    image: ghcr.io/probitas-test/echo-grpc:latest
     ports:
       - "50051:50051"
 
   # ConnectRPC echo server for integration testing
   echo-connectrpc:
-    image: ghcr.io/jsr-probitas/echo-connectrpc:latest
+    image: ghcr.io/probitas-test/echo-connectrpc:latest
     ports:
       - "18082:8080"
 
   # GraphQL echo server for integration testing
   echo-graphql:
-    image: ghcr.io/jsr-probitas/echo-graphql:latest
+    image: ghcr.io/probitas-test/echo-graphql:latest
     ports:
       - "14000:8080"
 

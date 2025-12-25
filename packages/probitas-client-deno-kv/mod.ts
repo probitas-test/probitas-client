@@ -1,5 +1,5 @@
 /**
- * Deno KV client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
+ * Deno KV client for [Probitas](https://github.com/probitas-test/probitas) scenario testing framework.
  *
  * This package provides a Deno KV client designed for integration testing of applications using Deno KV storage.
  *
@@ -84,8 +84,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  * - [Deno KV](https://deno.land/manual/runtime/kv)
  *
  * @module

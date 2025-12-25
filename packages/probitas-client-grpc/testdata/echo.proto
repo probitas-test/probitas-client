@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package echo.v1;
 
-option go_package = "github.com/jsr-probitas/dockerfiles/echo-grpc/proto";
+option go_package = "github.com/probitas-test/dockerfiles/echo-grpc/proto";
 
 // Echo service with various RPC patterns
 service Echo {

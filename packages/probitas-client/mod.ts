@@ -61,8 +61,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  *
  * @module
  */

@@ -1,5 +1,5 @@
 /**
- * PostgreSQL client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
+ * PostgreSQL client for [Probitas](https://github.com/probitas-test/probitas) scenario testing framework.
  *
  * This package provides a PostgreSQL client designed for integration testing,
  * with transaction support and LISTEN/NOTIFY capabilities.
@@ -109,8 +109,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  * - [PostgreSQL](https://www.postgresql.org/)
  *
  * @module

@@ -26,19 +26,19 @@ jobs:
     runs-on: ubuntu-latest
     services:
       echo-http:
-        image: ghcr.io/jsr-probitas/echo-http:latest
+        image: ghcr.io/probitas-test/echo-http:latest
         ports:
           - 18080:80
       echo-grpc:
-        image: ghcr.io/jsr-probitas/echo-grpc:latest
+        image: ghcr.io/probitas-test/echo-grpc:latest
         ports:
           - 50051:50051
       echo-connectrpc:
-        image: ghcr.io/jsr-probitas/echo-connectrpc:latest
+        image: ghcr.io/probitas-test/echo-connectrpc:latest
         ports:
           - 18082:8080
       echo-graphql:
-        image: ghcr.io/jsr-probitas/echo-graphql:latest
+        image: ghcr.io/probitas-test/echo-graphql:latest
         ports:
           - 14000:8080
       postgres:
@@ -136,4 +136,4 @@ jobs:
         with:
           files: ./coverage.lcov
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: jsr-probitas/probitas-client
+          slug: probitas-test/probitas-client

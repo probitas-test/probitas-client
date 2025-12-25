@@ -1,5 +1,5 @@
 /**
- * DuckDB client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
+ * DuckDB client for [Probitas](https://github.com/probitas-test/probitas) scenario testing framework.
  *
  * This package provides a DuckDB client designed for integration testing,
  * with analytical query capabilities and Parquet/CSV file support.
@@ -87,8 +87,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  * - [DuckDB](https://duckdb.org/)
  *
  * @module

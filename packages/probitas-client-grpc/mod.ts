@@ -1,5 +1,5 @@
 /**
- * gRPC client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
+ * gRPC client for [Probitas](https://github.com/probitas-test/probitas) scenario testing framework.
  *
  * This package provides a gRPC client with Server Reflection support, designed for
  * integration testing of gRPC services. It is a thin wrapper around
@@ -114,8 +114,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  * - [gRPC](https://grpc.io/)
  *
  * @module

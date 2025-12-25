@@ -1,5 +1,5 @@
 /**
- * Redis client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
+ * Redis client for [Probitas](https://github.com/probitas-test/probitas) scenario testing framework.
  *
  * This package provides a Redis client designed for integration testing of applications using Redis.
  *
@@ -123,8 +123,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  * - [Redis](https://redis.io/)
  *
  * @module

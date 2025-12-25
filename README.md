@@ -1,8 +1,8 @@
 # Probitas Client
 
-[![Test](https://github.com/jsr-probitas/probitas-client/actions/workflows/test.yml/badge.svg)](https://github.com/jsr-probitas/probitas-client/actions/workflows/test.yml)
-[![Publish](https://github.com/jsr-probitas/probitas-client/actions/workflows/publish.yml/badge.svg)](https://github.com/jsr-probitas/probitas-client/actions/workflows/publish.yml)
-[![codecov](https://codecov.io/gh/jsr-probitas/probitas-client/graph/badge.svg)](https://codecov.io/gh/jsr-probitas/probitas-client)
+[![Test](https://github.com/probitas-test/probitas-client/actions/workflows/test.yml/badge.svg)](https://github.com/probitas-test/probitas-client/actions/workflows/test.yml)
+[![Publish](https://github.com/probitas-test/probitas-client/actions/workflows/publish.yml/badge.svg)](https://github.com/probitas-test/probitas-client/actions/workflows/publish.yml)
+[![codecov](https://codecov.io/gh/probitas-test/probitas-client/graph/badge.svg)](https://codecov.io/gh/probitas-test/probitas-client)
 
 Client library collection for exercising Probitas scenarios against real
 services. Each protocol-specific client shares the same ergonomics and error
@@ -73,7 +73,7 @@ export default scenario("example http request")
 ```
 
 Refer to `docs/clients.md` for package-specific usage notes and to the
-[Probitas framework](https://github.com/jsr-probitas/probitas) for scenario
+[Probitas framework](https://github.com/probitas-test/probitas) for scenario
 authoring.
 
 ## Development
@@ -85,7 +85,7 @@ authoring.
 - Integration services: `compose.yaml` starts local dependencies
   (HTTP/ConnectRPC/gRPC/GraphQL echo servers, Postgres/MySQL, Redis, MongoDB,
   RabbitMQ, LocalStack, Deno KV). Echo server images are published to
-  `ghcr.io/jsr-probitas/`.
+  `ghcr.io/probitas-test/`.
 - Specs: Detailed protocol expectations are tracked in
   [`docs/specs/00-overview.md`](docs/specs/00-overview.md).
 

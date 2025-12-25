@@ -1,5 +1,5 @@
 /**
- * MySQL client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
+ * MySQL client for [Probitas](https://github.com/probitas-test/probitas) scenario testing framework.
  *
  * This package provides a MySQL client designed for integration testing,
  * with transaction support and prepared statement capabilities.
@@ -88,8 +88,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  * - [MySQL](https://www.mysql.com/)
  *
  * @module

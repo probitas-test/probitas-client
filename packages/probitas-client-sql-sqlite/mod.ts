@@ -1,5 +1,5 @@
 /**
- * SQLite client for [Probitas](https://github.com/jsr-probitas/probitas) scenario testing framework.
+ * SQLite client for [Probitas](https://github.com/probitas-test/probitas) scenario testing framework.
  *
  * This package provides a SQLite client designed for integration testing,
  * with transaction support and in-memory database capabilities.
@@ -86,8 +86,8 @@
  *
  * ## Links
  *
- * - [GitHub Repository](https://github.com/jsr-probitas/probitas-client)
- * - [Probitas Framework](https://github.com/jsr-probitas/probitas)
+ * - [GitHub Repository](https://github.com/probitas-test/probitas-client)
+ * - [Probitas Framework](https://github.com/probitas-test/probitas)
  * - [SQLite](https://www.sqlite.org/)
  *
  * @module
