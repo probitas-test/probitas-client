@@ -1,3 +1,10 @@
+
+# ⚠️ DEPRECATED
+
+Merged into https://github.com/probitas-test/probitas-packages
+
+---
+
 # Probitas Client
 
 [![Test](https://github.com/probitas-test/probitas-client/actions/workflows/test.yml/badge.svg)](https://github.com/probitas-test/probitas-client/actions/workflows/test.yml)
